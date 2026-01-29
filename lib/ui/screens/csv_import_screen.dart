@@ -2,9 +2,10 @@ import 'dart:io';
 
 import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/repositories/repositories.dart';
-import 'package:church_analytics/services/csv_import_service.dart';
+import 'package:church_analytics/services/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CsvImportScreen extends ConsumerStatefulWidget {
   final int churchId;
@@ -96,7 +97,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
     }
   }
 
-  void _validateData() {
+  Future<void> _validateData() async {
     if (_rows == null || _headers == null) return;
 
     setState(() {
@@ -120,12 +121,22 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
 
     // Validate each row
     final results = <WeeklyRecordImportResult>[];
+
+    // Get current admin ID
+    final prefs = await SharedPreferences.getInstance();
+    final database = AppDatabase();
+    final adminRepo = AdminUserRepository(database);
+    final profileService = AdminProfileService(adminRepo, prefs);
+    final currentAdminId = profileService.getCurrentProfileId();
+    await database.close();
+
     for (var i = 0; i < _rows!.length; i++) {
       final result = _csvService.validateAndConvertRow(
         _rows![i],
         _columnMapping,
         widget.churchId,
         i + 2, // +2 because row 1 is headers and display is 1-indexed
+        currentAdminId,
       );
       results.add(result);
     }

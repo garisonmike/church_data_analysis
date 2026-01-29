@@ -6,6 +6,7 @@ import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AttendanceChartsScreen extends ConsumerStatefulWidget {
   final int churchId;
@@ -46,8 +47,25 @@ class _AttendanceChartsScreenState
       database = AppDatabase();
       final repository = WeeklyRecordRepository(database);
 
-      // Get records for the last 12 weeks
-      final records = await repository.getRecentRecords(widget.churchId, 12);
+      // Get current admin ID to filter records
+      final prefs = await SharedPreferences.getInstance();
+      final adminDb = AppDatabase();
+      final adminRepo = AdminUserRepository(adminDb);
+      final profileService = AdminProfileService(adminRepo, prefs);
+      final currentAdminId = profileService.getCurrentProfileId();
+      await adminDb.close();
+
+      // Get records for the last 12 weeks - filtered by admin if ID exists
+      List<models.WeeklyRecord> records;
+      if (currentAdminId != null) {
+        records = await repository.getRecentRecordsByAdmin(
+          widget.churchId,
+          currentAdminId,
+          12,
+        );
+      } else {
+        records = await repository.getRecentRecords(widget.churchId, 12);
+      }
 
       if (mounted) {
         setState(() {

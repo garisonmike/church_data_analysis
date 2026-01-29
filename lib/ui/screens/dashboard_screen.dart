@@ -2,10 +2,13 @@ import 'package:church_analytics/analytics/metrics_calculator.dart';
 import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/models/models.dart' as models;
 import 'package:church_analytics/repositories/repositories.dart';
+import 'package:church_analytics/services/services.dart';
 import 'package:church_analytics/ui/screens/screens.dart';
+import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   final int churchId;
@@ -21,11 +24,23 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   String? _errorMessage;
   List<models.WeeklyRecord> _recentRecords = [];
   Map<String, dynamic>? _summaryMetrics;
+  AdminProfileService? _profileService;
 
   @override
   void initState() {
     super.initState();
+    _initializeProfileService();
     _loadData();
+  }
+
+  Future<void> _initializeProfileService() async {
+    final database = AppDatabase();
+    final repository = AdminUserRepository(database);
+    final prefs = await SharedPreferences.getInstance();
+
+    setState(() {
+      _profileService = AdminProfileService(repository, prefs);
+    });
   }
 
   Future<void> _loadData() async {
@@ -39,8 +54,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       database = AppDatabase();
       final repository = WeeklyRecordRepository(database);
 
-      // Get recent records (last 12 weeks)
-      final records = await repository.getRecentRecords(widget.churchId, 12);
+      // Get current admin ID if profile service is initialized
+      final currentAdminId = _profileService?.getCurrentProfileId();
+
+      // Get recent records (last 12 weeks) - filtered by admin if ID exists
+      List<models.WeeklyRecord> records;
+      if (currentAdminId != null) {
+        records = await repository.getRecentRecordsByAdmin(
+          widget.churchId,
+          currentAdminId,
+          12,
+        );
+      } else {
+        records = await repository.getRecentRecords(widget.churchId, 12);
+      }
 
       // Calculate summary metrics if we have data
       Map<String, dynamic>? metrics;
@@ -75,6 +102,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         title: const Text('Church Analytics Dashboard'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
+          if (_profileService != null)
+            ProfileSwitcherWidget(
+              churchId: widget.churchId,
+              profileService: _profileService!,
+              onProfileChanged: _loadData,
+            ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadData,

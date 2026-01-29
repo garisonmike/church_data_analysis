@@ -55,6 +55,42 @@ class WeeklyRecordRepository {
     return records.map(_toModel).toList();
   }
 
+  /// Get records created by a specific admin
+  Future<List<WeeklyRecord>> getRecordsByAdmin(
+    int churchId,
+    int adminId,
+  ) async {
+    final records =
+        await (_db.select(_db.weeklyRecords)
+              ..where(
+                (t) =>
+                    t.churchId.equals(churchId) &
+                    t.createdByAdminId.equals(adminId),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.weekStartDate)]))
+            .get();
+    return records.map(_toModel).toList();
+  }
+
+  /// Get recent records created by a specific admin
+  Future<List<WeeklyRecord>> getRecentRecordsByAdmin(
+    int churchId,
+    int adminId,
+    int limit,
+  ) async {
+    final records =
+        await (_db.select(_db.weeklyRecords)
+              ..where(
+                (t) =>
+                    t.churchId.equals(churchId) &
+                    t.createdByAdminId.equals(adminId),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.weekStartDate)])
+              ..limit(limit))
+            .get();
+    return records.map(_toModel).toList();
+  }
+
   /// Check if a week already exists for a church
   Future<bool> weekExists(int churchId, DateTime weekStartDate) async {
     final query = _db.select(_db.weeklyRecords)
@@ -73,6 +109,7 @@ class WeeklyRecordRepository {
         .insert(
           db.WeeklyRecordsCompanion.insert(
             churchId: record.churchId,
+            createdByAdminId: Value(record.createdByAdminId),
             weekStartDate: record.weekStartDate,
             men: Value(record.men),
             women: Value(record.women),
@@ -99,6 +136,7 @@ class WeeklyRecordRepository {
           db.WeeklyRecordsCompanion(
             id: Value(record.id!),
             churchId: Value(record.churchId),
+            createdByAdminId: Value(record.createdByAdminId),
             weekStartDate: Value(record.weekStartDate),
             men: Value(record.men),
             women: Value(record.women),
@@ -136,6 +174,7 @@ class WeeklyRecordRepository {
     return WeeklyRecord(
       id: data.id,
       churchId: data.churchId,
+      createdByAdminId: data.createdByAdminId,
       weekStartDate: data.weekStartDate,
       men: data.men,
       women: data.women,

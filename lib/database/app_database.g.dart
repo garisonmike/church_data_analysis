@@ -1068,6 +1068,20 @@ class $WeeklyRecordsTable extends WeeklyRecords
       'REFERENCES churches (id)',
     ),
   );
+  static const VerificationMeta _createdByAdminIdMeta = const VerificationMeta(
+    'createdByAdminId',
+  );
+  @override
+  late final GeneratedColumn<int> createdByAdminId = GeneratedColumn<int>(
+    'created_by_admin_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES admin_users (id)',
+    ),
+  );
   static const VerificationMeta _weekStartDateMeta = const VerificationMeta(
     'weekStartDate',
   );
@@ -1207,6 +1221,7 @@ class $WeeklyRecordsTable extends WeeklyRecords
   List<GeneratedColumn> get $columns => [
     id,
     churchId,
+    createdByAdminId,
     weekStartDate,
     men,
     women,
@@ -1242,6 +1257,15 @@ class $WeeklyRecordsTable extends WeeklyRecords
       );
     } else if (isInserting) {
       context.missing(_churchIdMeta);
+    }
+    if (data.containsKey('created_by_admin_id')) {
+      context.handle(
+        _createdByAdminIdMeta,
+        createdByAdminId.isAcceptableOrUnknown(
+          data['created_by_admin_id']!,
+          _createdByAdminIdMeta,
+        ),
+      );
     }
     if (data.containsKey('week_start_date')) {
       context.handle(
@@ -1354,6 +1378,10 @@ class $WeeklyRecordsTable extends WeeklyRecords
         DriftSqlType.int,
         data['${effectivePrefix}church_id'],
       )!,
+      createdByAdminId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_by_admin_id'],
+      ),
       weekStartDate: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}week_start_date'],
@@ -1414,6 +1442,7 @@ class $WeeklyRecordsTable extends WeeklyRecords
 class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
   final int id;
   final int churchId;
+  final int? createdByAdminId;
   final DateTime weekStartDate;
   final int men;
   final int women;
@@ -1429,6 +1458,7 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
   const WeeklyRecord({
     required this.id,
     required this.churchId,
+    this.createdByAdminId,
     required this.weekStartDate,
     required this.men,
     required this.women,
@@ -1447,6 +1477,9 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
     map['church_id'] = Variable<int>(churchId);
+    if (!nullToAbsent || createdByAdminId != null) {
+      map['created_by_admin_id'] = Variable<int>(createdByAdminId);
+    }
     map['week_start_date'] = Variable<DateTime>(weekStartDate);
     map['men'] = Variable<int>(men);
     map['women'] = Variable<int>(women);
@@ -1466,6 +1499,9 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
     return WeeklyRecordsCompanion(
       id: Value(id),
       churchId: Value(churchId),
+      createdByAdminId: createdByAdminId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdByAdminId),
       weekStartDate: Value(weekStartDate),
       men: Value(men),
       women: Value(women),
@@ -1489,6 +1525,7 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
     return WeeklyRecord(
       id: serializer.fromJson<int>(json['id']),
       churchId: serializer.fromJson<int>(json['churchId']),
+      createdByAdminId: serializer.fromJson<int?>(json['createdByAdminId']),
       weekStartDate: serializer.fromJson<DateTime>(json['weekStartDate']),
       men: serializer.fromJson<int>(json['men']),
       women: serializer.fromJson<int>(json['women']),
@@ -1511,6 +1548,7 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
       'churchId': serializer.toJson<int>(churchId),
+      'createdByAdminId': serializer.toJson<int?>(createdByAdminId),
       'weekStartDate': serializer.toJson<DateTime>(weekStartDate),
       'men': serializer.toJson<int>(men),
       'women': serializer.toJson<int>(women),
@@ -1529,6 +1567,7 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
   WeeklyRecord copyWith({
     int? id,
     int? churchId,
+    Value<int?> createdByAdminId = const Value.absent(),
     DateTime? weekStartDate,
     int? men,
     int? women,
@@ -1544,6 +1583,9 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
   }) => WeeklyRecord(
     id: id ?? this.id,
     churchId: churchId ?? this.churchId,
+    createdByAdminId: createdByAdminId.present
+        ? createdByAdminId.value
+        : this.createdByAdminId,
     weekStartDate: weekStartDate ?? this.weekStartDate,
     men: men ?? this.men,
     women: women ?? this.women,
@@ -1561,6 +1603,9 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
     return WeeklyRecord(
       id: data.id.present ? data.id.value : this.id,
       churchId: data.churchId.present ? data.churchId.value : this.churchId,
+      createdByAdminId: data.createdByAdminId.present
+          ? data.createdByAdminId.value
+          : this.createdByAdminId,
       weekStartDate: data.weekStartDate.present
           ? data.weekStartDate.value
           : this.weekStartDate,
@@ -1589,6 +1634,7 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
     return (StringBuffer('WeeklyRecord(')
           ..write('id: $id, ')
           ..write('churchId: $churchId, ')
+          ..write('createdByAdminId: $createdByAdminId, ')
           ..write('weekStartDate: $weekStartDate, ')
           ..write('men: $men, ')
           ..write('women: $women, ')
@@ -1609,6 +1655,7 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
   int get hashCode => Object.hash(
     id,
     churchId,
+    createdByAdminId,
     weekStartDate,
     men,
     women,
@@ -1628,6 +1675,7 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
       (other is WeeklyRecord &&
           other.id == this.id &&
           other.churchId == this.churchId &&
+          other.createdByAdminId == this.createdByAdminId &&
           other.weekStartDate == this.weekStartDate &&
           other.men == this.men &&
           other.women == this.women &&
@@ -1645,6 +1693,7 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
 class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
   final Value<int> id;
   final Value<int> churchId;
+  final Value<int?> createdByAdminId;
   final Value<DateTime> weekStartDate;
   final Value<int> men;
   final Value<int> women;
@@ -1660,6 +1709,7 @@ class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
   const WeeklyRecordsCompanion({
     this.id = const Value.absent(),
     this.churchId = const Value.absent(),
+    this.createdByAdminId = const Value.absent(),
     this.weekStartDate = const Value.absent(),
     this.men = const Value.absent(),
     this.women = const Value.absent(),
@@ -1676,6 +1726,7 @@ class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
   WeeklyRecordsCompanion.insert({
     this.id = const Value.absent(),
     required int churchId,
+    this.createdByAdminId = const Value.absent(),
     required DateTime weekStartDate,
     this.men = const Value.absent(),
     this.women = const Value.absent(),
@@ -1695,6 +1746,7 @@ class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
   static Insertable<WeeklyRecord> custom({
     Expression<int>? id,
     Expression<int>? churchId,
+    Expression<int>? createdByAdminId,
     Expression<DateTime>? weekStartDate,
     Expression<int>? men,
     Expression<int>? women,
@@ -1711,6 +1763,7 @@ class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (churchId != null) 'church_id': churchId,
+      if (createdByAdminId != null) 'created_by_admin_id': createdByAdminId,
       if (weekStartDate != null) 'week_start_date': weekStartDate,
       if (men != null) 'men': men,
       if (women != null) 'women': women,
@@ -1730,6 +1783,7 @@ class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
   WeeklyRecordsCompanion copyWith({
     Value<int>? id,
     Value<int>? churchId,
+    Value<int?>? createdByAdminId,
     Value<DateTime>? weekStartDate,
     Value<int>? men,
     Value<int>? women,
@@ -1746,6 +1800,7 @@ class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
     return WeeklyRecordsCompanion(
       id: id ?? this.id,
       churchId: churchId ?? this.churchId,
+      createdByAdminId: createdByAdminId ?? this.createdByAdminId,
       weekStartDate: weekStartDate ?? this.weekStartDate,
       men: men ?? this.men,
       women: women ?? this.women,
@@ -1769,6 +1824,9 @@ class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
     }
     if (churchId.present) {
       map['church_id'] = Variable<int>(churchId.value);
+    }
+    if (createdByAdminId.present) {
+      map['created_by_admin_id'] = Variable<int>(createdByAdminId.value);
     }
     if (weekStartDate.present) {
       map['week_start_date'] = Variable<DateTime>(weekStartDate.value);
@@ -1814,6 +1872,7 @@ class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
     return (StringBuffer('WeeklyRecordsCompanion(')
           ..write('id: $id, ')
           ..write('churchId: $churchId, ')
+          ..write('createdByAdminId: $createdByAdminId, ')
           ..write('weekStartDate: $weekStartDate, ')
           ..write('men: $men, ')
           ..write('women: $women, ')
@@ -4060,6 +4119,27 @@ final class $$AdminUsersTableReferences
       manager.$state.copyWith(prefetchedData: [item]),
     );
   }
+
+  static MultiTypedResultKey<$WeeklyRecordsTable, List<WeeklyRecord>>
+  _weeklyRecordsRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.weeklyRecords,
+    aliasName: $_aliasNameGenerator(
+      db.adminUsers.id,
+      db.weeklyRecords.createdByAdminId,
+    ),
+  );
+
+  $$WeeklyRecordsTableProcessedTableManager get weeklyRecordsRefs {
+    final manager = $$WeeklyRecordsTableTableManager(
+      $_db,
+      $_db.weeklyRecords,
+    ).filter((f) => f.createdByAdminId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_weeklyRecordsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$AdminUsersTableFilterComposer
@@ -4127,6 +4207,31 @@ class $$AdminUsersTableFilterComposer
           ),
     );
     return composer;
+  }
+
+  Expression<bool> weeklyRecordsRefs(
+    Expression<bool> Function($$WeeklyRecordsTableFilterComposer f) f,
+  ) {
+    final $$WeeklyRecordsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.weeklyRecords,
+      getReferencedColumn: (t) => t.createdByAdminId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WeeklyRecordsTableFilterComposer(
+            $db: $db,
+            $table: $db.weeklyRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
   }
 }
 
@@ -4252,6 +4357,31 @@ class $$AdminUsersTableAnnotationComposer
     );
     return composer;
   }
+
+  Expression<T> weeklyRecordsRefs<T extends Object>(
+    Expression<T> Function($$WeeklyRecordsTableAnnotationComposer a) f,
+  ) {
+    final $$WeeklyRecordsTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.weeklyRecords,
+      getReferencedColumn: (t) => t.createdByAdminId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$WeeklyRecordsTableAnnotationComposer(
+            $db: $db,
+            $table: $db.weeklyRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
 }
 
 class $$AdminUsersTableTableManager
@@ -4267,7 +4397,7 @@ class $$AdminUsersTableTableManager
           $$AdminUsersTableUpdateCompanionBuilder,
           (AdminUser, $$AdminUsersTableReferences),
           AdminUser,
-          PrefetchHooks Function({bool churchId})
+          PrefetchHooks Function({bool churchId, bool weeklyRecordsRefs})
         > {
   $$AdminUsersTableTableManager(_$AppDatabase db, $AdminUsersTable table)
     : super(
@@ -4328,47 +4458,73 @@ class $$AdminUsersTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({churchId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (churchId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.churchId,
-                                referencedTable: $$AdminUsersTableReferences
-                                    ._churchIdTable(db),
-                                referencedColumn: $$AdminUsersTableReferences
-                                    ._churchIdTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
+          prefetchHooksCallback:
+              ({churchId = false, weeklyRecordsRefs = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (weeklyRecordsRefs) db.weeklyRecords,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (churchId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.churchId,
+                                    referencedTable: $$AdminUsersTableReferences
+                                        ._churchIdTable(db),
+                                    referencedColumn:
+                                        $$AdminUsersTableReferences
+                                            ._churchIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (weeklyRecordsRefs)
+                        await $_getPrefetchedData<
+                          AdminUser,
+                          $AdminUsersTable,
+                          WeeklyRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$AdminUsersTableReferences
+                              ._weeklyRecordsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$AdminUsersTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).weeklyRecordsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.createdByAdminId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -4385,12 +4541,13 @@ typedef $$AdminUsersTableProcessedTableManager =
       $$AdminUsersTableUpdateCompanionBuilder,
       (AdminUser, $$AdminUsersTableReferences),
       AdminUser,
-      PrefetchHooks Function({bool churchId})
+      PrefetchHooks Function({bool churchId, bool weeklyRecordsRefs})
     >;
 typedef $$WeeklyRecordsTableCreateCompanionBuilder =
     WeeklyRecordsCompanion Function({
       Value<int> id,
       required int churchId,
+      Value<int?> createdByAdminId,
       required DateTime weekStartDate,
       Value<int> men,
       Value<int> women,
@@ -4408,6 +4565,7 @@ typedef $$WeeklyRecordsTableUpdateCompanionBuilder =
     WeeklyRecordsCompanion Function({
       Value<int> id,
       Value<int> churchId,
+      Value<int?> createdByAdminId,
       Value<DateTime> weekStartDate,
       Value<int> men,
       Value<int> women,
@@ -4443,6 +4601,28 @@ final class $$WeeklyRecordsTableReferences
       $_db.churches,
     ).filter((f) => f.id.sqlEquals($_column));
     final item = $_typedResult.readTableOrNull(_churchIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $AdminUsersTable _createdByAdminIdTable(_$AppDatabase db) =>
+      db.adminUsers.createAlias(
+        $_aliasNameGenerator(
+          db.weeklyRecords.createdByAdminId,
+          db.adminUsers.id,
+        ),
+      );
+
+  $$AdminUsersTableProcessedTableManager? get createdByAdminId {
+    final $_column = $_itemColumn<int>('created_by_admin_id');
+    if ($_column == null) return null;
+    final manager = $$AdminUsersTableTableManager(
+      $_db,
+      $_db.adminUsers,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_createdByAdminIdTable($_db));
     if (item == null) return manager;
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: [item]),
@@ -4538,6 +4718,29 @@ class $$WeeklyRecordsTableFilterComposer
           }) => $$ChurchesTableFilterComposer(
             $db: $db,
             $table: $db.churches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AdminUsersTableFilterComposer get createdByAdminId {
+    final $$AdminUsersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.createdByAdminId,
+      referencedTable: $db.adminUsers,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AdminUsersTableFilterComposer(
+            $db: $db,
+            $table: $db.adminUsers,
             $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
             joinBuilder: joinBuilder,
             $removeJoinBuilderFromRootComposer:
@@ -4644,6 +4847,29 @@ class $$WeeklyRecordsTableOrderingComposer
     );
     return composer;
   }
+
+  $$AdminUsersTableOrderingComposer get createdByAdminId {
+    final $$AdminUsersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.createdByAdminId,
+      referencedTable: $db.adminUsers,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AdminUsersTableOrderingComposer(
+            $db: $db,
+            $table: $db.adminUsers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$WeeklyRecordsTableAnnotationComposer
@@ -4724,6 +4950,29 @@ class $$WeeklyRecordsTableAnnotationComposer
     );
     return composer;
   }
+
+  $$AdminUsersTableAnnotationComposer get createdByAdminId {
+    final $$AdminUsersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.createdByAdminId,
+      referencedTable: $db.adminUsers,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AdminUsersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.adminUsers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
 }
 
 class $$WeeklyRecordsTableTableManager
@@ -4739,7 +4988,7 @@ class $$WeeklyRecordsTableTableManager
           $$WeeklyRecordsTableUpdateCompanionBuilder,
           (WeeklyRecord, $$WeeklyRecordsTableReferences),
           WeeklyRecord,
-          PrefetchHooks Function({bool churchId})
+          PrefetchHooks Function({bool churchId, bool createdByAdminId})
         > {
   $$WeeklyRecordsTableTableManager(_$AppDatabase db, $WeeklyRecordsTable table)
     : super(
@@ -4756,6 +5005,7 @@ class $$WeeklyRecordsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<int> churchId = const Value.absent(),
+                Value<int?> createdByAdminId = const Value.absent(),
                 Value<DateTime> weekStartDate = const Value.absent(),
                 Value<int> men = const Value.absent(),
                 Value<int> women = const Value.absent(),
@@ -4771,6 +5021,7 @@ class $$WeeklyRecordsTableTableManager
               }) => WeeklyRecordsCompanion(
                 id: id,
                 churchId: churchId,
+                createdByAdminId: createdByAdminId,
                 weekStartDate: weekStartDate,
                 men: men,
                 women: women,
@@ -4788,6 +5039,7 @@ class $$WeeklyRecordsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 required int churchId,
+                Value<int?> createdByAdminId = const Value.absent(),
                 required DateTime weekStartDate,
                 Value<int> men = const Value.absent(),
                 Value<int> women = const Value.absent(),
@@ -4803,6 +5055,7 @@ class $$WeeklyRecordsTableTableManager
               }) => WeeklyRecordsCompanion.insert(
                 id: id,
                 churchId: churchId,
+                createdByAdminId: createdByAdminId,
                 weekStartDate: weekStartDate,
                 men: men,
                 women: women,
@@ -4824,47 +5077,65 @@ class $$WeeklyRecordsTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback: ({churchId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (churchId) {
-                      state =
-                          state.withJoin(
-                                currentTable: table,
-                                currentColumn: table.churchId,
-                                referencedTable: $$WeeklyRecordsTableReferences
-                                    ._churchIdTable(db),
-                                referencedColumn: $$WeeklyRecordsTableReferences
-                                    ._churchIdTable(db)
-                                    .id,
-                              )
-                              as T;
-                    }
+          prefetchHooksCallback:
+              ({churchId = false, createdByAdminId = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (churchId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.churchId,
+                                    referencedTable:
+                                        $$WeeklyRecordsTableReferences
+                                            ._churchIdTable(db),
+                                    referencedColumn:
+                                        $$WeeklyRecordsTableReferences
+                                            ._churchIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (createdByAdminId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.createdByAdminId,
+                                    referencedTable:
+                                        $$WeeklyRecordsTableReferences
+                                            ._createdByAdminIdTable(db),
+                                    referencedColumn:
+                                        $$WeeklyRecordsTableReferences
+                                            ._createdByAdminIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
 
-                    return state;
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
                   },
-              getPrefetchedDataCallback: (items) async {
-                return [];
+                );
               },
-            );
-          },
         ),
       );
 }
@@ -4881,7 +5152,7 @@ typedef $$WeeklyRecordsTableProcessedTableManager =
       $$WeeklyRecordsTableUpdateCompanionBuilder,
       (WeeklyRecord, $$WeeklyRecordsTableReferences),
       WeeklyRecord,
-      PrefetchHooks Function({bool churchId})
+      PrefetchHooks Function({bool churchId, bool createdByAdminId})
     >;
 typedef $$DerivedMetricsListTableCreateCompanionBuilder =
     DerivedMetricsListCompanion Function({

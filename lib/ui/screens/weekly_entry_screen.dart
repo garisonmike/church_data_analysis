@@ -1,9 +1,11 @@
 import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/models/models.dart' as models;
 import 'package:church_analytics/repositories/repositories.dart';
+import 'package:church_analytics/services/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class WeeklyEntryScreen extends ConsumerStatefulWidget {
   final models.WeeklyRecord? existingRecord;
@@ -161,9 +163,20 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
 
       // Create WeeklyRecord from form data
       final now = DateTime.now();
+
+      // Get current admin ID
+      final prefs = await SharedPreferences.getInstance();
+      final adminDb = AppDatabase();
+      final adminRepo = AdminUserRepository(adminDb);
+      final profileService = AdminProfileService(adminRepo, prefs);
+      final currentAdminId = profileService.getCurrentProfileId();
+      await adminDb.close();
+
       final record = models.WeeklyRecord(
         id: widget.existingRecord?.id ?? 0, // 0 for new records
         churchId: _selectedChurchId,
+        createdByAdminId:
+            widget.existingRecord?.createdByAdminId ?? currentAdminId,
         weekStartDate: _selectedDate,
         men: int.parse(_menController.text),
         women: int.parse(_womenController.text),

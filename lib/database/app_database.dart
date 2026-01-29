@@ -35,6 +35,8 @@ class AdminUsers extends Table {
 class WeeklyRecords extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get churchId => integer().references(Churches, #id)();
+  IntColumn get createdByAdminId =>
+      integer().references(AdminUsers, #id).nullable()();
   DateTimeColumn get weekStartDate => dateTime()();
 
   // Attendance fields
@@ -120,7 +122,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase.forTesting(super.e);
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -128,7 +130,10 @@ class AppDatabase extends _$AppDatabase {
       await m.createAll();
     },
     onUpgrade: (Migrator m, int from, int to) async {
-      // Future migrations will go here
+      if (from < 2) {
+        // Add createdByAdminId column to WeeklyRecords
+        await m.addColumn(weeklyRecords, weeklyRecords.createdByAdminId);
+      }
     },
     beforeOpen: (details) async {
       // Enable foreign keys

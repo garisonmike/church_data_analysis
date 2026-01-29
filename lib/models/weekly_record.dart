@@ -4,6 +4,7 @@ import 'package:equatable/equatable.dart';
 class WeeklyRecord extends Equatable {
   final int? id;
   final int churchId;
+  final int? createdByAdminId;
   final DateTime weekStartDate;
 
   // Attendance fields
@@ -25,6 +26,7 @@ class WeeklyRecord extends Equatable {
   const WeeklyRecord({
     this.id,
     required this.churchId,
+    this.createdByAdminId,
     required this.weekStartDate,
     required this.men,
     required this.women,
@@ -50,6 +52,7 @@ class WeeklyRecord extends Equatable {
   WeeklyRecord copyWith({
     int? id,
     int? churchId,
+    int? createdByAdminId,
     DateTime? weekStartDate,
     int? men,
     int? women,
@@ -66,6 +69,7 @@ class WeeklyRecord extends Equatable {
     return WeeklyRecord(
       id: id ?? this.id,
       churchId: churchId ?? this.churchId,
+      createdByAdminId: createdByAdminId ?? this.createdByAdminId,
       weekStartDate: weekStartDate ?? this.weekStartDate,
       men: men ?? this.men,
       women: women ?? this.women,
@@ -86,6 +90,7 @@ class WeeklyRecord extends Equatable {
     return {
       'id': id,
       'churchId': churchId,
+      'createdByAdminId': createdByAdminId,
       'weekStartDate': weekStartDate.toIso8601String(),
       'men': men,
       'women': women,
@@ -108,6 +113,7 @@ class WeeklyRecord extends Equatable {
     return WeeklyRecord(
       id: json['id'] as int?,
       churchId: json['churchId'] as int,
+      createdByAdminId: json['createdByAdminId'] as int?,
       weekStartDate: DateTime.parse(json['weekStartDate'] as String),
       men: json['men'] as int,
       women: json['women'] as int,
@@ -161,6 +167,7 @@ class WeeklyRecord extends Equatable {
   List<Object?> get props => [
     id,
     churchId,
+    createdByAdminId,
     weekStartDate,
     men,
     women,

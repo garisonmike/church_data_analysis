@@ -48,6 +48,7 @@ class CsvImportService {
     Map<String, int> columnMapping,
     int churchId,
     int rowNumber,
+    int? adminId,
   ) {
     final errors = <String>[];
 
@@ -139,6 +140,7 @@ class CsvImportService {
       final now = DateTime.now();
       final record = WeeklyRecord(
         churchId: churchId,
+        createdByAdminId: adminId,
         weekStartDate: weekStartDate!,
         men: men!,
         women: women!,
