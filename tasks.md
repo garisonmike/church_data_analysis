@@ -190,7 +190,7 @@
 
 # Issue 17 — Multi-Admin Local Profiles
 
-* [ ] Implement Admin profile model
+* [x] Implement Admin profile model
 * [ ] Build profile switcher UI
 * [ ] Separate data per admin
 * [ ] Build profile creation flow
