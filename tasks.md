@@ -73,13 +73,13 @@
 
 # Issue 6 — Advanced Analytics Engine
 
-* [ ] Implement moving averages
-* [ ] Implement linear trend line calculator
-* [ ] Implement correlation coefficient calculator
-* [ ] Implement forecast projection (linear)
-* [ ] Implement outlier detection
-* [ ] Implement rolling 4-week metrics
-* [ ] Add unit tests
+* [x] Implement moving averages
+* [x] Implement linear trend line calculator
+* [x] Implement correlation coefficient calculator
+* [x] Implement forecast projection (linear)
+* [x] Implement outlier detection
+* [x] Implement rolling 4-week metrics
+* [x] Add unit tests
 
 ---
 
