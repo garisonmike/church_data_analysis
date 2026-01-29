@@ -169,11 +169,11 @@
 
 # Issue 15 — Graph Export System
 
-* [ ] Implement RepaintBoundary capture
-* [ ] Save chart as PNG
-* [ ] Add export button UI
-* [ ] Implement file naming scheme
-* [ ] Verify exports open correctly
+* [x] Implement RepaintBoundary capture
+* [x] Save chart as PNG
+* [x] Add export button UI
+* [x] Implement file naming scheme
+* [x] Verify exports open correctly
 
 ---
 
