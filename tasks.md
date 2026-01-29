@@ -240,10 +240,10 @@
 
 # Issue 22 — Backup & Local Export
 
-* [ ] Implement full CSV export
-* [ ] Implement JSON backup export
-* [ ] Implement restore from backup
-* [ ] Verify restore correctness
+* [x] Implement full CSV export
+* [x] Implement JSON backup export
+* [x] Implement restore from backup
+* [x] Verify restore correctness
 
 ---
 
