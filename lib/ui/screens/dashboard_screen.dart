@@ -387,7 +387,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       'Financial Charts',
                       Icons.pie_chart,
                       Colors.green,
-                      () => _showComingSoon('Financial Charts'),
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              FinancialChartsScreen(churchId: widget.churchId),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -433,7 +439,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     'Financial Charts',
                     Icons.pie_chart,
                     Colors.green,
-                    () => _showComingSoon('Financial Charts'),
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            FinancialChartsScreen(churchId: widget.churchId),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   _buildActionButton(

@@ -130,11 +130,11 @@
 
 # Issue 11 — Graph Module: Financial Charts
 
-* [ ] Tithe vs offerings chart
-* [ ] Income breakdown stacked chart
-* [ ] Income distribution pie chart
-* [ ] Funds vs attendance charts
-* [ ] Verify scales and labels
+* [x] Tithe vs offerings chart
+* [x] Income breakdown stacked chart
+* [x] Income distribution pie chart
+* [x] Funds vs attendance charts
+* [x] Verify scales and labels
 
 ---
 
