@@ -169,6 +169,58 @@ class WeeklyRecordRepository {
     return result.read(_db.weeklyRecords.id.count()) ?? 0;
   }
 
+  /// Get paginated records for a church
+  /// [page] is 0-indexed
+  /// Returns a tuple of (records, totalCount) for pagination info
+  Future<({List<WeeklyRecord> records, int totalCount})> getRecordsPaginated(
+    int churchId, {
+    int page = 0,
+    int pageSize = 20,
+  }) async {
+    final totalCount = await getRecordCount(churchId);
+
+    final records =
+        await (_db.select(_db.weeklyRecords)
+              ..where((t) => t.churchId.equals(churchId))
+              ..orderBy([(t) => OrderingTerm.desc(t.weekStartDate)])
+              ..limit(pageSize, offset: page * pageSize))
+            .get();
+
+    return (records: records.map(_toModel).toList(), totalCount: totalCount);
+  }
+
+  /// Get paginated records for a church filtered by admin
+  Future<({List<WeeklyRecord> records, int totalCount})>
+  getRecordsPaginatedByAdmin(
+    int churchId,
+    int adminId, {
+    int page = 0,
+    int pageSize = 20,
+  }) async {
+    // Get total count for this admin
+    final countQuery = _db.selectOnly(_db.weeklyRecords)
+      ..addColumns([_db.weeklyRecords.id.count()])
+      ..where(
+        _db.weeklyRecords.churchId.equals(churchId) &
+            _db.weeklyRecords.createdByAdminId.equals(adminId),
+      );
+    final countResult = await countQuery.getSingle();
+    final totalCount = countResult.read(_db.weeklyRecords.id.count()) ?? 0;
+
+    final records =
+        await (_db.select(_db.weeklyRecords)
+              ..where(
+                (t) =>
+                    t.churchId.equals(churchId) &
+                    t.createdByAdminId.equals(adminId),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.weekStartDate)])
+              ..limit(pageSize, offset: page * pageSize))
+            .get();
+
+    return (records: records.map(_toModel).toList(), totalCount: totalCount);
+  }
+
   /// Convert database model to domain model
   WeeklyRecord _toModel(db.WeeklyRecord data) {
     return WeeklyRecord(

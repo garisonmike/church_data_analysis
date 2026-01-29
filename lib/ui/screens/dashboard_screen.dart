@@ -44,6 +44,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Future<void> _loadData() async {
+    // Start performance measurement
+    final perfMonitor = PerformanceMonitor();
+    perfMonitor.startTiming('dashboard_load');
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -57,6 +61,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       // Get current admin ID if profile service is initialized
       final currentAdminId = _profileService?.getCurrentProfileId();
 
+      // Time the database query
+      perfMonitor.startTiming('dashboard_db_query');
+
       // Get recent records (last 12 weeks) - filtered by admin if ID exists
       List<models.WeeklyRecord> records;
       if (currentAdminId != null) {
@@ -69,12 +76,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         records = await repository.getRecentRecords(widget.churchId, 12);
       }
 
+      perfMonitor.stopTiming('dashboard_db_query');
+
+      // Time metrics calculation
+      perfMonitor.startTiming('dashboard_metrics_calc');
+
       // Calculate summary metrics if we have data
       Map<String, dynamic>? metrics;
       if (records.isNotEmpty) {
         final calculator = MetricsCalculator();
         metrics = calculator.calculateSummaryMetrics(records);
       }
+
+      perfMonitor.stopTiming('dashboard_metrics_calc');
 
       if (mounted) {
         setState(() {
@@ -83,7 +97,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           _isLoading = false;
         });
       }
+
+      // Stop and log total dashboard load time
+      perfMonitor.stopTiming('dashboard_load');
     } catch (e) {
+      perfMonitor.stopTiming('dashboard_load');
       if (mounted) {
         setState(() {
           _errorMessage = 'Error loading data: ${e.toString()}';

@@ -2,6 +2,7 @@ import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/models/models.dart' as models;
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
+import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -234,7 +235,7 @@ class _AttendanceChartsScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // 1. Attendance by Category Bar Chart
+          // 1. Attendance by Category Bar Chart (loads immediately - above fold)
           _buildSectionTitle(
             'Attendance by Category',
             exportKey: _attendanceByCategoryKey,
@@ -243,31 +244,37 @@ class _AttendanceChartsScreenState
           _buildAttendanceByCategoryChart(),
           const SizedBox(height: 32),
 
-          // 2. Total Attendance Trend Line
+          // 2. Total Attendance Trend Line (lazy loaded)
           _buildSectionTitle(
             'Total Attendance Trend',
             exportKey: _totalTrendKey,
           ),
           const SizedBox(height: 8),
-          _buildTotalAttendanceTrendChart(),
+          LazyLoadChart(
+            placeholderHeight: 332,
+            child: _buildTotalAttendanceTrendChart(),
+          ),
           const SizedBox(height: 32),
 
-          // 3. Attendance Distribution Pie Chart
+          // 3. Attendance Distribution Pie Chart (lazy loaded)
           _buildSectionTitle(
             'Attendance Distribution',
             exportKey: _distributionKey,
           ),
           const SizedBox(height: 8),
-          _buildAttendanceDistributionChart(),
+          LazyLoadChart(
+            placeholderHeight: 332,
+            child: _buildAttendanceDistributionChart(),
+          ),
           const SizedBox(height: 32),
 
-          // 4. Growth Rate Chart
+          // 4. Growth Rate Chart (lazy loaded)
           _buildSectionTitle(
             'Attendance Growth Rate',
             exportKey: _growthRateKey,
           ),
           const SizedBox(height: 8),
-          _buildGrowthRateChart(),
+          LazyLoadChart(placeholderHeight: 332, child: _buildGrowthRateChart()),
           const SizedBox(height: 16),
         ],
       ),

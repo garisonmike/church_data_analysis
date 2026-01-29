@@ -230,11 +230,11 @@
 
 # Issue 21 — Performance Optimization
 
-* [ ] Cache derived metrics
-* [ ] Lazy load graphs
-* [ ] Optimize DB queries
-* [ ] Add pagination for records
-* [ ] Measure dashboard load time
+* [x] Cache derived metrics
+* [x] Lazy load graphs
+* [x] Optimize DB queries
+* [x] Add pagination for records
+* [x] Measure dashboard load time
 
 ---
 

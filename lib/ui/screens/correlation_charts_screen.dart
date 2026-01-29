@@ -2,6 +2,7 @@ import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/models/models.dart' as models;
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/admin_profile_service.dart';
+import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -143,11 +144,19 @@ class _CorrelationChartsScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // First chart loads immediately (above fold)
           _buildAttendanceVsIncomeChart(sortedRecords),
           const SizedBox(height: 24),
-          _buildDemographicsVsFundsChart(sortedRecords),
+          // Remaining charts lazy loaded
+          LazyLoadChart(
+            placeholderHeight: 380,
+            child: _buildDemographicsVsFundsChart(sortedRecords),
+          ),
           const SizedBox(height: 24),
-          _buildScatterCorrelationChart(sortedRecords),
+          LazyLoadChart(
+            placeholderHeight: 380,
+            child: _buildScatterCorrelationChart(sortedRecords),
+          ),
           const SizedBox(height: 24),
           _buildGroupsVsFundsChart(sortedRecords),
         ],
