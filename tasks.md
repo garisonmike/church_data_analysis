@@ -34,14 +34,14 @@
 
 # Issue 3 — Define Data Models
 
-* [ ] Create Church model
-* [ ] Create AdminUser model
-* [ ] Create WeeklyRecord model
-* [ ] Create DerivedMetrics model
-* [ ] Create ExportHistory model
-* [ ] Add JSON serialization
-* [ ] Add validation methods
-* [ ] Add model unit tests
+* [x] Create Church model
+* [x] Create AdminUser model
+* [x] Create WeeklyRecord model
+* [x] Create DerivedMetrics model
+* [x] Create ExportHistory model
+* [x] Add JSON serialization
+* [x] Add validation methods
+* [x] Add model unit tests
 
 ---
 
