@@ -365,56 +365,82 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             final isWide = constraints.maxWidth > 600;
 
             if (isWide) {
-              return Row(
+              return Column(
                 children: [
-                  Expanded(
-                    child: _buildActionButton(
-                      'Attendance Charts',
-                      Icons.bar_chart,
-                      Colors.blue,
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              AttendanceChartsScreen(churchId: widget.churchId),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildActionButton(
-                      'Financial Charts',
-                      Icons.pie_chart,
-                      Colors.green,
-                      () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              FinancialChartsScreen(churchId: widget.churchId),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: _buildActionButton(
-                      'Import CSV',
-                      Icons.upload_file,
-                      Colors.orange,
-                      () async {
-                        final result = await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                CsvImportScreen(churchId: widget.churchId),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildActionButton(
+                          'Attendance Charts',
+                          Icons.bar_chart,
+                          Colors.blue,
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AttendanceChartsScreen(
+                                churchId: widget.churchId,
+                              ),
+                            ),
                           ),
-                        );
-                        if (result == true) {
-                          _loadData();
-                        }
-                      },
-                    ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildActionButton(
+                          'Financial Charts',
+                          Icons.pie_chart,
+                          Colors.green,
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => FinancialChartsScreen(
+                                churchId: widget.churchId,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildActionButton(
+                          'Correlation Charts',
+                          Icons.scatter_plot,
+                          Colors.purple,
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => CorrelationChartsScreen(
+                                churchId: widget.churchId,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildActionButton(
+                          'Import CSV',
+                          Icons.upload_file,
+                          Colors.orange,
+                          () async {
+                            final result = await Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    CsvImportScreen(churchId: widget.churchId),
+                              ),
+                            );
+                            if (result == true) {
+                              _loadData();
+                            }
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               );
@@ -444,6 +470,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       MaterialPageRoute(
                         builder: (context) =>
                             FinancialChartsScreen(churchId: widget.churchId),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildActionButton(
+                    'Correlation Charts',
+                    Icons.scatter_plot,
+                    Colors.purple,
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            CorrelationChartsScreen(churchId: widget.churchId),
                       ),
                     ),
                   ),

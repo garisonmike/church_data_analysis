@@ -65,10 +65,7 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
       appBar: AppBar(
         title: const Text('Financial Charts'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-          ),
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
         ],
       ),
       body: _buildBody(),
@@ -93,10 +90,7 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
-            ElevatedButton(
-              onPressed: _loadData,
-              child: const Text('Retry'),
-            ),
+            ElevatedButton(onPressed: _loadData, child: const Text('Retry')),
           ],
         ),
       );
@@ -182,8 +176,9 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                             return Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: Text(
-                                DateFormat('MM/dd')
-                                    .format(records[index].weekStartDate),
+                                DateFormat(
+                                  'MM/dd',
+                                ).format(records[index].weekStartDate),
                                 style: const TextStyle(fontSize: 10),
                               ),
                             );
@@ -207,10 +202,7 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                       spots: records
                           .asMap()
                           .entries
-                          .map((e) => FlSpot(
-                                e.key.toDouble(),
-                                e.value.tithe,
-                              ))
+                          .map((e) => FlSpot(e.key.toDouble(), e.value.tithe))
                           .toList(),
                       isCurved: true,
                       color: Colors.blue,
@@ -223,10 +215,9 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                       spots: records
                           .asMap()
                           .entries
-                          .map((e) => FlSpot(
-                                e.key.toDouble(),
-                                e.value.offerings,
-                              ))
+                          .map(
+                            (e) => FlSpot(e.key.toDouble(), e.value.offerings),
+                          )
                           .toList(),
                       isCurved: true,
                       color: Colors.green,
@@ -240,10 +231,13 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                       getTooltipItems: (touchedSpots) {
                         return touchedSpots.map((spot) {
                           final record = records[spot.x.toInt()];
-                          final date =
-                              DateFormat('MM/dd').format(record.weekStartDate);
+                          final date = DateFormat(
+                            'MM/dd',
+                          ).format(record.weekStartDate);
                           final value = spot.y;
-                          final label = spot.barIndex == 0 ? 'Tithe' : 'Offerings';
+                          final label = spot.barIndex == 0
+                              ? 'Tithe'
+                              : 'Offerings';
                           return LineTooltipItem(
                             '$label\n$date: \$${value.toStringAsFixed(2)}',
                             const TextStyle(color: Colors.white),
@@ -291,8 +285,9 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                     touchTooltipData: BarTouchTooltipData(
                       getTooltipItem: (group, groupIndex, rod, rodIndex) {
                         final record = records[group.x.toInt()];
-                        final date =
-                            DateFormat('MM/dd').format(record.weekStartDate);
+                        final date = DateFormat(
+                          'MM/dd',
+                        ).format(record.weekStartDate);
                         return BarTooltipItem(
                           '$date\nTotal: \$${record.totalIncome.toStringAsFixed(2)}',
                           const TextStyle(color: Colors.white),
@@ -324,8 +319,9 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                             return Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: Text(
-                                DateFormat('MM/dd')
-                                    .format(records[index].weekStartDate),
+                                DateFormat(
+                                  'MM/dd',
+                                ).format(records[index].weekStartDate),
                                 style: const TextStyle(fontSize: 10),
                               ),
                             );
@@ -343,7 +339,10 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                     ),
                   ),
                   borderData: FlBorderData(show: true),
-                  gridData: const FlGridData(show: true, drawVerticalLine: false),
+                  gridData: const FlGridData(
+                    show: true,
+                    drawVerticalLine: false,
+                  ),
                   barGroups: records.asMap().entries.map((entry) {
                     final record = entry.value;
                     return BarChartGroupData(
@@ -353,11 +352,7 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                           toY: record.totalIncome,
                           width: 20,
                           rodStackItems: [
-                            BarChartRodStackItem(
-                              0,
-                              record.tithe,
-                              Colors.blue,
-                            ),
+                            BarChartRodStackItem(0, record.tithe, Colors.blue),
                             BarChartRodStackItem(
                               record.tithe,
                               record.tithe + record.offerings,
@@ -407,11 +402,16 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
     // Calculate totals across all records
     final totalTithe = records.fold(0.0, (sum, r) => sum + r.tithe);
     final totalOfferings = records.fold(0.0, (sum, r) => sum + r.offerings);
-    final totalEmergency =
-        records.fold(0.0, (sum, r) => sum + r.emergencyCollection);
-    final totalPlanned =
-        records.fold(0.0, (sum, r) => sum + r.plannedCollection);
-    final grandTotal = totalTithe + totalOfferings + totalEmergency + totalPlanned;
+    final totalEmergency = records.fold(
+      0.0,
+      (sum, r) => sum + r.emergencyCollection,
+    );
+    final totalPlanned = records.fold(
+      0.0,
+      (sum, r) => sum + r.plannedCollection,
+    );
+    final grandTotal =
+        totalTithe + totalOfferings + totalEmergency + totalPlanned;
 
     if (grandTotal == 0) {
       return Card(
@@ -425,9 +425,7 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                 style: Theme.of(context).textTheme.titleLarge,
               ),
               const SizedBox(height: 16),
-              const Center(
-                child: Text('No income data available'),
-              ),
+              const Center(child: Text('No income data available')),
             ],
           ),
         ),
@@ -601,8 +599,9 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                             return Padding(
                               padding: const EdgeInsets.only(top: 8),
                               child: Text(
-                                DateFormat('MM/dd')
-                                    .format(records[index].weekStartDate),
+                                DateFormat(
+                                  'MM/dd',
+                                ).format(records[index].weekStartDate),
                                 style: const TextStyle(fontSize: 10),
                               ),
                             );
@@ -623,10 +622,10 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                       spots: records
                           .asMap()
                           .entries
-                          .map((e) => FlSpot(
-                                e.key.toDouble(),
-                                e.value.totalIncome,
-                              ))
+                          .map(
+                            (e) =>
+                                FlSpot(e.key.toDouble(), e.value.totalIncome),
+                          )
                           .toList(),
                       isCurved: true,
                       color: Colors.green,
@@ -642,13 +641,15 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                       spots: records
                           .asMap()
                           .entries
-                          .map((e) => FlSpot(
-                                e.key.toDouble(),
-                                maxAttendance > 0
-                                    ? (e.value.totalAttendance / maxAttendance) *
+                          .map(
+                            (e) => FlSpot(
+                              e.key.toDouble(),
+                              maxAttendance > 0
+                                  ? (e.value.totalAttendance / maxAttendance) *
                                         maxIncome
-                                    : 0,
-                              ))
+                                  : 0,
+                            ),
+                          )
                           .toList(),
                       isCurved: true,
                       color: Colors.blue,
@@ -662,8 +663,9 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                       getTooltipItems: (touchedSpots) {
                         return touchedSpots.map((spot) {
                           final record = records[spot.x.toInt()];
-                          final date =
-                              DateFormat('MM/dd').format(record.weekStartDate);
+                          final date = DateFormat(
+                            'MM/dd',
+                          ).format(record.weekStartDate);
                           if (spot.barIndex == 0) {
                             return LineTooltipItem(
                               'Income\n$date: \$${record.totalIncome.toStringAsFixed(2)}',
@@ -704,10 +706,7 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
         Container(
           width: 16,
           height: 16,
-          decoration: BoxDecoration(
-            color: color,
-            shape: BoxShape.circle,
-          ),
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
         ),
         const SizedBox(width: 8),
         Text(label),

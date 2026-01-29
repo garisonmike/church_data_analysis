@@ -140,11 +140,11 @@
 
 # Issue 12 — Graph Module: Correlation & Combined Charts
 
-* [ ] Attendance vs income dual-axis chart
-* [ ] Demographics vs funds charts
-* [ ] Scatter correlation charts
-* [ ] Groups vs funds correlation charts
-* [ ] Verify legends and axes
+* [x] Attendance vs income dual-axis chart
+* [x] Demographics vs funds charts
+* [x] Scatter correlation charts
+* [x] Groups vs funds correlation charts
+* [x] Verify legends and axes
 
 ---
 
