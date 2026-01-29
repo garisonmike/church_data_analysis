@@ -85,13 +85,13 @@
 
 # Issue 7 — Weekly Data Entry Form UI
 
-* [ ] Build weekly entry form layout
-* [ ] Add numeric validation
-* [ ] Enforce required fields
-* [ ] Save records to database
-* [ ] Support edit existing week
-* [ ] Prevent duplicate week entries
-* [ ] Add error messaging UI
+* [x] Build weekly entry form layout
+* [x] Add numeric validation
+* [x] Enforce required fields
+* [x] Save records to database
+* [x] Support edit existing week
+* [x] Prevent duplicate week entries
+* [x] Add error messaging UI
 
 ---
 
