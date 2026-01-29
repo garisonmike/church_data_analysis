@@ -159,11 +159,11 @@
 
 # Issue 14 — Graph Center Screen
 
-* [ ] Build graph selector grid
-* [ ] Add category filters
-* [ ] Add navigation buttons
-* [ ] Implement graph routing
-* [ ] Verify navigation stability
+* [x] Build graph selector grid
+* [x] Add category filters
+* [x] Add navigation buttons
+* [x] Implement graph routing
+* [x] Verify navigation stability
 
 ---
 

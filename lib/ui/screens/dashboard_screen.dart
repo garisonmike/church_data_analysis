@@ -462,7 +462,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Container(), // Placeholder for symmetry
+                        child: _buildActionButton(
+                          'Chart Center',
+                          Icons.dashboard,
+                          Colors.teal,
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  GraphCenterScreen(churchId: widget.churchId),
+                            ),
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -540,6 +551,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         _loadData();
                       }
                     },
+                  ),
+                  const SizedBox(height: 8),
+                  _buildActionButton(
+                    'Chart Center',
+                    Icons.dashboard,
+                    Colors.teal,
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            GraphCenterScreen(churchId: widget.churchId),
+                      ),
+                    ),
                   ),
                 ],
               );
