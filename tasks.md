@@ -179,12 +179,12 @@
 
 # Issue 16 — PDF Report Builder
 
-* [ ] Create PDF layout template
-* [ ] Insert graphs into PDF
-* [ ] Insert KPI stats
-* [ ] Build multi-graph report
-* [ ] Implement save & share
-* [ ] Verify PDF output
+* [x] Create PDF layout template
+* [x] Insert graphs into PDF
+* [x] Insert KPI stats
+* [x] Build multi-graph report
+* [x] Implement save & share
+* [x] Verify PDF output
 
 ---
 

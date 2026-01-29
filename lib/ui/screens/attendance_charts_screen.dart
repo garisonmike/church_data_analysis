@@ -104,6 +104,8 @@ class _AttendanceChartsScreenState
         // Verify the export
         final isValid = await ChartExportService.verifyExport(filePath);
 
+        if (!mounted) return;
+
         if (isValid) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
