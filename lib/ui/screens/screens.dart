@@ -1,5 +1,6 @@
 export 'advanced_charts_screen.dart';
 export 'attendance_charts_screen.dart';
+export 'church_settings_screen.dart';
 export 'correlation_charts_screen.dart';
 export 'csv_import_screen.dart';
 export 'dashboard_screen.dart';

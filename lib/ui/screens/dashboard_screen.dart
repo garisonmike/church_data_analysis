@@ -102,12 +102,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         title: const Text('Church Analytics Dashboard'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
+          ChurchSelectorWidget(onChurchChanged: _loadData),
           if (_profileService != null)
             ProfileSwitcherWidget(
               churchId: widget.churchId,
               profileService: _profileService!,
               onProfileChanged: _loadData,
             ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      ChurchSettingsScreen(churchId: widget.churchId),
+                ),
+              );
+              if (result == true) {
+                _loadData();
+              }
+            },
+            tooltip: 'Church Settings',
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadData,

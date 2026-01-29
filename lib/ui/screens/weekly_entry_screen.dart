@@ -33,13 +33,15 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
   final _plannedCollectionController = TextEditingController();
 
   DateTime _selectedDate = DateTime.now();
-  int _selectedChurchId = 1; // Default to first church
+  int? _selectedChurchId; // Will be loaded from ChurchService
   String? _errorMessage;
   bool _isLoading = false;
+  ChurchService? _churchService;
 
   @override
   void initState() {
     super.initState();
+    _initializeChurchService();
 
     // If editing existing record, populate fields
     if (widget.existingRecord != null) {
@@ -57,6 +59,31 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
           .toStringAsFixed(2);
       _selectedDate = record.weekStartDate;
       _selectedChurchId = record.churchId;
+    }
+  }
+
+  Future<void> _initializeChurchService() async {
+    final prefs = await SharedPreferences.getInstance();
+    final db = AppDatabase();
+    final churchRepo = ChurchRepository(db);
+
+    setState(() {
+      _churchService = ChurchService(churchRepo, prefs);
+    });
+
+    // If not editing existing record, get current church
+    if (widget.existingRecord == null) {
+      final churchId = _churchService!.getCurrentChurchId();
+      if (churchId != null) {
+        setState(() {
+          _selectedChurchId = churchId;
+        });
+      } else {
+        // No church selected, show error
+        setState(() {
+          _errorMessage = 'Please select a church first';
+        });
+      }
     }
   }
 
@@ -129,6 +156,14 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
       _errorMessage = null;
     });
 
+    // Check if church is selected
+    if (_selectedChurchId == null) {
+      setState(() {
+        _errorMessage = 'Please select a church first';
+      });
+      return;
+    }
+
     // Validate form
     if (!_formKey.currentState!.validate()) {
       return;
@@ -147,7 +182,7 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
       if (widget.existingRecord == null ||
           widget.existingRecord!.weekStartDate != _selectedDate) {
         final isDuplicate = await repository.weekExists(
-          _selectedChurchId,
+          _selectedChurchId!,
           _selectedDate,
         );
 
@@ -174,7 +209,7 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
 
       final record = models.WeeklyRecord(
         id: widget.existingRecord?.id ?? 0, // 0 for new records
-        churchId: _selectedChurchId,
+        churchId: _selectedChurchId!,
         createdByAdminId:
             widget.existingRecord?.createdByAdminId ?? currentAdminId,
         weekStartDate: _selectedDate,

@@ -200,11 +200,11 @@
 
 # Issue 18 — Church Entity Support
 
-* [ ] Integrate Church model
-* [ ] Build church selector UI
-* [ ] Link records to church
-* [ ] Build church settings page
-* [ ] Verify church data scoping
+* [x] Integrate Church model
+* [x] Build church selector UI
+* [x] Link records to church
+* [x] Build church settings page
+* [x] Verify church data scoping
 
 ---
 

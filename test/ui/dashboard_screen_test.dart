@@ -14,8 +14,8 @@ void main() {
         ),
       );
 
-      // Should show loading indicator
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
+      // Should show loading indicator(s) - dashboard and church selector may both be loading
+      expect(find.byType(CircularProgressIndicator), findsWidgets);
     });
 
     testWidgets('displays app bar title', (WidgetTester tester) async {
