@@ -97,13 +97,13 @@
 
 # Issue 8 — CSV Import System
 
-* [ ] Integrate file picker
-* [ ] Implement CSV parser
-* [ ] Build column mapping UI
-* [ ] Add preview screen
-* [ ] Add validation checks
-* [ ] Add import confirmation step
-* [ ] Add error reporting
+* [x] Integrate file picker
+* [x] Implement CSV parser
+* [x] Build column mapping UI
+* [x] Add preview screen
+* [x] Add validation checks
+* [x] Add import confirmation step
+* [x] Add error reporting
 
 ---
 
