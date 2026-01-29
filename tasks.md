@@ -6,13 +6,13 @@
 
 # Issue 1 — Initialize Flutter Multiplatform Project
 
-* [ ] Create Flutter project
-* [ ] Enable web, android, ios, windows, macos, linux targets
-* [ ] Verify build runs on web
-* [ ] Verify build runs on at least one mobile platform
-* [ ] Set project name and package IDs
-* [ ] Create initial README
-* [ ] Commit base scaffold
+* [x] Create Flutter project
+* [x] Enable web, android, ios, windows, macos, linux targets
+* [x] Verify build runs on web
+* [x] Verify build runs on at least one mobile platform
+* [x] Set project name and package IDs
+* [x] Create initial README
+* [x] Commit base scaffold
 
 ---
 
