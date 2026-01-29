@@ -210,11 +210,11 @@
 
 # Issue 19 — Validation & Integrity Layer
 
-* [ ] Enforce numeric >= 0 rule
-* [ ] Add missing field checks
-* [ ] Add outlier warnings
-* [ ] Add CSV schema validation
-* [ ] Verify validation messages
+* [x] Enforce numeric >= 0 rule
+* [x] Add missing field checks
+* [x] Add outlier warnings
+* [x] Add CSV schema validation
+* [x] Verify validation messages
 
 ---
 

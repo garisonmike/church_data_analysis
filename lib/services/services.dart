@@ -3,3 +3,4 @@ export 'chart_export_service.dart';
 export 'church_service.dart';
 export 'csv_import_service.dart';
 export 'pdf_report_service.dart';
+export 'validation_service.dart';

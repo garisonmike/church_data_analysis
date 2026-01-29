@@ -2,11 +2,14 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:church_analytics/models/models.dart';
+import 'package:church_analytics/services/validation_service.dart';
 import 'package:csv/csv.dart';
 import 'package:file_picker/file_picker.dart';
 
 /// Service for importing weekly records from CSV files
 class CsvImportService {
+  final ValidationService _validationService = ValidationService();
+
   /// Pick a CSV file from the device
   Future<File?> pickCsvFile() async {
     final result = await FilePicker.platform.pickFiles(
@@ -215,6 +218,14 @@ class CsvImportService {
     }
 
     return mapping;
+  }
+
+  /// Validate that the CSV schema has all required columns mapped
+  CsvSchemaValidationResult validateSchema(
+    List<String> headers,
+    Map<String, int> columnMapping,
+  ) {
+    return _validationService.validateCsvSchema(headers, columnMapping);
   }
 }
 

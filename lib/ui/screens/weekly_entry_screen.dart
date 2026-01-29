@@ -38,6 +38,11 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
   bool _isLoading = false;
   ChurchService? _churchService;
 
+  // Outlier warnings
+  List<OutlierWarning> _outlierWarnings = [];
+  List<models.WeeklyRecord> _historicalRecords = [];
+  final ValidationService _validationService = ValidationService();
+
   @override
   void initState() {
     super.initState();
@@ -78,13 +83,84 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
         setState(() {
           _selectedChurchId = churchId;
         });
+        // Load historical records for outlier detection
+        await _loadHistoricalRecords(churchId, db);
       } else {
         // No church selected, show error
         setState(() {
           _errorMessage = 'Please select a church first';
         });
       }
+    } else {
+      // Editing existing record, load historical data
+      await _loadHistoricalRecords(widget.existingRecord!.churchId, db);
     }
+
+    await db.close();
+  }
+
+  Future<void> _loadHistoricalRecords(int churchId, AppDatabase db) async {
+    try {
+      final repository = WeeklyRecordRepository(db);
+      final records = await repository.getRecordsByChurch(churchId);
+      setState(() {
+        _historicalRecords = records;
+      });
+    } catch (e) {
+      // Silent failure - outlier detection is optional
+    }
+  }
+
+  void _checkForOutliers() {
+    if (_historicalRecords.length < 4) {
+      setState(() {
+        _outlierWarnings = [];
+      });
+      return;
+    }
+
+    final warnings = <OutlierWarning>[];
+
+    // Calculate total attendance from form
+    final men = int.tryParse(_menController.text) ?? 0;
+    final women = int.tryParse(_womenController.text) ?? 0;
+    final youth = int.tryParse(_youthController.text) ?? 0;
+    final children = int.tryParse(_childrenController.text) ?? 0;
+    final sundayHomeChurch =
+        int.tryParse(_sundayHomeChurchController.text) ?? 0;
+    final totalAttendance = men + women + youth + children + sundayHomeChurch;
+
+    // Calculate total income from form
+    final tithe = double.tryParse(_titheController.text) ?? 0.0;
+    final offerings = double.tryParse(_offeringsController.text) ?? 0.0;
+    final emergencyCollection =
+        double.tryParse(_emergencyCollectionController.text) ?? 0.0;
+    final plannedCollection =
+        double.tryParse(_plannedCollectionController.text) ?? 0.0;
+    final totalIncome =
+        tithe + offerings + emergencyCollection + plannedCollection;
+
+    // Check for attendance outlier
+    final attendanceWarning = _validationService.checkForAttendanceOutlier(
+      totalAttendance,
+      _historicalRecords,
+    );
+    if (attendanceWarning != null) {
+      warnings.add(attendanceWarning);
+    }
+
+    // Check for income outlier
+    final incomeWarning = _validationService.checkForIncomeOutlier(
+      totalIncome,
+      _historicalRecords,
+    );
+    if (incomeWarning != null) {
+      warnings.add(incomeWarning);
+    }
+
+    setState(() {
+      _outlierWarnings = warnings;
+    });
   }
 
   @override
@@ -381,7 +457,76 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
                       label: 'Planned Collection',
                       icon: Icons.event_note,
                     ),
-                    const SizedBox(height: 32),
+                    const SizedBox(height: 16),
+
+                    // Check for outliers button
+                    OutlinedButton.icon(
+                      onPressed: _checkForOutliers,
+                      icon: const Icon(Icons.analytics),
+                      label: const Text('Check for Unusual Values'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.all(12),
+                      ),
+                    ),
+
+                    // Outlier warnings display
+                    if (_outlierWarnings.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      ..._outlierWarnings.map(
+                        (warning) => Container(
+                          padding: const EdgeInsets.all(12),
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color: Colors.orange.shade100,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: Colors.orange),
+                          ),
+                          child: Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Icon(
+                                warning.type == OutlierType.high
+                                    ? Icons.trending_up
+                                    : Icons.trending_down,
+                                color: Colors.orange.shade800,
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Warning: ${warning.fieldName}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.orange.shade900,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      warning.message,
+                                      style: TextStyle(
+                                        color: Colors.orange.shade800,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      'Expected range: ${warning.expectedRange}',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.orange.shade700,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    const SizedBox(height: 16),
 
                     // Save button
                     ElevatedButton.icon(
