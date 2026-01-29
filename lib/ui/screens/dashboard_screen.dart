@@ -423,6 +423,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       const SizedBox(width: 8),
                       Expanded(
                         child: _buildActionButton(
+                          'Advanced Charts',
+                          Icons.insights,
+                          Colors.deepOrange,
+                          () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => AdvancedChartsScreen(
+                                churchId: widget.churchId,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildActionButton(
                           'Import CSV',
                           Icons.upload_file,
                           Colors.orange,
@@ -439,6 +459,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                             }
                           },
                         ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Container(), // Placeholder for symmetry
                       ),
                     ],
                   ),
@@ -483,6 +507,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       MaterialPageRoute(
                         builder: (context) =>
                             CorrelationChartsScreen(churchId: widget.churchId),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildActionButton(
+                    'Advanced Charts',
+                    Icons.insights,
+                    Colors.deepOrange,
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            AdvancedChartsScreen(churchId: widget.churchId),
                       ),
                     ),
                   ),

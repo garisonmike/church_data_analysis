@@ -150,10 +150,10 @@
 
 # Issue 13 — Advanced Graphs (Forecast & Heatmaps)
 
-* [ ] Forecast projection chart
-* [ ] Moving average overlay chart
-* [ ] Attendance vs funds heatmap
-* [ ] Outlier markers on charts
+* [x] Forecast projection chart
+* [x] Moving average overlay chart
+* [x] Attendance vs funds heatmap
+* [x] Outlier markers on charts
 
 ---
 
