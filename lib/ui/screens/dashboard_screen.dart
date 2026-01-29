@@ -372,7 +372,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       'Attendance Charts',
                       Icons.bar_chart,
                       Colors.blue,
-                      () => _showComingSoon('Attendance Charts'),
+                      () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              AttendanceChartsScreen(churchId: widget.churchId),
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 8),
@@ -414,7 +420,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     'Attendance Charts',
                     Icons.bar_chart,
                     Colors.blue,
-                    () => _showComingSoon('Attendance Charts'),
+                    () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) =>
+                            AttendanceChartsScreen(churchId: widget.churchId),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   _buildActionButton(

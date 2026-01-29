@@ -120,11 +120,11 @@
 
 # Issue 10 — Graph Module: Attendance Charts
 
-* [ ] Attendance by category bar chart
-* [ ] Total attendance trend line
-* [ ] Attendance distribution pie chart
-* [ ] Growth rate chart
-* [ ] Verify tooltips and labels
+* [x] Attendance by category bar chart
+* [x] Total attendance trend line
+* [x] Attendance distribution pie chart
+* [x] Growth rate chart
+* [x] Verify tooltips and labels
 
 ---
 
