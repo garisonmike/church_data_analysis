@@ -47,14 +47,14 @@
 
 # Issue 4 — Setup Local Database Layer
 
-* [ ] Configure SQLite package
-* [ ] Create tables per model
-* [ ] Create DB migrations
-* [ ] Create repository classes
-* [ ] Implement CRUD operations
-* [ ] Add indexes for weekly records
-* [ ] Add optional seed data
-* [ ] Verify persistence across restarts
+* [x] Configure SQLite package
+* [x] Create tables per model
+* [x] Create DB migrations
+* [x] Create repository classes
+* [x] Implement CRUD operations
+* [x] Add indexes for weekly records
+* [x] Add optional seed data
+* [x] Verify persistence across restarts
 
 ---
 
