@@ -18,17 +18,17 @@
 
 # Issue 2 — Add Core Dependencies
 
-* [ ] Add Riverpod
-* [ ] Add Drift or sqflite
-* [ ] Add fl_chart (or Syncfusion charts)
-* [ ] Add csv package
-* [ ] Add pdf package
-* [ ] Add printing package
-* [ ] Add path_provider
-* [ ] Add file_picker
-* [ ] Run pub get
-* [ ] Verify project builds
-* [ ] Commit lockfile
+* [x] Add Riverpod
+* [x] Add Drift or sqflite
+* [x] Add fl_chart (or Syncfusion charts)
+* [x] Add csv package
+* [x] Add pdf package
+* [x] Add printing package
+* [x] Add path_provider
+* [x] Add file_picker
+* [x] Run pub get
+* [x] Verify project builds
+* [x] Commit lockfile
 
 ---
 
