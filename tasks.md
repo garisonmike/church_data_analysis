@@ -109,12 +109,12 @@
 
 # Issue 9 — Dashboard Screen UI
 
-* [ ] Create KPI cards
-* [ ] Show summary metrics
-* [ ] Show recent weeks list
-* [ ] Add quick graph buttons
-* [ ] Add growth indicators
-* [ ] Make responsive layout
+* [x] Create KPI cards
+* [x] Show summary metrics
+* [x] Show recent weeks list
+* [x] Add quick graph buttons
+* [x] Add growth indicators
+* [x] Make responsive layout
 
 ---
 
