@@ -5,13 +5,12 @@ import 'package:flutter_test/flutter_test.dart';
 
 void main() {
   group('CorrelationChartsScreen', () {
-    testWidgets('shows loading indicator initially',
-        (WidgetTester tester) async {
+    testWidgets('shows loading indicator initially', (
+      WidgetTester tester,
+    ) async {
       await tester.pumpWidget(
         const ProviderScope(
-          child: MaterialApp(
-            home: CorrelationChartsScreen(churchId: 1),
-          ),
+          child: MaterialApp(home: CorrelationChartsScreen(churchId: 1)),
         ),
       );
 
@@ -21,9 +20,7 @@ void main() {
     testWidgets('shows app bar with title', (WidgetTester tester) async {
       await tester.pumpWidget(
         const ProviderScope(
-          child: MaterialApp(
-            home: CorrelationChartsScreen(churchId: 1),
-          ),
+          child: MaterialApp(home: CorrelationChartsScreen(churchId: 1)),
         ),
       );
 
@@ -34,9 +31,7 @@ void main() {
     testWidgets('has refresh button in app bar', (WidgetTester tester) async {
       await tester.pumpWidget(
         const ProviderScope(
-          child: MaterialApp(
-            home: CorrelationChartsScreen(churchId: 1),
-          ),
+          child: MaterialApp(home: CorrelationChartsScreen(churchId: 1)),
         ),
       );
 
@@ -46,9 +41,7 @@ void main() {
     testWidgets('shows empty state or charts', (WidgetTester tester) async {
       await tester.pumpWidget(
         const ProviderScope(
-          child: MaterialApp(
-            home: CorrelationChartsScreen(churchId: 1),
-          ),
+          child: MaterialApp(home: CorrelationChartsScreen(churchId: 1)),
         ),
       );
 
@@ -57,10 +50,11 @@ void main() {
       await tester.pump(const Duration(milliseconds: 100));
 
       // Should show either loading, error, or no data message
-      final hasLoadingOrContent = find.byType(CircularProgressIndicator).evaluate().isNotEmpty ||
+      final hasLoadingOrContent =
+          find.byType(CircularProgressIndicator).evaluate().isNotEmpty ||
           find.text('No data available').evaluate().isNotEmpty ||
           find.byType(Card).evaluate().isNotEmpty;
-      
+
       expect(hasLoadingOrContent, true);
     });
   });
