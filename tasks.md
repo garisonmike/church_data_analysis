@@ -220,11 +220,11 @@
 
 # Issue 20 — Testing Suite
 
-* [ ] Add analytics unit tests
-* [ ] Add model tests
-* [ ] Add widget tests
-* [ ] Add CSV import tests
-* [ ] Verify test runs pass
+* [x] Add analytics unit tests
+* [x] Add model tests
+* [x] Add widget tests
+* [x] Add CSV import tests
+* [x] Verify test runs pass
 
 ---
 
