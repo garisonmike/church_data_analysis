@@ -12,14 +12,14 @@ void main() {
   // Set up mock method channel for path_provider
   TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
       .setMockMethodCallHandler(
-    const MethodChannel('plugins.flutter.io/path_provider'),
-    (MethodCall methodCall) async {
-      if (methodCall.method == 'getApplicationDocumentsDirectory') {
-        return '/mock/path';
-      }
-      return null;
-    },
-  );
+        const MethodChannel('plugins.flutter.io/path_provider'),
+        (MethodCall methodCall) async {
+          if (methodCall.method == 'getApplicationDocumentsDirectory') {
+            return '/mock/path';
+          }
+          return null;
+        },
+      );
 
   group('AdminProfileService', () {
     late AdminProfileService service;
