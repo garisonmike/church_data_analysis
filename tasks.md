@@ -60,14 +60,14 @@
 
 # Issue 5 — Build Analytics Engine (Core Metrics)
 
-* [ ] Implement total attendance calculator
-* [ ] Implement total income calculator
-* [ ] Implement growth % calculator
-* [ ] Implement averages calculator
-* [ ] Implement category percentage calculator
-* [ ] Implement attendance-to-income ratio
-* [ ] Implement per-capita giving
-* [ ] Write unit tests for metrics
+* [x] Implement total attendance calculator
+* [x] Implement total income calculator
+* [x] Implement growth % calculator
+* [x] Implement averages calculator
+* [x] Implement category percentage calculator
+* [x] Implement attendance-to-income ratio
+* [x] Implement per-capita giving
+* [x] Write unit tests for metrics
 
 ---
 
