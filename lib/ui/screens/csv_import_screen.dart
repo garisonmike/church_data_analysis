@@ -1,6 +1,5 @@
-import 'dart:io';
-
 import 'package:church_analytics/database/app_database.dart';
+import 'package:church_analytics/platform/file_storage_interface.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:flutter/material.dart';
@@ -19,7 +18,7 @@ class CsvImportScreen extends ConsumerStatefulWidget {
 class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
   final _csvService = CsvImportService();
 
-  File? _selectedFile;
+  PlatformFileResult? _selectedFile;
   List<String>? _headers;
   List<List<dynamic>>? _rows;
   Map<String, int> _columnMapping = {};
@@ -398,7 +397,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
           Card(
             child: ListTile(
               leading: const Icon(Icons.insert_drive_file),
-              title: Text(_selectedFile!.path.split('/').last),
+              title: Text(_selectedFile!.name),
               subtitle: Text('${_rows?.length ?? 0} rows'),
               trailing: IconButton(
                 icon: const Icon(Icons.close),

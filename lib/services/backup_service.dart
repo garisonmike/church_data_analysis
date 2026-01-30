@@ -1,8 +1,8 @@
 import 'dart:convert';
-import 'dart:io';
 
 import 'package:church_analytics/models/models.dart';
-import 'package:path_provider/path_provider.dart';
+import 'package:church_analytics/platform/file_storage.dart';
+import 'package:church_analytics/platform/file_storage_interface.dart';
 
 /// Result of a backup operation
 class BackupResult {
@@ -144,16 +144,7 @@ class BackupData {
 class BackupService {
   static const String backupVersion = '1.0';
   static const String appVersion = '1.0.0';
-
-  /// Get the backup directory path
-  Future<Directory> getBackupDirectory() async {
-    final appDir = await getApplicationDocumentsDirectory();
-    final backupDir = Directory('${appDir.path}/backups');
-    if (!await backupDir.exists()) {
-      await backupDir.create(recursive: true);
-    }
-    return backupDir;
-  }
+  final FileStorage _fileStorage = getFileStorage();
 
   /// Generate a timestamped backup filename
   String generateBackupFilename() {
@@ -274,29 +265,35 @@ class BackupService {
         weeklyRecords: records.map(weeklyRecordToJson).toList(),
       );
 
-      final filePath = customPath ?? await _getDefaultBackupPath();
-      final file = File(filePath);
+      String fileName;
+      if (customPath != null) {
+        fileName = customPath.contains('/')
+            ? customPath.split('/').last
+            : customPath;
+        if (!fileName.endsWith('.json')) fileName += '.json';
+      } else {
+        fileName = generateBackupFilename();
+      }
 
       final jsonString = const JsonEncoder.withIndent(
         '  ',
       ).convert(backupData.toJson());
-      await file.writeAsString(jsonString, encoding: utf8);
 
-      return BackupResult.success(filePath, metadata);
+      final savedPath = await _fileStorage.saveFile(
+        fileName: fileName,
+        content: jsonString,
+      );
+
+      return BackupResult.success(savedPath ?? fileName, metadata);
     } catch (e) {
       return BackupResult.error('Failed to create backup: $e');
     }
   }
 
   /// Read and parse a backup file
-  Future<BackupData?> readBackup(String filePath) async {
+  Future<BackupData?> readBackup(PlatformFileResult file) async {
     try {
-      final file = File(filePath);
-      if (!await file.exists()) {
-        return null;
-      }
-
-      final content = await file.readAsString(encoding: utf8);
+      final content = await _fileStorage.readFileAsString(file);
       final json = jsonDecode(content) as Map<String, dynamic>;
       return BackupData.fromJson(json);
     } catch (e) {
@@ -305,9 +302,9 @@ class BackupService {
   }
 
   /// Validate a backup file structure
-  Future<bool> validateBackup(String filePath) async {
+  Future<bool> validateBackup(PlatformFileResult file) async {
     try {
-      final backupData = await readBackup(filePath);
+      final backupData = await readBackup(file);
       if (backupData == null) return false;
 
       // Check metadata
@@ -361,14 +358,14 @@ class BackupService {
 
   /// Restore data from a backup file
   /// Returns parsed data that can be used by repositories to persist
-  Future<RestoreResult> restoreFromBackup(String filePath) async {
+  Future<RestoreResult> restoreFromBackup(PlatformFileResult file) async {
     try {
       // Validate backup first
-      if (!await validateBackup(filePath)) {
+      if (!await validateBackup(file)) {
         return RestoreResult.error('Invalid backup file format');
       }
 
-      final backupData = await readBackup(filePath);
+      final backupData = await readBackup(file);
       if (backupData == null) {
         return RestoreResult.error('Could not read backup file');
       }
@@ -396,9 +393,9 @@ class BackupService {
       List<WeeklyRecord> records,
     })?
   >
-  getRestoreData(String filePath) async {
+  getRestoreData(PlatformFileResult file) async {
     try {
-      final backupData = await readBackup(filePath);
+      final backupData = await readBackup(file);
       if (backupData == null) return null;
 
       return (
@@ -412,13 +409,9 @@ class BackupService {
   }
 
   /// Verify backup integrity by checking file exists and is valid JSON
-  Future<bool> verifyBackupIntegrity(String filePath) async {
+  Future<bool> verifyBackupIntegrity(PlatformFileResult file) async {
     try {
-      final file = File(filePath);
-      if (!await file.exists()) return false;
-
-      final content = await file.readAsString();
-      if (content.isEmpty) return false;
+      final content = await _fileStorage.readFileAsString(file);
 
       // Try to parse as JSON
       final json = jsonDecode(content);
@@ -433,28 +426,6 @@ class BackupService {
       }
 
       return true;
-    } catch (e) {
-      return false;
-    }
-  }
-
-  /// Get default backup file path
-  Future<String> _getDefaultBackupPath() async {
-    final backupDir = await getBackupDirectory();
-    return '${backupDir.path}/${generateBackupFilename()}';
-  }
-
-  /// Compare two backups for data consistency
-  Future<bool> compareBackups(String path1, String path2) async {
-    try {
-      final backup1 = await readBackup(path1);
-      final backup2 = await readBackup(path2);
-
-      if (backup1 == null || backup2 == null) return false;
-
-      return backup1.metadata.churchCount == backup2.metadata.churchCount &&
-          backup1.metadata.adminCount == backup2.metadata.adminCount &&
-          backup1.metadata.recordCount == backup2.metadata.recordCount;
     } catch (e) {
       return false;
     }

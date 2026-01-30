@@ -1,11 +1,9 @@
-import 'dart:io';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 
+import 'package:church_analytics/platform/file_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
-import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 
 class ChartExportService {
   /// Captures a widget rendered with RepaintBoundary and returns as image bytes
@@ -50,49 +48,18 @@ class ChartExportService {
     required String fileName,
   }) async {
     try {
-      // Get the appropriate directory for saving files
-      Directory? directory;
-
-      if (Platform.isAndroid) {
-        // On Android, try to get the Downloads directory
-        directory = await getExternalStorageDirectory();
-        if (directory != null) {
-          // Navigate to Downloads folder: /storage/emulated/0/Download
-          final downloadPath = directory.path.split('Android')[0];
-          directory = Directory('${downloadPath}Download');
-
-          // Create directory if it doesn't exist
-          if (!await directory.exists()) {
-            directory = await getApplicationDocumentsDirectory();
-          }
-        }
-      } else if (Platform.isIOS) {
-        // On iOS, use the documents directory
-        directory = await getApplicationDocumentsDirectory();
-      } else {
-        // On desktop or other platforms
-        directory = await getApplicationDocumentsDirectory();
-      }
-
-      if (directory == null) {
-        debugPrint('Error: Could not get storage directory');
-        return null;
-      }
-
-      // Ensure the file name ends with .png
+      final fileStorage = getFileStorage();
       final fullFileName = fileName.endsWith('.png')
           ? fileName
           : '$fileName.png';
 
-      // Create the full file path
-      final filePath = '${directory.path}/$fullFileName';
-      final file = File(filePath);
+      final path = await fileStorage.saveFileBytes(
+        fileName: fullFileName,
+        bytes: imageBytes,
+      );
 
-      // Write the bytes to the file
-      await file.writeAsBytes(imageBytes);
-
-      debugPrint('Chart saved successfully: $filePath');
-      return filePath;
+      debugPrint('Chart saved successfully: $path');
+      return path;
     } catch (e) {
       debugPrint('Error saving PNG: $e');
       return null;

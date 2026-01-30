@@ -1,34 +1,23 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:church_analytics/models/models.dart';
+import 'package:church_analytics/platform/file_storage.dart';
+import 'package:church_analytics/platform/file_storage_interface.dart';
 import 'package:church_analytics/services/validation_service.dart';
 import 'package:csv/csv.dart';
-import 'package:file_picker/file_picker.dart';
 
 /// Service for importing weekly records from CSV files
 class CsvImportService {
   final ValidationService _validationService = ValidationService();
+  final FileStorage _fileStorage = getFileStorage();
 
   /// Pick a CSV file from the device
-  Future<File?> pickCsvFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['csv'],
-      allowMultiple: false,
-    );
-
-    if (result != null && result.files.single.path != null) {
-      return File(result.files.single.path!);
-    }
-
-    return null;
+  Future<PlatformFileResult?> pickCsvFile() async {
+    return _fileStorage.pickFile(allowedExtensions: ['csv']);
   }
 
   /// Parse CSV file and return raw data as list of lists
-  Future<CsvParseResult> parseCsvFile(File file) async {
+  Future<CsvParseResult> parseCsvFile(PlatformFileResult file) async {
     try {
-      final input = await file.readAsString(encoding: utf8);
+      final input = await _fileStorage.readFileAsString(file);
       final fields = const CsvToListConverter().convert(input);
 
       if (fields.isEmpty) {

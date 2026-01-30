@@ -19,13 +19,13 @@
 
 # Repair R2 — Enforce Web Compatibility Layer
 
-* [ ] Create platform/file_storage_interface.dart
-* [ ] Create platform/file_storage_mobile.dart
-* [ ] Create platform/file_storage_web.dart
-* [ ] Remove direct dart:io File usage in services
-* [ ] Refactor CSV import to use interface
-* [ ] Refactor export services to use interface
-* [ ] Verify flutter build web succeeds
+* [x] Create platform/file_storage_interface.dart
+* [x] Create platform/file_storage_mobile.dart
+* [x] Create platform/file_storage_web.dart
+* [x] Remove direct dart:io File usage in services
+* [x] Refactor CSV import to use interface
+* [x] Refactor export services to use interface
+* [x] Verify flutter build web succeeds
 
 ---
 

@@ -1,9 +1,7 @@
-import 'dart:convert';
-import 'dart:io';
-
 import 'package:church_analytics/models/models.dart';
+import 'package:church_analytics/platform/file_storage.dart';
+import 'package:church_analytics/platform/file_storage_interface.dart';
 import 'package:csv/csv.dart';
-import 'package:path_provider/path_provider.dart';
 
 /// Result of a CSV export operation
 class CsvExportResult {
@@ -34,6 +32,8 @@ class CsvExportResult {
 
 /// Service for exporting data to CSV files
 class CsvExportService {
+  final FileStorage _fileStorage = getFileStorage();
+
   /// CSV headers for weekly records export
   static const List<String> weeklyRecordHeaders = [
     'id',
@@ -78,16 +78,6 @@ class CsvExportService {
     'created_at',
     'last_login_at',
   ];
-
-  /// Get the export directory path
-  Future<Directory> getExportDirectory() async {
-    final appDir = await getApplicationDocumentsDirectory();
-    final exportDir = Directory('${appDir.path}/exports');
-    if (!await exportDir.exists()) {
-      await exportDir.create(recursive: true);
-    }
-    return exportDir;
-  }
 
   /// Generate a timestamped filename for exports
   String generateExportFilename(String prefix) {
@@ -165,12 +155,23 @@ class CsvExportService {
       ];
 
       final csv = const ListToCsvConverter().convert(rows);
-      final filePath =
-          customPath ?? await _getDefaultFilePath('weekly_records');
-      final file = File(filePath);
-      await file.writeAsString(csv, encoding: utf8);
+      String fileName;
+      if (customPath != null) {
+        // If it looks like a path, take the filename
+        fileName = customPath.contains('/')
+            ? customPath.split('/').last
+            : customPath;
+        if (!fileName.endsWith('.csv')) fileName += '.csv';
+      } else {
+        fileName = generateExportFilename('weekly_records');
+      }
 
-      return CsvExportResult.success(filePath, records.length);
+      final savedPath = await _fileStorage.saveFile(
+        fileName: fileName,
+        content: csv,
+      );
+
+      return CsvExportResult.success(savedPath ?? fileName, records.length);
     } catch (e) {
       return CsvExportResult.error('Failed to export weekly records: $e');
     }
@@ -189,11 +190,22 @@ class CsvExportService {
       final rows = <List<dynamic>>[churchHeaders, ...churches.map(churchToRow)];
 
       final csv = const ListToCsvConverter().convert(rows);
-      final filePath = customPath ?? await _getDefaultFilePath('churches');
-      final file = File(filePath);
-      await file.writeAsString(csv, encoding: utf8);
+      String fileName;
+      if (customPath != null) {
+        fileName = customPath.contains('/')
+            ? customPath.split('/').last
+            : customPath;
+        if (!fileName.endsWith('.csv')) fileName += '.csv';
+      } else {
+        fileName = generateExportFilename('churches');
+      }
 
-      return CsvExportResult.success(filePath, churches.length);
+      final savedPath = await _fileStorage.saveFile(
+        fileName: fileName,
+        content: csv,
+      );
+
+      return CsvExportResult.success(savedPath ?? fileName, churches.length);
     } catch (e) {
       return CsvExportResult.error('Failed to export churches: $e');
     }
@@ -215,11 +227,22 @@ class CsvExportService {
       ];
 
       final csv = const ListToCsvConverter().convert(rows);
-      final filePath = customPath ?? await _getDefaultFilePath('admin_users');
-      final file = File(filePath);
-      await file.writeAsString(csv, encoding: utf8);
+      String fileName;
+      if (customPath != null) {
+        fileName = customPath.contains('/')
+            ? customPath.split('/').last
+            : customPath;
+        if (!fileName.endsWith('.csv')) fileName += '.csv';
+      } else {
+        fileName = generateExportFilename('admin_users');
+      }
 
-      return CsvExportResult.success(filePath, admins.length);
+      final savedPath = await _fileStorage.saveFile(
+        fileName: fileName,
+        content: csv,
+      );
+
+      return CsvExportResult.success(savedPath ?? fileName, admins.length);
     } catch (e) {
       return CsvExportResult.error('Failed to export admin users: $e');
     }
@@ -234,38 +257,24 @@ class CsvExportService {
     String? exportDirectory,
   }) async {
     final results = <String, CsvExportResult>{};
-    final exportDir = exportDirectory ?? (await getExportDirectory()).path;
 
     // Export weekly records
     if (records.isNotEmpty) {
-      final recordsPath =
-          '$exportDir/${generateExportFilename('weekly_records')}';
-      results['weekly_records'] = await exportWeeklyRecords(
-        records,
-        customPath: recordsPath,
-      );
+      results['weekly_records'] = await exportWeeklyRecords(records);
     } else {
       results['weekly_records'] = CsvExportResult.error('No records to export');
     }
 
     // Export churches
     if (churches.isNotEmpty) {
-      final churchesPath = '$exportDir/${generateExportFilename('churches')}';
-      results['churches'] = await exportChurches(
-        churches,
-        customPath: churchesPath,
-      );
+      results['churches'] = await exportChurches(churches);
     } else {
       results['churches'] = CsvExportResult.error('No churches to export');
     }
 
     // Export admin users
     if (admins.isNotEmpty) {
-      final adminsPath = '$exportDir/${generateExportFilename('admin_users')}';
-      results['admin_users'] = await exportAdminUsers(
-        admins,
-        customPath: adminsPath,
-      );
+      results['admin_users'] = await exportAdminUsers(admins);
     } else {
       results['admin_users'] = CsvExportResult.error(
         'No admin users to export',
@@ -300,28 +309,5 @@ class CsvExportService {
         updatedAt: DateTime.parse(row[16].toString()),
       );
     }).toList();
-  }
-
-  /// Get default file path for exports
-  Future<String> _getDefaultFilePath(String prefix) async {
-    final exportDir = await getExportDirectory();
-    return '${exportDir.path}/${generateExportFilename(prefix)}';
-  }
-
-  /// Verify that an exported CSV file is valid
-  Future<bool> verifyCsvExport(String filePath) async {
-    try {
-      final file = File(filePath);
-      if (!await file.exists()) return false;
-
-      final content = await file.readAsString();
-      if (content.isEmpty) return false;
-
-      // Try to parse as CSV
-      final fields = const CsvToListConverter().convert(content);
-      return fields.isNotEmpty && fields.first.isNotEmpty;
-    } catch (e) {
-      return false;
-    }
   }
 }

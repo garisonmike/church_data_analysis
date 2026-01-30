@@ -1,9 +1,7 @@
-import 'dart:io';
-
 import 'package:church_analytics/models/models.dart' as models;
+import 'package:church_analytics/platform/file_storage.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
@@ -362,43 +360,23 @@ class PdfReportService {
     required String fileName,
   }) async {
     try {
-      // Get the appropriate directory
-      Directory? directory;
-
-      if (Platform.isAndroid) {
-        directory = await getExternalStorageDirectory();
-        if (directory != null) {
-          final downloadPath = directory.path.split('Android')[0];
-          directory = Directory('${downloadPath}Download');
-
-          if (!await directory.exists()) {
-            directory = await getApplicationDocumentsDirectory();
-          }
-        }
-      } else if (Platform.isIOS) {
-        directory = await getApplicationDocumentsDirectory();
-      } else {
-        directory = await getApplicationDocumentsDirectory();
-      }
-
-      if (directory == null) {
-        return null;
-      }
+      final fileStorage = getFileStorage();
 
       // Ensure filename has .pdf extension
       final fullFileName = fileName.endsWith('.pdf')
           ? fileName
           : '$fileName.pdf';
-      final filePath = '${directory.path}/$fullFileName';
 
       // Generate PDF bytes
       final bytes = await pdf.save();
 
       // Save to file
-      final file = File(filePath);
-      await file.writeAsBytes(bytes);
+      final path = await fileStorage.saveFileBytes(
+        fileName: fullFileName,
+        bytes: bytes,
+      );
 
-      return filePath;
+      return path;
     } catch (e) {
       debugPrint('Error saving PDF: $e');
       return null;
@@ -433,36 +411,6 @@ class PdfReportService {
       return true;
     } catch (e) {
       debugPrint('Error printing PDF: $e');
-      return false;
-    }
-  }
-
-  /// Verifies PDF output by checking file validity
-  static Future<bool> verifyPdfOutput(String filePath) async {
-    try {
-      final file = File(filePath);
-
-      if (!await file.exists()) {
-        return false;
-      }
-
-      final bytes = await file.readAsBytes();
-
-      if (bytes.isEmpty) {
-        return false;
-      }
-
-      // Check PDF signature (%PDF-)
-      if (bytes.length >= 5) {
-        final signature = String.fromCharCodes(bytes.sublist(0, 5));
-        if (signature != '%PDF-') {
-          return false;
-        }
-      }
-
-      return true;
-    } catch (e) {
-      debugPrint('Error verifying PDF: $e');
       return false;
     }
   }
