@@ -31,12 +31,12 @@
 
 # Repair R3 — Create Graph Module Structure
 
-* [ ] Create graph_modules folder
-* [ ] Create attendance subfolder
-* [ ] Create finance subfolder
-* [ ] Create correlation subfolder
-* [ ] Create forecast subfolder
-* [ ] Add placeholder files in each
+* [x] Create graph_modules folder
+* [x] Create attendance subfolder
+* [x] Create finance subfolder
+* [x] Create correlation subfolder
+* [x] Create forecast subfolder
+* [x] Add placeholder files in each
 
 ---
 
