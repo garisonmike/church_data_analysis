@@ -19,35 +19,35 @@
 
 # Repair R2 — Enforce Web Compatibility Layer
 
-* [x] Create platform/file_storage_interface.dart
-* [x] Create platform/file_storage_mobile.dart
-* [x] Create platform/file_storage_web.dart
-* [x] Remove direct dart:io File usage in services
-* [x] Refactor CSV import to use interface
-* [x] Refactor export services to use interface
-* [x] Verify flutter build web succeeds
+* [ ] Create platform/file_storage_interface.dart
+* [ ] Create platform/file_storage_mobile.dart
+* [ ] Create platform/file_storage_web.dart
+* [ ] Remove direct dart:io File usage in services
+* [ ] Refactor CSV import to use interface
+* [ ] Refactor export services to use interface
+* [ ] Verify flutter build web succeeds
 
 ---
 
 # Repair R3 — Create Graph Module Structure
 
-* [x] Create graph_modules folder
-* [x] Create attendance subfolder
-* [x] Create finance subfolder
-* [x] Create correlation subfolder
-* [x] Create forecast subfolder
-* [x] Add placeholder files in each
+* [ ] Create graph_modules folder
+* [ ] Create attendance subfolder
+* [ ] Create finance subfolder
+* [ ] Create correlation subfolder
+* [ ] Create forecast subfolder
+* [ ] Add placeholder files in each
 
 ---
 
 # Repair R4 — Add Reports Screen + Navigation
 
-* [x] Create reports_screen.dart
-* [x] Add PDF export button
-* [x] Add CSV export button
-* [x] Add backup export button
-* [x] Add restore backup button
-* [x] Add dashboard navigation button to Reports
+* [ ] Create reports_screen.dart
+* [ ] Add PDF export button
+* [ ] Add CSV export button
+* [ ] Add backup export button
+* [ ] Add restore backup button
+* [ ] Add dashboard navigation button to Reports
 
 ---
 

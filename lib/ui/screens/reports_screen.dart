@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../database/app_database.dart';
+import '../../database/app_database.dart' as db;
 import '../../models/models.dart';
 import '../../platform/file_storage.dart';
-import '../../platform/file_storage_interface.dart';
 import '../../repositories/repositories.dart';
 import '../../services/services.dart';
 
@@ -27,13 +26,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
   // Helper to get data for exports
   Future<List<WeeklyRecord>> _getRecords() async {
-    final database = AppDatabase();
+    final database = db.AppDatabase();
     final repository = WeeklyRecordRepository(database);
-    return await repository.getAllRecords(widget.churchId);
+    return await repository.getRecordsByChurch(widget.churchId);
   }
 
   Future<List<Church>> _getChurches() async {
-    final database = AppDatabase();
+    final database = db.AppDatabase();
     final repository = ChurchRepository(database);
     final church = await repository.getChurchById(widget.churchId);
     return church != null ? [church] : [];

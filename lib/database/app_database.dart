@@ -1,5 +1,5 @@
-import 'package:drift/drift.dart';
 import 'package:church_analytics/database/connection/connection.dart';
+import 'package:drift/drift.dart';
 
 part 'app_database.g.dart';
 
@@ -168,6 +168,4 @@ class AppDatabase extends _$AppDatabase {
       ),
     );
   }
-}
-
 }
