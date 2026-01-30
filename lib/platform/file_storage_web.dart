@@ -1,5 +1,6 @@
+// ignore_for_file: avoid_web_libraries_in_flutter, deprecated_member_use
+
 import 'dart:convert';
-// ignore: avoid_web_libraries_in_flutter
 import 'dart:html' as html;
 import 'dart:typed_data';
 
@@ -40,7 +41,20 @@ class FileStorageImpl implements FileStorage {
     required String fileName,
     required Uint8List bytes,
   }) async {
-    final blob = html.Blob([bytes]);
+    final lower = fileName.toLowerCase();
+    final String? mimeType = lower.endsWith('.png')
+        ? 'image/png'
+        : lower.endsWith('.pdf')
+        ? 'application/pdf'
+        : lower.endsWith('.csv')
+        ? 'text/csv'
+        : lower.endsWith('.json')
+        ? 'application/json'
+        : null;
+
+    final blob = mimeType == null
+        ? html.Blob([bytes])
+        : html.Blob([bytes], mimeType);
     final url = html.Url.createObjectUrlFromBlob(blob);
     html.AnchorElement(href: url)
       ..setAttribute("download", fileName)

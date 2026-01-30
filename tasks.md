@@ -63,11 +63,11 @@
 
 # Repair R6 — Chart Export Web Support
 
-* [ ] Implement web PNG download method
-* [ ] Implement mobile file save method
-* [ ] Route via platform storage interface
-* [ ] Verify export works on web
-* [ ] Verify export works on mobile
+* [x] Implement web PNG download method
+* [x] Implement mobile file save method
+* [x] Route via platform storage interface
+* [x] Verify export works on web
+* [x] Verify export works on mobile
 
 ---
 

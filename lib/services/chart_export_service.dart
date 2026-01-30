@@ -2,6 +2,7 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:church_analytics/platform/file_storage.dart';
+import 'package:church_analytics/platform/file_storage_interface.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:intl/intl.dart';
@@ -47,14 +48,15 @@ class ChartExportService {
   static Future<String?> saveAsPng({
     required Uint8List imageBytes,
     required String fileName,
+    FileStorage? fileStorage,
   }) async {
     try {
-      final fileStorage = getFileStorage();
+      final storage = fileStorage ?? getFileStorage();
       final fullFileName = fileName.endsWith('.png')
           ? fileName
           : '$fileName.png';
 
-      final path = await fileStorage.saveFileBytes(
+      final path = await storage.saveFileBytes(
         fileName: fullFileName,
         bytes: imageBytes,
       );
@@ -102,6 +104,7 @@ class ChartExportService {
     required GlobalKey repaintBoundaryKey,
     required String churchName,
     required String chartType,
+    FileStorage? fileStorage,
   }) async {
     try {
       // Step 1: Capture the widget
@@ -120,6 +123,7 @@ class ChartExportService {
       final filePath = await saveAsPng(
         imageBytes: imageBytes,
         fileName: fileName,
+        fileStorage: fileStorage,
       );
 
       return filePath;

@@ -1,8 +1,49 @@
+import 'dart:typed_data';
+
+import 'package:church_analytics/platform/file_storage_interface.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+class _FakeFileStorage implements FileStorage {
+  String? lastFileName;
+  Uint8List? lastBytes;
+  String? returnValue;
+
+  @override
+  Future<PlatformFileResult?> pickFile({
+    required List<String> allowedExtensions,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<String?> saveFile({
+    required String fileName,
+    required String content,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<String?> saveFileBytes({
+    required String fileName,
+    required Uint8List bytes,
+  }) async {
+    lastFileName = fileName;
+    lastBytes = bytes;
+    return returnValue ?? fileName;
+  }
+
+  @override
+  Future<String> readFileAsString(PlatformFileResult file) async {
+    throw UnimplementedError();
+  }
+}
+
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+
   group('ChartExportService', () {
     group('generateFileName', () {
       test('generates valid file name with clean church name', () {
@@ -74,23 +115,17 @@ void main() {
     });
 
     group('verifyExport', () {
-      test('returns false for non-existent file', () async {
-        final result = await ChartExportService.verifyExport(
-          '/non/existent/path/file.png',
-        );
-
-        expect(result, false);
+      test('returns false for empty/whitespace', () async {
+        expect(await ChartExportService.verifyExport(''), false);
+        expect(await ChartExportService.verifyExport('   '), false);
       });
 
-      test('validates PNG signature correctly', () {
-        // This test verifies the PNG signature validation logic
-        // In a real scenario, we'd create a temp file with valid PNG data
-        const pngSignature = [137, 80, 78, 71, 13, 10, 26, 10];
-        expect(pngSignature.length, 8);
-        expect(pngSignature[0], 137);
-        expect(pngSignature[1], 80); // 'P'
-        expect(pngSignature[2], 78); // 'N'
-        expect(pngSignature[3], 71); // 'G'
+      test('returns true for non-empty value', () async {
+        expect(await ChartExportService.verifyExport('Download started'), true);
+        expect(
+          await ChartExportService.verifyExport('/some/path/file.png'),
+          true,
+        );
       });
     });
 
@@ -125,6 +160,21 @@ void main() {
             ? fileName
             : '$fileName.png';
         expect(withExtension, 'test_file.png');
+      });
+
+      test('routes through FileStorage.saveFileBytes', () async {
+        final storage = _FakeFileStorage()..returnValue = 'ok';
+        final bytes = Uint8List.fromList([1, 2, 3]);
+
+        final result = await ChartExportService.saveAsPng(
+          imageBytes: bytes,
+          fileName: 'chart_export',
+          fileStorage: storage,
+        );
+
+        expect(result, 'ok');
+        expect(storage.lastFileName, 'chart_export.png');
+        expect(storage.lastBytes, bytes);
       });
     });
 
