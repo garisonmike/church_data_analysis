@@ -53,11 +53,11 @@
 
 # Repair R5 — Fix CSV Import for Web
 
-* [ ] Use file_picker bytes mode
-* [ ] Parse CSV from memory bytes
-* [ ] Remove file path assumptions
-* [ ] Remove dart:io dependency
-* [ ] Verify CSV import works on web
+* [x] Use file_picker bytes mode
+* [x] Parse CSV from memory bytes
+* [x] Remove file path assumptions
+* [x] Remove dart:io dependency
+* [x] Verify CSV import works on web
 
 ---
 

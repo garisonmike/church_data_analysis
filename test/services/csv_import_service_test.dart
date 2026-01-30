@@ -1,5 +1,43 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:church_analytics/platform/file_storage_interface.dart';
 import 'package:church_analytics/services/csv_import_service.dart';
 import 'package:flutter_test/flutter_test.dart';
+
+class _FakeBytesFileStorage implements FileStorage {
+  @override
+  Future<PlatformFileResult?> pickFile({
+    required List<String> allowedExtensions,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<String?> saveFile({
+    required String fileName,
+    required String content,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<String?> saveFileBytes({
+    required String fileName,
+    required Uint8List bytes,
+  }) async {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<String> readFileAsString(PlatformFileResult file) async {
+    final bytes = file.bytes;
+    if (bytes == null) {
+      throw StateError('Expected in-memory bytes');
+    }
+    return utf8.decode(bytes);
+  }
+}
 
 void main() {
   group('CsvImportService', () {
@@ -7,6 +45,31 @@ void main() {
 
     setUp(() {
       service = CsvImportService();
+    });
+
+    group('parseCsvFile (web bytes)', () {
+      test('parses CSV from memory bytes without file paths', () async {
+        final bytesStorage = _FakeBytesFileStorage();
+        final bytesService = CsvImportService(fileStorage: bytesStorage);
+
+        const csv =
+            'weekStartDate,men,women\n'
+            '2026-01-01,10,12\n'
+            '2026-01-08,11,13\n';
+
+        final file = PlatformFileResult(
+          name: 'weekly.csv',
+          path: null,
+          bytes: Uint8List.fromList(utf8.encode(csv)),
+        );
+
+        final result = await bytesService.parseCsvFile(file);
+
+        expect(result.success, true);
+        expect(result.headers, ['weekStartDate', 'men', 'women']);
+        expect(result.rows, isNotNull);
+        expect(result.rows!.length, 2);
+      });
     });
 
     group('suggestColumnMapping', () {

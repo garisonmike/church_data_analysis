@@ -7,7 +7,10 @@ import 'package:csv/csv.dart';
 /// Service for importing weekly records from CSV files
 class CsvImportService {
   final ValidationService _validationService = ValidationService();
-  final FileStorage _fileStorage = getFileStorage();
+  final FileStorage _fileStorage;
+
+  CsvImportService({FileStorage? fileStorage})
+    : _fileStorage = fileStorage ?? getFileStorage();
 
   /// Pick a CSV file from the device
   Future<PlatformFileResult?> pickCsvFile() async {
@@ -18,7 +21,13 @@ class CsvImportService {
   Future<CsvParseResult> parseCsvFile(PlatformFileResult file) async {
     try {
       final input = await _fileStorage.readFileAsString(file);
-      final fields = const CsvToListConverter().convert(input);
+      final normalized = input
+          .replaceAll('\r\n', '\n')
+          .replaceAll('\r', '\n')
+          // Handle UTF-8 BOM if present
+          .replaceFirst('\uFEFF', '');
+
+      final fields = const CsvToListConverter(eol: '\n').convert(normalized);
 
       if (fields.isEmpty) {
         return CsvParseResult.error('CSV file is empty');
