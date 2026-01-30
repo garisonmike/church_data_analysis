@@ -1,9 +1,5 @@
-import 'dart:io';
-
 import 'package:drift/drift.dart';
-import 'package:drift/native.dart';
-import 'package:path/path.dart' as p;
-import 'package:path_provider/path_provider.dart';
+import 'package:church_analytics/database/connection/connection.dart';
 
 part 'app_database.g.dart';
 
@@ -116,7 +112,7 @@ class ExportHistoryList extends Table {
   ],
 )
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase() : super(openConnection());
 
   // Test constructor for in-memory database
   AppDatabase.forTesting(super.e);
@@ -174,10 +170,4 @@ class AppDatabase extends _$AppDatabase {
   }
 }
 
-LazyDatabase _openConnection() {
-  return LazyDatabase(() async {
-    final dbFolder = await getApplicationDocumentsDirectory();
-    final file = File(p.join(dbFolder.path, 'church_analytics.db'));
-    return NativeDatabase(file);
-  });
 }

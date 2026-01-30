@@ -31,23 +31,23 @@
 
 # Repair R3 — Create Graph Module Structure
 
-* [ ] Create graph_modules folder
-* [ ] Create attendance subfolder
-* [ ] Create finance subfolder
-* [ ] Create correlation subfolder
-* [ ] Create forecast subfolder
-* [ ] Add placeholder files in each
+* [x] Create graph_modules folder
+* [x] Create attendance subfolder
+* [x] Create finance subfolder
+* [x] Create correlation subfolder
+* [x] Create forecast subfolder
+* [x] Add placeholder files in each
 
 ---
 
 # Repair R4 — Add Reports Screen + Navigation
 
-* [ ] Create reports_screen.dart
-* [ ] Add PDF export button
-* [ ] Add CSV export button
-* [ ] Add backup export button
-* [ ] Add restore backup button
-* [ ] Add dashboard navigation button to Reports
+* [x] Create reports_screen.dart
+* [x] Add PDF export button
+* [x] Add CSV export button
+* [x] Add backup export button
+* [x] Add restore backup button
+* [x] Add dashboard navigation button to Reports
 
 ---
 

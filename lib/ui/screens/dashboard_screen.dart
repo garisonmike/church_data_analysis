@@ -10,6 +10,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'reports_screen.dart';
+
 class DashboardScreen extends ConsumerStatefulWidget {
   final int churchId;
 
@@ -250,6 +252,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               },
               icon: const Icon(Icons.upload_file),
               label: const Text('Import from CSV'),
+            ),
+            const SizedBox(height: 8),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        ReportsScreen(churchId: widget.churchId),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.analytics),
+              label: const Text('Reports & Backup'),
             ),
           ],
         ),
