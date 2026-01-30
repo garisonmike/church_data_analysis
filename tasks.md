@@ -42,12 +42,12 @@
 
 # Repair R4 — Add Reports Screen + Navigation
 
-* [ ] Create reports_screen.dart
-* [ ] Add PDF export button
-* [ ] Add CSV export button
-* [ ] Add backup export button
-* [ ] Add restore backup button
-* [ ] Add dashboard navigation button to Reports
+* [x] Create reports_screen.dart
+* [x] Add PDF export button
+* [x] Add CSV export button
+* [x] Add backup export button
+* [x] Add restore backup button
+* [x] Add dashboard navigation button to Reports
 
 ---
 

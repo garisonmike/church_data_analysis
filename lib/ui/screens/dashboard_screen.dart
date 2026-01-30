@@ -130,6 +130,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               onProfileChanged: _loadData,
             ),
           IconButton(
+            icon: const Icon(Icons.analytics_outlined),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      ReportsScreen(churchId: widget.churchId),
+                ),
+              );
+            },
+            tooltip: 'Reports & Backup',
+          ),
+          IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () async {
               final result = await Navigator.push(

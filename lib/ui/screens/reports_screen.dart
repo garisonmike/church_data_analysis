@@ -16,26 +16,32 @@ class ReportsScreen extends ConsumerStatefulWidget {
 }
 
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
-  final _pdfService = PdfReportService();
   final _csvService = CsvExportService();
   final _backupService = BackupService();
   final _fileStorage = getFileStorage();
 
   bool _isProcessing = false;
-  String? _statusMessage;
 
   // Helper to get data for exports
   Future<List<WeeklyRecord>> _getRecords() async {
     final database = db.AppDatabase();
-    final repository = WeeklyRecordRepository(database);
-    return await repository.getRecordsByChurch(widget.churchId);
+    try {
+      final repository = WeeklyRecordRepository(database);
+      return await repository.getRecordsByChurch(widget.churchId);
+    } finally {
+      await database.close();
+    }
   }
 
   Future<List<Church>> _getChurches() async {
     final database = db.AppDatabase();
-    final repository = ChurchRepository(database);
-    final church = await repository.getChurchById(widget.churchId);
-    return church != null ? [church] : [];
+    try {
+      final repository = ChurchRepository(database);
+      final church = await repository.getChurchById(widget.churchId);
+      return church != null ? [church] : [];
+    } finally {
+      await database.close();
+    }
   }
 
   Future<List<AdminUser>> _getAdmins() async {
@@ -56,10 +62,26 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     setState(() => _isProcessing = true);
     try {
       final records = await _getRecords();
-      // Implementation placeholder - PDF service would generate correct document
-      // For now we assume PdfReportService has methods we can stub or use
-      // In a real scenario we'd build the document here.
-      _showStatus('PDF Export not fully implemented in repair task');
+      final churches = await _getChurches();
+      final churchName = churches.isNotEmpty ? churches.first.name : 'Church';
+
+      final pdf = await PdfReportService.buildMultiChartReport(
+        churchName: churchName,
+        records: records,
+        chartImages: const {},
+      );
+
+      final savedPath = await PdfReportService.savePdf(
+        pdf: pdf,
+        fileName: PdfReportService.generatePdfFileName(
+          churchName: churchName,
+          reportType: 'analytics_report',
+        ),
+      );
+
+      _showStatus(
+        savedPath != null ? 'PDF exported: $savedPath' : 'PDF export failed',
+      );
     } catch (e) {
       _showStatus('Error exporting PDF: $e');
     } finally {
