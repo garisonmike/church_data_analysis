@@ -1,5 +1,87 @@
 # ✅ Church Analytics Flutter App — Build Tasks
 
+⚠️ PLAN STATE CHANGE — FOUNDATION CORRECTION PHASE ACTIVE
+>
+> The following repair tasks MUST be completed first before continuing normal build tasks. These align the codebase with plan.md and fix web, bootstrap, and architecture violations.
+
+---
+
+# Repair R1 — Fix App Bootstrap
+
+* [x] Replace counter demo main.dart
+* [x] Wrap app with ProviderScope
+* [x] Wire MaterialApp routes
+* [x] Set DashboardScreen as home
+* [x] Remove demo counter widgets
+* [x] Verify Riverpod providers resolve
+
+---
+
+# Repair R2 — Enforce Web Compatibility Layer
+
+* [ ] Create platform/file_storage_interface.dart
+* [ ] Create platform/file_storage_mobile.dart
+* [ ] Create platform/file_storage_web.dart
+* [ ] Remove direct dart:io File usage in services
+* [ ] Refactor CSV import to use interface
+* [ ] Refactor export services to use interface
+* [ ] Verify flutter build web succeeds
+
+---
+
+# Repair R3 — Create Graph Module Structure
+
+* [ ] Create graph_modules folder
+* [ ] Create attendance subfolder
+* [ ] Create finance subfolder
+* [ ] Create correlation subfolder
+* [ ] Create forecast subfolder
+* [ ] Add placeholder files in each
+
+---
+
+# Repair R4 — Add Reports Screen + Navigation
+
+* [ ] Create reports_screen.dart
+* [ ] Add PDF export button
+* [ ] Add CSV export button
+* [ ] Add backup export button
+* [ ] Add restore backup button
+* [ ] Add dashboard navigation button to Reports
+
+---
+
+# Repair R5 — Fix CSV Import for Web
+
+* [ ] Use file_picker bytes mode
+* [ ] Parse CSV from memory bytes
+* [ ] Remove file path assumptions
+* [ ] Remove dart:io dependency
+* [ ] Verify CSV import works on web
+
+---
+
+# Repair R6 — Chart Export Web Support
+
+* [ ] Implement web PNG download method
+* [ ] Implement mobile file save method
+* [ ] Route via platform storage interface
+* [ ] Verify export works on web
+* [ ] Verify export works on mobile
+
+---
+
+# Repair R7 — Church/Admin Bootstrap Flow
+
+* [ ] Add startup admin check
+* [ ] Add startup church check
+* [ ] Create profile selection screen
+* [ ] Create church selection screen
+* [ ] Add guarded navigation flow
+* [ ] Prevent dashboard load without context
+
+
+---
 > Follow tasks strictly in order. Only check items when fully completed and verified. Do not change task wording unless a PLAN CHANGE is declared.
 
 ---

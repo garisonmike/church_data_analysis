@@ -2,9 +2,14 @@
 
 A Flutter multiplatform application for church administrators to track and analyze weekly attendance and financial data.
 
+
+### This app is majorly vibe coded.
+
+
 ## Overview
 
 This app replaces the legacy Python CLI + matplotlib workflow with a modern, UI-driven, cross-platform analytics tool.
+
 
 ## Features
 
