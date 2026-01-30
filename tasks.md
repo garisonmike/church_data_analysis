@@ -73,12 +73,12 @@
 
 # Repair R7 — Church/Admin Bootstrap Flow
 
-* [ ] Add startup admin check
-* [ ] Add startup church check
-* [ ] Create profile selection screen
-* [ ] Create church selection screen
-* [ ] Add guarded navigation flow
-* [ ] Prevent dashboard load without context
+* [x] Add startup admin check
+* [x] Add startup church check
+* [x] Create profile selection screen
+* [x] Create church selection screen
+* [x] Add guarded navigation flow
+* [x] Prevent dashboard load without context
 
 
 ---
