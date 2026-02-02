@@ -329,6 +329,184 @@
 
 ---
 
+# UX1 — App Settings (Currency, Location Defaults, Kenyan Presets)
+
+* [ ] Create AppSettings model
+* [ ] Create Riverpod settings provider
+* [ ] Add currency enum + dropdown
+* [ ] Set default currency = KES
+* [ ] Set default locale = Nairobi, Kenya
+* [ ] Persist settings locally
+* [ ] Build settings screen UI
+* [ ] Apply currency formatting globally
+
+Acceptance Criteria:
+
+* Settings screen exists and loads
+* Default currency shows as KES
+* Currency symbol updates across dashboard + graphs
+* Restart preserves settings
+* No existing screens break
+
+---
+
+# UX2 — Theme System + Dark Mode Toggle
+
+* [ ] Create theme provider
+* [ ] Define light theme
+* [ ] Define dark theme
+* [ ] Add dark mode toggle
+* [ ] Persist theme choice
+* [ ] Update chart contrast for dark mode
+
+Acceptance Criteria:
+
+* Toggle switches theme instantly
+* Preference persists after restart
+* Charts remain readable
+* No layout regressions
+
+---
+
+# UX3 — Responsive & Live Graph Rendering
+
+* [ ] Replace fixed graph sizes
+* [ ] Use LayoutBuilder responsiveness
+* [ ] Bind graphs to provider watchers
+* [ ] Enable auto-refresh on data change
+* [ ] Add time range selector
+
+Acceptance Criteria:
+
+* Graph resizes with window/device
+* Graph updates when data changes
+* No overflow errors
+* Works on web + desktop
+
+---
+
+# UX4 — Custom Graph Builder (Metric vs Metric)
+
+* [ ] Create graph builder screen
+* [ ] Add metric A selector
+* [ ] Add metric B selector
+* [ ] Add chart type selector
+* [ ] Add time range selector
+* [ ] Generate dynamic graph
+
+Acceptance Criteria:
+
+* User can pick any two metrics
+* Graph renders correctly
+* Changing selector updates graph
+* Navigation works without crash
+
+---
+
+# UX5 — Dashboard Widget Customization
+
+* [ ] Create dashboard config model
+* [ ] Add widget toggles
+* [ ] Build layout editor UI
+* [ ] Persist layout config
+* [ ] Apply layout dynamically
+
+Acceptance Criteria:
+
+* User can hide/show widgets
+* Layout persists after restart
+* Dashboard loads without errors
+
+---
+
+# UX6 — CSV Schema Mapping UI
+
+* [ ] Build column mapping screen
+* [ ] Add field-to-column selectors
+* [ ] Add optional column flags
+* [ ] Add preview table
+* [ ] Add validation checks
+* [ ] Support missing columns
+
+Acceptance Criteria:
+
+* User can map CSV columns manually
+* Missing optional fields allowed
+* Import succeeds with mapped schema
+* Invalid schema shows errors
+
+---
+
+# UX7 — Export Location Picker
+
+* [ ] Add export location picker UI
+* [ ] Integrate platform storage layer
+* [ ] Update PDF export path logic
+* [ ] Update CSV export path logic
+* [ ] Update backup export path logic
+
+Acceptance Criteria:
+
+* User chooses save location
+* Files save to selected path
+* Works on web + desktop
+* No hardcoded paths remain
+
+---
+
+# UX8 — PDF Report Builder Customization
+
+* [ ] Create report builder UI
+* [ ] Add include-graphs toggle
+* [ ] Add include-KPI toggle
+* [ ] Add include-table toggle
+* [ ] Add include-trends toggle
+* [ ] Update PDF builder logic
+
+Acceptance Criteria:
+
+* User selects report contents
+* PDF reflects selections
+* PDF builds without error
+* Existing export still works
+
+---
+
+# UX9 — Production Database Storage Path
+
+* [ ] Implement app data path resolver
+* [ ] Move DB to app data directory
+* [ ] Remove Documents path usage
+* [ ] Add DB migration logic
+* [ ] Verify Linux path
+
+Acceptance Criteria:
+
+* DB no longer appears in Documents
+* App reads old DB if present
+* New DB stored in app directory
+* No data loss
+
+---
+
+# UX10 — Kenyan Sample Data & Templates
+
+* [ ] Create sample church seed
+* [ ] Create Kenyan weekly dataset
+* [ ] Create CSV template file
+* [ ] Add demo dashboard seed
+* [ ] Auto-load demo data when empty
+
+Acceptance Criteria:
+
+* Fresh install shows Kenyan sample data
+* CSV template downloadable
+* Demo graphs render correctly
+* Sample data removable by user
+
+---
+
+
 # ✅ Usage
 
 Copy this file directly into your repository as `tasks.md`. Copilot should only tick checkboxes — not re

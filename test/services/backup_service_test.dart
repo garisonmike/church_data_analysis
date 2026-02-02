@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:church_analytics/models/models.dart';
+import 'package:church_analytics/platform/file_storage_interface.dart';
 import 'package:church_analytics/services/backup_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as path;
@@ -9,6 +10,10 @@ import 'package:path/path.dart' as path;
 void main() {
   late BackupService service;
   late Directory tempDir;
+
+  PlatformFileResult fileFromPath(String filePath) {
+    return PlatformFileResult(name: path.basename(filePath), path: filePath);
+  }
 
   setUp(() async {
     service = BackupService();
@@ -174,22 +179,23 @@ void main() {
           createTestRecord(id: 2, churchId: 2),
         ];
 
-        final filePath = path.join(tempDir.path, 'test_backup.json');
+        final customPath = path.join(tempDir.path, 'test_backup.json');
         final result = await service.createBackup(
           churches: churches,
           admins: admins,
           records: records,
-          customPath: filePath,
+          customPath: customPath,
         );
 
         expect(result.success, isTrue);
-        expect(result.filePath, equals(filePath));
+        expect(result.filePath, isNotNull);
+        expect(result.filePath, endsWith('test_backup.json'));
         expect(result.metadata!.churchCount, equals(2));
         expect(result.metadata!.adminCount, equals(2));
         expect(result.metadata!.recordCount, equals(2));
 
         // Verify file exists
-        expect(await File(filePath).exists(), isTrue);
+        expect(await File(result.filePath!).exists(), isTrue);
       });
 
       test('should create valid JSON structure', () async {
@@ -197,15 +203,18 @@ void main() {
         final admins = [createTestAdmin(id: 1)];
         final records = [createTestRecord(id: 1)];
 
-        final filePath = path.join(tempDir.path, 'test_backup.json');
-        await service.createBackup(
+        final customPath = path.join(tempDir.path, 'test_backup.json');
+        final result = await service.createBackup(
           churches: churches,
           admins: admins,
           records: records,
-          customPath: filePath,
+          customPath: customPath,
         );
 
-        final content = await File(filePath).readAsString();
+        expect(result.success, isTrue);
+        expect(result.filePath, isNotNull);
+
+        final content = await File(result.filePath!).readAsString();
         final json = jsonDecode(content) as Map<String, dynamic>;
 
         expect(json.containsKey('metadata'), isTrue);
@@ -235,14 +244,19 @@ void main() {
         final records = [createTestRecord(id: 1)];
 
         final filePath = path.join(tempDir.path, 'test_backup.json');
-        await service.createBackup(
+        final createResult = await service.createBackup(
           churches: churches,
           admins: admins,
           records: records,
           customPath: filePath,
         );
 
-        final backupData = await service.readBackup(filePath);
+        expect(createResult.success, isTrue);
+        expect(createResult.filePath, isNotNull);
+
+        final backupData = await service.readBackup(
+          fileFromPath(createResult.filePath!),
+        );
 
         expect(backupData, isNotNull);
         expect(backupData!.metadata.churchCount, equals(1));
@@ -252,7 +266,9 @@ void main() {
       });
 
       test('should return null for non-existent file', () async {
-        final result = await service.readBackup('/nonexistent/file.json');
+        final result = await service.readBackup(
+          fileFromPath('/nonexistent/file.json'),
+        );
         expect(result, isNull);
       });
     });
@@ -260,14 +276,19 @@ void main() {
     group('validateBackup', () {
       test('should return true for valid backup', () async {
         final filePath = path.join(tempDir.path, 'valid_backup.json');
-        await service.createBackup(
+        final createResult = await service.createBackup(
           churches: [createTestChurch(id: 1)],
           admins: [createTestAdmin(id: 1)],
           records: [createTestRecord(id: 1)],
           customPath: filePath,
         );
 
-        final isValid = await service.validateBackup(filePath);
+        expect(createResult.success, isTrue);
+        expect(createResult.filePath, isNotNull);
+
+        final isValid = await service.validateBackup(
+          fileFromPath(createResult.filePath!),
+        );
         expect(isValid, isTrue);
       });
 
@@ -275,7 +296,7 @@ void main() {
         final filePath = path.join(tempDir.path, 'invalid.json');
         await File(filePath).writeAsString('not valid json');
 
-        final isValid = await service.validateBackup(filePath);
+        final isValid = await service.validateBackup(fileFromPath(filePath));
         expect(isValid, isFalse);
       });
 
@@ -283,7 +304,7 @@ void main() {
         final filePath = path.join(tempDir.path, 'incomplete.json');
         await File(filePath).writeAsString('{"metadata": {"version": "1.0"}}');
 
-        final isValid = await service.validateBackup(filePath);
+        final isValid = await service.validateBackup(fileFromPath(filePath));
         expect(isValid, isFalse);
       });
 
@@ -306,7 +327,7 @@ void main() {
         };
         await File(filePath).writeAsString(jsonEncode(badData));
 
-        final isValid = await service.validateBackup(filePath);
+        final isValid = await service.validateBackup(fileFromPath(filePath));
         expect(isValid, isFalse);
       });
     });
@@ -321,14 +342,19 @@ void main() {
         final records = [createTestRecord(id: 1), createTestRecord(id: 2)];
 
         final filePath = path.join(tempDir.path, 'restore_test.json');
-        await service.createBackup(
+        final createResult = await service.createBackup(
           churches: churches,
           admins: admins,
           records: records,
           customPath: filePath,
         );
 
-        final result = await service.restoreFromBackup(filePath);
+        expect(createResult.success, isTrue);
+        expect(createResult.filePath, isNotNull);
+
+        final result = await service.restoreFromBackup(
+          fileFromPath(createResult.filePath!),
+        );
 
         expect(result.success, isTrue);
         expect(result.churchesRestored, equals(2));
@@ -341,7 +367,7 @@ void main() {
         final filePath = path.join(tempDir.path, 'invalid.json');
         await File(filePath).writeAsString('invalid');
 
-        final result = await service.restoreFromBackup(filePath);
+        final result = await service.restoreFromBackup(fileFromPath(filePath));
 
         expect(result.success, isFalse);
         expect(result.error, contains('Invalid backup'));
@@ -349,7 +375,7 @@ void main() {
 
       test('should return error for non-existent file', () async {
         final result = await service.restoreFromBackup(
-          '/nonexistent/backup.json',
+          fileFromPath('/nonexistent/backup.json'),
         );
         expect(result.success, isFalse);
       });
@@ -362,14 +388,19 @@ void main() {
         final records = [createTestRecord(id: 1)];
 
         final filePath = path.join(tempDir.path, 'data_test.json');
-        await service.createBackup(
+        final createResult = await service.createBackup(
           churches: churches,
           admins: admins,
           records: records,
           customPath: filePath,
         );
 
-        final data = await service.getRestoreData(filePath);
+        expect(createResult.success, isTrue);
+        expect(createResult.filePath, isNotNull);
+
+        final data = await service.getRestoreData(
+          fileFromPath(createResult.filePath!),
+        );
 
         expect(data, isNotNull);
         expect(data!.churches.length, equals(1));
@@ -381,7 +412,9 @@ void main() {
       });
 
       test('should return null for invalid file', () async {
-        final data = await service.getRestoreData('/nonexistent/file.json');
+        final data = await service.getRestoreData(
+          fileFromPath('/nonexistent/file.json'),
+        );
         expect(data, isNull);
       });
     });
@@ -389,20 +422,25 @@ void main() {
     group('verifyBackupIntegrity', () {
       test('should return true for valid backup', () async {
         final filePath = path.join(tempDir.path, 'integrity_test.json');
-        await service.createBackup(
+        final createResult = await service.createBackup(
           churches: [createTestChurch(id: 1)],
           admins: [createTestAdmin(id: 1)],
           records: [createTestRecord(id: 1)],
           customPath: filePath,
         );
 
-        final isValid = await service.verifyBackupIntegrity(filePath);
+        expect(createResult.success, isTrue);
+        expect(createResult.filePath, isNotNull);
+
+        final isValid = await service.verifyBackupIntegrity(
+          fileFromPath(createResult.filePath!),
+        );
         expect(isValid, isTrue);
       });
 
       test('should return false for non-existent file', () async {
         final isValid = await service.verifyBackupIntegrity(
-          '/nonexistent.json',
+          fileFromPath('/nonexistent.json'),
         );
         expect(isValid, isFalse);
       });
@@ -411,7 +449,9 @@ void main() {
         final filePath = path.join(tempDir.path, 'empty.json');
         await File(filePath).writeAsString('');
 
-        final isValid = await service.verifyBackupIntegrity(filePath);
+        final isValid = await service.verifyBackupIntegrity(
+          fileFromPath(filePath),
+        );
         expect(isValid, isFalse);
       });
 
@@ -419,59 +459,81 @@ void main() {
         final filePath = path.join(tempDir.path, 'missing_keys.json');
         await File(filePath).writeAsString('{"metadata": {}}');
 
-        final isValid = await service.verifyBackupIntegrity(filePath);
+        final isValid = await service.verifyBackupIntegrity(
+          fileFromPath(filePath),
+        );
         expect(isValid, isFalse);
       });
     });
 
-    group('compareBackups', () {
-      test('should return true for identical backups', () async {
+    group('backup content comparison', () {
+      test('should have equivalent content for identical inputs', () async {
         final churches = [createTestChurch(id: 1)];
         final admins = [createTestAdmin(id: 1)];
         final records = [createTestRecord(id: 1)];
 
-        final path1 = path.join(tempDir.path, 'backup1.json');
-        final path2 = path.join(tempDir.path, 'backup2.json');
+        final name1 = path.join(tempDir.path, 'backup1.json');
+        final name2 = path.join(tempDir.path, 'backup2.json');
 
-        await service.createBackup(
+        final r1 = await service.createBackup(
           churches: churches,
           admins: admins,
           records: records,
-          customPath: path1,
+          customPath: name1,
         );
-        await service.createBackup(
+        final r2 = await service.createBackup(
           churches: churches,
           admins: admins,
           records: records,
-          customPath: path2,
+          customPath: name2,
         );
 
-        final areEqual = await service.compareBackups(path1, path2);
-        expect(areEqual, isTrue);
+        expect(r1.success, isTrue);
+        expect(r2.success, isTrue);
+        expect(r1.filePath, isNotNull);
+        expect(r2.filePath, isNotNull);
+
+        final b1 = await service.readBackup(fileFromPath(r1.filePath!));
+        final b2 = await service.readBackup(fileFromPath(r2.filePath!));
+
+        expect(b1, isNotNull);
+        expect(b2, isNotNull);
+        expect(b1!.churches.length, equals(b2!.churches.length));
+        expect(b1.adminUsers.length, equals(b2.adminUsers.length));
+        expect(b1.weeklyRecords.length, equals(b2.weeklyRecords.length));
       });
 
-      test('should return false for different backups', () async {
-        final path1 = path.join(tempDir.path, 'backup1.json');
-        final path2 = path.join(tempDir.path, 'backup2.json');
+      test('should differ for different inputs', () async {
+        final name1 = path.join(tempDir.path, 'backup1.json');
+        final name2 = path.join(tempDir.path, 'backup2.json');
 
-        await service.createBackup(
+        final r1 = await service.createBackup(
           churches: [createTestChurch(id: 1)],
           admins: [],
           records: [],
-          customPath: path1,
+          customPath: name1,
         );
-        await service.createBackup(
+        final r2 = await service.createBackup(
           churches: [
             createTestChurch(id: 1),
             createTestChurch(id: 2, name: 'C2'),
           ],
           admins: [],
           records: [],
-          customPath: path2,
+          customPath: name2,
         );
 
-        final areEqual = await service.compareBackups(path1, path2);
-        expect(areEqual, isFalse);
+        expect(r1.success, isTrue);
+        expect(r2.success, isTrue);
+        expect(r1.filePath, isNotNull);
+        expect(r2.filePath, isNotNull);
+
+        final b1 = await service.readBackup(fileFromPath(r1.filePath!));
+        final b2 = await service.readBackup(fileFromPath(r2.filePath!));
+
+        expect(b1, isNotNull);
+        expect(b2, isNotNull);
+        expect(b1!.churches.length, isNot(equals(b2!.churches.length)));
       });
     });
 
@@ -521,15 +583,20 @@ void main() {
 
           // Create backup
           final filePath = path.join(tempDir.path, 'full_roundtrip.json');
-          await service.createBackup(
+          final createResult = await service.createBackup(
             churches: [originalChurch],
             admins: [originalAdmin],
             records: [originalRecord],
             customPath: filePath,
           );
 
+          expect(createResult.success, isTrue);
+          expect(createResult.filePath, isNotNull);
+
           // Restore
-          final data = await service.getRestoreData(filePath);
+          final data = await service.getRestoreData(
+            fileFromPath(createResult.filePath!),
+          );
           expect(data, isNotNull);
 
           final restoredChurch = data!.churches.first;

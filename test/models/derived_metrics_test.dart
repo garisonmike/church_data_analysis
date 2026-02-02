@@ -4,8 +4,6 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('DerivedMetrics Model Tests', () {
     final now = DateTime.now();
-    final periodStart = DateTime(2026, 1, 1);
-    final periodEnd = DateTime(2026, 1, 31);
 
     DerivedMetrics createValidMetrics({
       int? id,

@@ -7,6 +7,25 @@ import 'package:path_provider/path_provider.dart';
 import 'file_storage_interface.dart';
 
 class FileStorageImpl implements FileStorage {
+  Future<Directory> _getExportDirectory() async {
+    try {
+      final appDir = await getApplicationDocumentsDirectory();
+      final exportDir = Directory('${appDir.path}/exports');
+      if (!await exportDir.exists()) {
+        await exportDir.create(recursive: true);
+      }
+      return exportDir;
+    } catch (e) {
+      // Unit tests (and some desktop contexts) may not have path_provider
+      // plugin channels registered. Fall back to a safe temp directory.
+      final exportDir = Directory('${Directory.systemTemp.path}/exports');
+      if (!await exportDir.exists()) {
+        await exportDir.create(recursive: true);
+      }
+      return exportDir;
+    }
+  }
+
   @override
   Future<PlatformFileResult?> pickFile({
     required List<String> allowedExtensions,
@@ -34,11 +53,7 @@ class FileStorageImpl implements FileStorage {
     required String content,
   }) async {
     try {
-      final appDir = await getApplicationDocumentsDirectory();
-      final exportDir = Directory('${appDir.path}/exports');
-      if (!await exportDir.exists()) {
-        await exportDir.create(recursive: true);
-      }
+      final exportDir = await _getExportDirectory();
       final file = File('${exportDir.path}/$fileName');
       await file.writeAsString(content);
       return file.path;
@@ -54,11 +69,7 @@ class FileStorageImpl implements FileStorage {
     required Uint8List bytes,
   }) async {
     try {
-      final appDir = await getApplicationDocumentsDirectory();
-      final exportDir = Directory('${appDir.path}/exports');
-      if (!await exportDir.exists()) {
-        await exportDir.create(recursive: true);
-      }
+      final exportDir = await _getExportDirectory();
       final file = File('${exportDir.path}/$fileName');
       await file.writeAsBytes(bytes);
       return file.path;

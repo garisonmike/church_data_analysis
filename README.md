@@ -37,6 +37,35 @@ This app replaces the legacy Python CLI + matplotlib workflow with a modern, UI-
 - Flutter SDK 3.35.7 or higher
 - Dart 3.9.2 or higher
 
+### Clone & Run (Recommended)
+
+```bash
+git clone <repo-url>
+cd church_data_analysis
+
+# Fetch dependencies
+flutter pub get
+
+# If you ever see missing generated Drift code (rare if generated files are committed)
+# dart run build_runner build --delete-conflicting-outputs
+
+# Run on Linux desktop
+flutter run -d linux
+```
+
+### Linux Desktop Prerequisites (Debian/Ubuntu/Kali)
+
+Linux desktop builds require some system packages. On Debian/Ubuntu/Kali, the usual set is:
+
+```bash
+sudo apt update
+sudo apt install -y \
+  clang cmake ninja-build pkg-config \
+  libgtk-3-dev liblzma-dev
+```
+
+If `flutter doctor` reports additional missing dependencies, install those too.
+
 ### Installation
 
 ```bash
@@ -51,7 +80,21 @@ flutter run -d linux
 
 # Build for web
 flutter build web --release
+
+# Clean up large build artifacts (frees disk space)
+flutter clean
 ```
+
+## Disk Usage Notes
+
+Flutter builds can generate large folders (especially `build/` and `.dart_tool/`). It is safe to delete these and regenerate them:
+
+- `build/`
+- `.dart_tool/`
+- `android/.gradle/` (project-local Gradle cache)
+- `linux/flutter/ephemeral/`
+
+The fastest “reset” is usually `flutter clean` followed by `flutter pub get`.
 
 ## Project Structure
 

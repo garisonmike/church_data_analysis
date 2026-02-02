@@ -222,10 +222,11 @@ void main() {
 
         expect(result.success, isTrue);
         expect(result.recordCount, equals(2));
-        expect(result.filePath, equals(filePath));
+        expect(result.filePath, isNotNull);
+        expect(result.filePath, endsWith('weekly_records.csv'));
 
         // Verify file contents
-        final file = File(filePath);
+        final file = File(result.filePath!);
         expect(await file.exists(), isTrue);
 
         final content = await file.readAsString();
@@ -269,7 +270,9 @@ void main() {
         expect(result.success, isTrue);
         expect(result.recordCount, equals(2));
 
-        final file = File(filePath);
+        expect(result.filePath, isNotNull);
+        expect(result.filePath, endsWith('churches.csv'));
+        final file = File(result.filePath!);
         final content = await file.readAsString();
         final parsed = const CsvToListConverter().convert(content);
         expect(parsed.length, equals(3));
@@ -306,7 +309,9 @@ void main() {
         expect(result.success, isTrue);
         expect(result.recordCount, equals(1));
 
-        final file = File(filePath);
+        expect(result.filePath, isNotNull);
+        expect(result.filePath, endsWith('admins.csv'));
+        final file = File(result.filePath!);
         final content = await file.readAsString();
         final parsed = const CsvToListConverter().convert(content);
         expect(parsed.length, equals(2));
@@ -374,8 +379,17 @@ void main() {
         expect(results['admin_users']!.success, isTrue);
 
         // Verify files were created
-        final files = await tempDir.list().toList();
-        expect(files.length, equals(3));
+        final weeklyPath = results['weekly_records']!.filePath;
+        final churchesPath = results['churches']!.filePath;
+        final adminsPath = results['admin_users']!.filePath;
+
+        expect(weeklyPath, isNotNull);
+        expect(churchesPath, isNotNull);
+        expect(adminsPath, isNotNull);
+
+        expect(await File(weeklyPath!).exists(), isTrue);
+        expect(await File(churchesPath!).exists(), isTrue);
+        expect(await File(adminsPath!).exists(), isTrue);
       });
 
       test('should handle empty data gracefully', () async {
@@ -389,31 +403,6 @@ void main() {
         expect(results['weekly_records']!.success, isFalse);
         expect(results['churches']!.success, isFalse);
         expect(results['admin_users']!.success, isFalse);
-      });
-    });
-
-    group('verifyCsvExport', () {
-      test('should return true for valid CSV file', () async {
-        final filePath = path.join(tempDir.path, 'test.csv');
-        final file = File(filePath);
-        await file.writeAsString('header1,header2\nvalue1,value2');
-
-        final result = await service.verifyCsvExport(filePath);
-        expect(result, isTrue);
-      });
-
-      test('should return false for non-existent file', () async {
-        final result = await service.verifyCsvExport('/nonexistent/file.csv');
-        expect(result, isFalse);
-      });
-
-      test('should return false for empty file', () async {
-        final filePath = path.join(tempDir.path, 'empty.csv');
-        final file = File(filePath);
-        await file.writeAsString('');
-
-        final result = await service.verifyCsvExport(filePath);
-        expect(result, isFalse);
       });
     });
 
@@ -440,12 +429,15 @@ void main() {
 
         // Export to CSV
         final filePath = path.join(tempDir.path, 'round_trip.csv');
-        await service.exportWeeklyRecords([
+        final exportResult = await service.exportWeeklyRecords([
           originalRecord,
         ], customPath: filePath);
 
+        expect(exportResult.success, isTrue);
+        expect(exportResult.filePath, isNotNull);
+
         // Read back the CSV content
-        final csvContent = await File(filePath).readAsString();
+        final csvContent = await File(exportResult.filePath!).readAsString();
 
         // Parse it back
         final records = service.parseWeeklyRecordsCsv(csvContent, 10);

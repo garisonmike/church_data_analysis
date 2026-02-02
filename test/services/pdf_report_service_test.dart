@@ -1,6 +1,9 @@
+import 'dart:io';
+
 import 'package:church_analytics/services/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
 
 void main() {
   group('PdfReportService', () {
@@ -119,13 +122,24 @@ void main() {
       });
     });
 
-    group('verifyPdfOutput', () {
-      test('returns false for non-existent file', () async {
-        final result = await PdfReportService.verifyPdfOutput(
-          '/non/existent/path/file.pdf',
+    group('savePdf', () {
+      test('saves a PDF and returns a path', () async {
+        final pdf = pw.Document();
+        pdf.addPage(
+          pw.Page(
+            pageFormat: PdfPageFormat.a4,
+            build: (context) => pw.Text('Test PDF'),
+          ),
         );
 
-        expect(result, false);
+        final savedPath = await PdfReportService.savePdf(
+          pdf: pdf,
+          fileName: 'test_report',
+        );
+
+        expect(savedPath, isNotNull);
+        expect(savedPath, endsWith('.pdf'));
+        expect(await File(savedPath!).exists(), isTrue);
       });
 
       test('validates PDF signature', () {
