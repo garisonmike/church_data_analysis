@@ -352,12 +352,12 @@ Acceptance Criteria:
 
 # UX2 — Theme System + Dark Mode Toggle
 
-* [ ] Create theme provider
-* [ ] Define light theme
-* [ ] Define dark theme
-* [ ] Add dark mode toggle
-* [ ] Persist theme choice
-* [ ] Update chart contrast for dark mode
+* [x] Create theme provider
+* [x] Define light theme
+* [x] Define dark theme
+* [x] Add dark mode toggle
+* [x] Persist theme choice
+* [x] Update chart contrast for dark mode
 
 Acceptance Criteria:
 

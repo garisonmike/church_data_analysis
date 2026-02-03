@@ -57,7 +57,8 @@ final settingsServiceProvider = Provider<SettingsService>((ref) {
 class SettingsNotifier extends StateNotifier<AppSettings> {
   final SettingsService _settingsService;
 
-  SettingsNotifier(this._settingsService) : super(_settingsService.loadSettings());
+  SettingsNotifier(this._settingsService)
+    : super(_settingsService.loadSettings());
 
   /// Update currency setting
   Future<void> updateCurrency(Currency currency) async {
@@ -80,6 +81,13 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
     state = newSettings;
   }
 
+  /// Update theme mode setting
+  Future<void> updateThemeMode(AppThemeMode themeMode) async {
+    final newSettings = state.copyWith(themeMode: themeMode);
+    await _settingsService.saveSettings(newSettings);
+    state = newSettings;
+  }
+
   /// Reset to default settings
   Future<void> resetToDefaults() async {
     await _settingsService.resetSettings();
@@ -89,7 +97,7 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
   /// Format currency amount with current currency symbol
   String formatCurrency(double amount) {
     final currency = state.currency;
-    
+
     // Format with appropriate decimal places and thousand separators
     String formattedAmount;
     if (amount >= 1000000) {
@@ -113,10 +121,11 @@ class SettingsNotifier extends StateNotifier<AppSettings> {
 }
 
 /// Provider for app settings state
-final appSettingsProvider = StateNotifierProvider<SettingsNotifier, AppSettings>((ref) {
-  final settingsService = ref.read(settingsServiceProvider);
-  return SettingsNotifier(settingsService);
-});
+final appSettingsProvider =
+    StateNotifierProvider<SettingsNotifier, AppSettings>((ref) {
+      final settingsService = ref.read(settingsServiceProvider);
+      return SettingsNotifier(settingsService);
+    });
 
 /// Convenience provider for currency formatting
 final currencyFormatterProvider = Provider<String Function(double)>((ref) {
@@ -125,7 +134,9 @@ final currencyFormatterProvider = Provider<String Function(double)>((ref) {
 });
 
 /// Convenience provider for precise currency formatting
-final currencyFormatterPreciseProvider = Provider<String Function(double)>((ref) {
+final currencyFormatterPreciseProvider = Provider<String Function(double)>((
+  ref,
+) {
   final settingsNotifier = ref.read(appSettingsProvider.notifier);
   return settingsNotifier.formatCurrencyPrecise;
 });

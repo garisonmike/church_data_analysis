@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'services/settings_service.dart';
+import 'services/theme_service.dart';
 import 'ui/screens/advanced_charts_screen.dart';
 import 'ui/screens/app_settings_screen.dart';
 import 'ui/screens/attendance_charts_screen.dart';
@@ -25,23 +26,30 @@ void main() async {
     ProviderScope(
       overrides: [
         sharedPreferencesProvider.overrideWithValue(sharedPreferences),
+        platformBrightnessProvider.overrideWith(
+          (ref) =>
+              WidgetsBinding.instance.platformDispatcher.platformBrightness,
+        ),
       ],
       child: const ChurchAnalyticsApp(),
     ),
   );
 }
 
-class ChurchAnalyticsApp extends StatelessWidget {
+class ChurchAnalyticsApp extends ConsumerWidget {
   const ChurchAnalyticsApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final theme = ref.watch(themeProvider);
+    final darkTheme = ref.watch(darkThemeProvider);
+    final themeMode = ref.watch(themeModeProvider);
+
     return MaterialApp(
       title: 'Church Analytics',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.blue),
-        useMaterial3: true,
-      ),
+      theme: theme,
+      darkTheme: darkTheme,
+      themeMode: themeMode,
       home: const StartupGateScreen(),
       onGenerateRoute: (settings) {
         final args = settings.arguments;

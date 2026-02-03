@@ -7,4 +7,5 @@ export 'csv_import_service.dart';
 export 'pdf_report_service.dart';
 export 'performance_monitor.dart';
 export 'settings_service.dart';
+export 'theme_service.dart';
 export 'validation_service.dart';

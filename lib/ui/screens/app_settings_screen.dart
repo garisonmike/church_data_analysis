@@ -118,6 +118,98 @@ class AppSettingsScreen extends ConsumerWidget {
 
           const SizedBox(height: 16),
 
+          // Theme Settings Card
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Theme Settings',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  DropdownButtonFormField<AppThemeMode>(
+                    initialValue: settings.themeMode,
+                    decoration: const InputDecoration(
+                      labelText: 'Theme Mode',
+                      border: OutlineInputBorder(),
+                      helperText: 'Choose your preferred theme',
+                    ),
+                    items: AppThemeMode.values.map((mode) {
+                      return DropdownMenuItem(
+                        value: mode,
+                        child: Row(
+                          children: [
+                            Icon(
+                              _getThemeIcon(mode),
+                              size: 20,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(mode.displayName),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                    onChanged: (AppThemeMode? newMode) {
+                      if (newMode != null) {
+                        settingsNotifier.updateThemeMode(newMode);
+                      }
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  // Theme preview
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Current theme:',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                Theme.of(context).brightness == Brightness.dark 
+                                    ? 'Dark Mode' 
+                                    : 'Light Mode',
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ],
+                          ),
+                        ),
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: Theme.of(context).colorScheme.primary,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Icon(
+                            Theme.of(context).brightness == Brightness.dark
+                                ? Icons.dark_mode
+                                : Icons.light_mode,
+                            color: Theme.of(context).colorScheme.onPrimary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 16),
+
           // Regional Settings Card
           Card(
             child: Padding(
@@ -241,6 +333,17 @@ class AppSettingsScreen extends ConsumerWidget {
         );
       },
     );
+  }
+
+  IconData _getThemeIcon(AppThemeMode themeMode) {
+    switch (themeMode) {
+      case AppThemeMode.light:
+        return Icons.light_mode;
+      case AppThemeMode.dark:
+        return Icons.dark_mode;
+      case AppThemeMode.system:
+        return Icons.brightness_auto;
+    }
   }
 
   void _applyKenyanPreset(SettingsNotifier notifier) {

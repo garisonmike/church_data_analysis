@@ -309,6 +309,8 @@ class _AttendanceChartsScreenState
   Widget _buildAttendanceByCategoryChart() {
     if (_records.isEmpty) return const SizedBox.shrink();
 
+    final chartColors = ref.read(chartColorsProvider);
+
     // Calculate average attendance by category
     final totalMen = _records.fold<int>(0, (sum, r) => sum + r.men);
     final totalWomen = _records.fold<int>(0, (sum, r) => sum + r.women);
@@ -406,7 +408,7 @@ class _AttendanceChartsScreenState
                     barRods: [
                       BarChartRodData(
                         toY: avgMen,
-                        color: Colors.blue,
+                        color: chartColors[0],
                         width: 40,
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(6),
@@ -420,7 +422,7 @@ class _AttendanceChartsScreenState
                     barRods: [
                       BarChartRodData(
                         toY: avgWomen,
-                        color: Colors.pink,
+                        color: chartColors[1],
                         width: 40,
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(6),
@@ -434,7 +436,7 @@ class _AttendanceChartsScreenState
                     barRods: [
                       BarChartRodData(
                         toY: avgChildren,
-                        color: Colors.orange,
+                        color: chartColors[2],
                         width: 40,
                         borderRadius: const BorderRadius.only(
                           topLeft: Radius.circular(6),
@@ -455,6 +457,8 @@ class _AttendanceChartsScreenState
   // 2. Total Attendance Trend Line Chart
   Widget _buildTotalAttendanceTrendChart() {
     if (_records.isEmpty) return const SizedBox.shrink();
+
+    final chartColors = ref.read(chartColorsProvider);
 
     // Sort records by date
     final sortedRecords = List<models.WeeklyRecord>.from(_records)
@@ -557,22 +561,22 @@ class _AttendanceChartsScreenState
                   LineChartBarData(
                     spots: spots,
                     isCurved: true,
-                    color: Colors.blue,
+                    color: chartColors[0],
                     barWidth: 3,
                     dotData: FlDotData(
                       show: true,
                       getDotPainter: (spot, percent, barData, index) {
                         return FlDotCirclePainter(
                           radius: 4,
-                          color: Colors.blue,
+                          color: chartColors[0],
                           strokeWidth: 2,
-                          strokeColor: Colors.white,
+                          strokeColor: Theme.of(context).colorScheme.surface,
                         );
                       },
                     ),
                     belowBarData: BarAreaData(
                       show: true,
-                      color: Colors.blue.withValues(alpha: 0.1),
+                      color: chartColors[0].withValues(alpha: 0.1),
                     ),
                   ),
                 ],
