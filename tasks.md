@@ -474,11 +474,11 @@ Acceptance Criteria:
 
 # UX9 — Production Database Storage Path
 
-* [ ] Implement app data path resolver
-* [ ] Move DB to app data directory
-* [ ] Remove Documents path usage
-* [ ] Add DB migration logic
-* [ ] Verify Linux path
+* [x] Implement app data path resolver
+* [x] Move DB to app data directory
+* [x] Remove Documents path usage
+* [x] Add DB migration logic
+* [x] Verify Linux path
 
 Acceptance Criteria:
 
