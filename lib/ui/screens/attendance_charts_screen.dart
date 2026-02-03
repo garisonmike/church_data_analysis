@@ -1,13 +1,10 @@
-import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/models/models.dart' as models;
-import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 class AttendanceChartsScreen extends ConsumerStatefulWidget {
   final int churchId;
@@ -21,8 +18,6 @@ class AttendanceChartsScreen extends ConsumerStatefulWidget {
 
 class _AttendanceChartsScreenState
     extends ConsumerState<AttendanceChartsScreen> {
-  bool _isLoading = true;
-  String? _errorMessage;
   List<models.WeeklyRecord> _records = [];
 
   // GlobalKeys for RepaintBoundary to capture charts
@@ -30,61 +25,6 @@ class _AttendanceChartsScreenState
   final GlobalKey _totalTrendKey = GlobalKey();
   final GlobalKey _distributionKey = GlobalKey();
   final GlobalKey _growthRateKey = GlobalKey();
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    AppDatabase? database;
-    try {
-      database = AppDatabase();
-      final repository = WeeklyRecordRepository(database);
-
-      // Get current admin ID to filter records
-      final prefs = await SharedPreferences.getInstance();
-      final adminDb = AppDatabase();
-      final adminRepo = AdminUserRepository(adminDb);
-      final profileService = AdminProfileService(adminRepo, prefs);
-      final currentAdminId = profileService.getCurrentProfileId();
-      await adminDb.close();
-
-      // Get records for the last 12 weeks - filtered by admin if ID exists
-      List<models.WeeklyRecord> records;
-      if (currentAdminId != null) {
-        records = await repository.getRecentRecordsByAdmin(
-          widget.churchId,
-          currentAdminId,
-          12,
-        );
-      } else {
-        records = await repository.getRecentRecords(widget.churchId, 12);
-      }
-
-      if (mounted) {
-        setState(() {
-          _records = records;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'Error loading data: ${e.toString()}';
-          _isLoading = false;
-        });
-      }
-    } finally {
-      await database?.close();
-    }
-  }
 
   Future<void> _exportChart(GlobalKey key, String chartName) async {
     try {
@@ -156,29 +96,43 @@ class _AttendanceChartsScreenState
 
   @override
   Widget build(BuildContext context) {
+    final recordsAsync = ref.watch(
+      weeklyRecordsForChurchProvider(widget.churchId),
+    );
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Attendance Charts'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
+          // Time range selector in app bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: TimeRangeSelector(compact: true),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
+            onPressed: () {
+              // Refresh the provider
+              ref.invalidate(weeklyRecordsForChurchProvider(widget.churchId));
+            },
             tooltip: 'Refresh',
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-          ? _buildErrorView()
-          : _records.isEmpty
-          ? _buildEmptyView()
-          : _buildChartsContent(),
+      body: recordsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, stackTrace) => _buildErrorView(error.toString()),
+        data: (records) {
+          // Update local state for existing methods
+          _records = records;
+          return records.isEmpty ? _buildEmptyView() : _buildChartsContent();
+        },
+      ),
     );
   }
 
-  Widget _buildErrorView() {
+  Widget _buildErrorView(String errorMessage) {
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -188,13 +142,16 @@ class _AttendanceChartsScreenState
             const Icon(Icons.error_outline, size: 64, color: Colors.red),
             const SizedBox(height: 16),
             Text(
-              _errorMessage!,
+              errorMessage,
               style: const TextStyle(color: Colors.red),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
             ElevatedButton.icon(
-              onPressed: _loadData,
+              onPressed: () {
+                // Refresh the provider
+                ref.invalidate(weeklyRecordsForChurchProvider(widget.churchId));
+              },
               icon: const Icon(Icons.refresh),
               label: const Text('Retry'),
             ),
@@ -241,7 +198,12 @@ class _AttendanceChartsScreenState
             exportKey: _attendanceByCategoryKey,
           ),
           const SizedBox(height: 8),
-          _buildAttendanceByCategoryChart(),
+          ResponsiveChartContainer(
+            minHeight: 200,
+            maxHeight: 400,
+            aspectRatio: 16 / 10,
+            child: _buildAttendanceByCategoryChart(),
+          ),
           const SizedBox(height: 32),
 
           // 2. Total Attendance Trend Line (lazy loaded)
@@ -250,8 +212,10 @@ class _AttendanceChartsScreenState
             exportKey: _totalTrendKey,
           ),
           const SizedBox(height: 8),
-          LazyLoadChart(
-            placeholderHeight: 332,
+          ResponsiveLazyChart(
+            minHeight: 250,
+            maxHeight: 500,
+            aspectRatio: 16 / 9,
             child: _buildTotalAttendanceTrendChart(),
           ),
           const SizedBox(height: 32),
@@ -262,8 +226,10 @@ class _AttendanceChartsScreenState
             exportKey: _distributionKey,
           ),
           const SizedBox(height: 8),
-          LazyLoadChart(
-            placeholderHeight: 332,
+          ResponsiveLazyChart(
+            minHeight: 300,
+            maxHeight: 450,
+            aspectRatio: 1.2,
             child: _buildAttendanceDistributionChart(),
           ),
           const SizedBox(height: 32),
@@ -274,7 +240,12 @@ class _AttendanceChartsScreenState
             exportKey: _growthRateKey,
           ),
           const SizedBox(height: 8),
-          LazyLoadChart(placeholderHeight: 332, child: _buildGrowthRateChart()),
+          ResponsiveLazyChart(
+            minHeight: 250,
+            maxHeight: 500,
+            aspectRatio: 16 / 9,
+            child: _buildGrowthRateChart(),
+          ),
           const SizedBox(height: 16),
         ],
       ),

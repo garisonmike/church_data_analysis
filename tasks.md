@@ -370,11 +370,11 @@ Acceptance Criteria:
 
 # UX3 — Responsive & Live Graph Rendering
 
-* [ ] Replace fixed graph sizes
-* [ ] Use LayoutBuilder responsiveness
-* [ ] Bind graphs to provider watchers
-* [ ] Enable auto-refresh on data change
-* [ ] Add time range selector
+* [x] Replace fixed graph sizes
+* [x] Use LayoutBuilder responsiveness
+* [x] Bind graphs to provider watchers
+* [x] Enable auto-refresh on data change
+* [x] Add time range selector
 
 Acceptance Criteria:
 

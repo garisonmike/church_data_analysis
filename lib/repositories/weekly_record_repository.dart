@@ -91,6 +91,33 @@ class WeeklyRecordRepository {
     return records.map(_toModel).toList();
   }
 
+  /// Get all records for a church (no limit)
+  Future<List<WeeklyRecord>> getAllRecords(int churchId) async {
+    final records =
+        await (_db.select(_db.weeklyRecords)
+              ..where((t) => t.churchId.equals(churchId))
+              ..orderBy([(t) => OrderingTerm.desc(t.weekStartDate)]))
+            .get();
+    return records.map(_toModel).toList();
+  }
+
+  /// Get all records created by a specific admin for a church (no limit)
+  Future<List<WeeklyRecord>> getAllRecordsByAdmin(
+    int churchId,
+    int adminId,
+  ) async {
+    final records =
+        await (_db.select(_db.weeklyRecords)
+              ..where(
+                (t) =>
+                    t.churchId.equals(churchId) &
+                    t.createdByAdminId.equals(adminId),
+              )
+              ..orderBy([(t) => OrderingTerm.desc(t.weekStartDate)]))
+            .get();
+    return records.map(_toModel).toList();
+  }
+
   /// Check if a week already exists for a church
   Future<bool> weekExists(int churchId, DateTime weekStartDate) async {
     final query = _db.select(_db.weeklyRecords)
