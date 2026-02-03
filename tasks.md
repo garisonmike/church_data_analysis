@@ -456,12 +456,12 @@ Acceptance Criteria:
 
 # UX8 — PDF Report Builder Customization
 
-* [ ] Create report builder UI
-* [ ] Add include-graphs toggle
-* [ ] Add include-KPI toggle
-* [ ] Add include-table toggle
-* [ ] Add include-trends toggle
-* [ ] Update PDF builder logic
+* [x] Create report builder UI
+* [x] Add include-graphs toggle
+* [x] Add include-KPI toggle
+* [x] Add include-table toggle
+* [x] Add include-trends toggle
+* [x] Update PDF builder logic
 
 Acceptance Criteria:
 

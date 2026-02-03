@@ -16,6 +16,34 @@ class ReportsScreen extends ConsumerStatefulWidget {
   ConsumerState<ReportsScreen> createState() => _ReportsScreenState();
 }
 
+class _ReportOptions {
+  final bool includeGraphs;
+  final bool includeKpi;
+  final bool includeTable;
+  final bool includeTrends;
+
+  const _ReportOptions({
+    this.includeGraphs = true,
+    this.includeKpi = true,
+    this.includeTable = true,
+    this.includeTrends = true,
+  });
+
+  _ReportOptions copyWith({
+    bool? includeGraphs,
+    bool? includeKpi,
+    bool? includeTable,
+    bool? includeTrends,
+  }) {
+    return _ReportOptions(
+      includeGraphs: includeGraphs ?? this.includeGraphs,
+      includeKpi: includeKpi ?? this.includeKpi,
+      includeTable: includeTable ?? this.includeTable,
+      includeTrends: includeTrends ?? this.includeTrends,
+    );
+  }
+}
+
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   final _csvService = CsvExportService();
   final _backupService = BackupService();
@@ -24,6 +52,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   bool _isProcessing = false;
   bool _promptForLocation = true;
   String? _lastExportPath;
+  _ReportOptions _reportOptions = const _ReportOptions();
 
   // Helper to get data for exports
   Future<List<WeeklyRecord>> _getRecords() async {
@@ -62,6 +91,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   Future<void> _exportPdf() async {
+    final selectedOptions = await _promptReportOptions();
+    if (selectedOptions == null) {
+      return;
+    }
+    setState(() => _reportOptions = selectedOptions);
     setState(() => _isProcessing = true);
     try {
       final records = await _getRecords();
@@ -72,6 +106,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         churchName: churchName,
         records: records,
         chartImages: const {},
+        includeGraphs: selectedOptions.includeGraphs,
+        includeKpi: selectedOptions.includeKpi,
+        includeTable: selectedOptions.includeTable,
+        includeTrends: selectedOptions.includeTrends,
       );
 
       final suggestedName = PdfReportService.generatePdfFileName(
@@ -239,6 +277,108 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
+  Widget _buildReportBuilderCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'PDF Report Builder',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Choose what to include in the PDF export.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildChip('Graphs', _reportOptions.includeGraphs),
+                _buildChip('KPI', _reportOptions.includeKpi),
+                _buildChip('Table', _reportOptions.includeTable),
+                _buildChip('Trends', _reportOptions.includeTrends),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildChip(String label, bool enabled) {
+    return Chip(
+      label: Text(label),
+      backgroundColor: enabled
+          ? Theme.of(context).colorScheme.secondaryContainer
+          : Theme.of(context).colorScheme.surfaceContainerHighest,
+    );
+  }
+
+  Future<_ReportOptions?> _promptReportOptions() async {
+    var options = _reportOptions;
+
+    final result = await showDialog<_ReportOptions>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Customize PDF Report'),
+        content: StatefulBuilder(
+          builder: (context, setState) {
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SwitchListTile(
+                  title: const Text('Include graphs'),
+                  value: options.includeGraphs,
+                  onChanged: (value) => setState(
+                    () => options = options.copyWith(includeGraphs: value),
+                  ),
+                ),
+                SwitchListTile(
+                  title: const Text('Include KPI metrics'),
+                  value: options.includeKpi,
+                  onChanged: (value) => setState(
+                    () => options = options.copyWith(includeKpi: value),
+                  ),
+                ),
+                SwitchListTile(
+                  title: const Text('Include records table'),
+                  value: options.includeTable,
+                  onChanged: (value) => setState(
+                    () => options = options.copyWith(includeTable: value),
+                  ),
+                ),
+                SwitchListTile(
+                  title: const Text('Include trend summary'),
+                  value: options.includeTrends,
+                  onChanged: (value) => setState(
+                    () => options = options.copyWith(includeTrends: value),
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, options),
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+
+    return result;
+  }
+
   Future<String?> _pickExportPath({
     required String suggestedName,
     required List<String> allowedExtensions,
@@ -272,6 +412,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               if (_isProcessing) const CircularProgressIndicator(),
               const SizedBox(height: 20),
               _buildExportLocationCard(),
+              const SizedBox(height: 12),
+              _buildReportBuilderCard(),
               const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: _isProcessing ? null : _exportPdf,

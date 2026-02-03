@@ -200,6 +200,10 @@ class PdfReportService {
     required List<models.WeeklyRecord> records,
     required Map<String, Uint8List> chartImages,
     DateTime? reportDate,
+    bool includeGraphs = true,
+    bool includeKpi = true,
+    bool includeTable = true,
+    bool includeTrends = true,
   }) async {
     final pdf = pw.Document();
     final date = reportDate ?? DateTime.now();
@@ -218,32 +222,33 @@ class PdfReportService {
         ),
         footer: (context) => buildFooter(context),
         build: (context) => [
-          // KPI Section
-          buildKpiSection(title: 'Key Performance Indicators', metrics: kpis),
-          pw.SizedBox(height: 20),
-
-          // Charts Section
-          pw.Text(
-            'Visual Analytics',
-            style: pw.TextStyle(
-              fontSize: 20,
-              fontWeight: pw.FontWeight.bold,
-              color: PdfColors.blue900,
+          if (includeKpi) ...[
+            buildKpiSection(title: 'Key Performance Indicators', metrics: kpis),
+            pw.SizedBox(height: 20),
+          ],
+          if (includeGraphs && chartImages.isNotEmpty) ...[
+            pw.Text(
+              'Visual Analytics',
+              style: pw.TextStyle(
+                fontSize: 20,
+                fontWeight: pw.FontWeight.bold,
+                color: PdfColors.blue900,
+              ),
             ),
-          ),
-          pw.SizedBox(height: 16),
-
-          // Insert all chart images
-          ...chartImages.entries.map((entry) {
-            return buildChartSection(
-              chartTitle: entry.key,
-              chartImageBytes: entry.value,
-            );
-          }),
-
-          // Summary Section
-          pw.SizedBox(height: 20),
-          _buildSummarySection(records),
+            pw.SizedBox(height: 16),
+            ...chartImages.entries.map((entry) {
+              return buildChartSection(
+                chartTitle: entry.key,
+                chartImageBytes: entry.value,
+              );
+            }),
+            pw.SizedBox(height: 20),
+          ],
+          if (includeTable) ...[
+            _buildRecordsTable(records),
+            pw.SizedBox(height: 20),
+          ],
+          if (includeTrends) _buildSummarySection(records),
         ],
       ),
     );
@@ -351,6 +356,48 @@ class PdfReportService {
           ),
         ],
       ),
+    );
+  }
+
+  static pw.Widget _buildRecordsTable(List<models.WeeklyRecord> records) {
+    if (records.isEmpty) {
+      return pw.Container();
+    }
+
+    final dateFormat = DateFormat('MMM d, yyyy');
+
+    final rows = records.map((record) {
+      return [
+        dateFormat.format(record.weekStartDate),
+        record.totalAttendance.toString(),
+        record.totalIncome.toStringAsFixed(2),
+      ];
+    }).toList();
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          'Weekly Records',
+          style: pw.TextStyle(
+            fontSize: 18,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.blue800,
+          ),
+        ),
+        pw.SizedBox(height: 8),
+        pw.TableHelper.fromTextArray(
+          headerStyle: pw.TextStyle(
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.blue900,
+          ),
+          headerDecoration: const pw.BoxDecoration(color: PdfColors.blue50),
+          cellAlignment: pw.Alignment.centerLeft,
+          cellStyle: const pw.TextStyle(fontSize: 10),
+          headers: const ['Week Start', 'Attendance', 'Total Income'],
+          data: rows,
+        ),
+      ],
     );
   }
 
