@@ -387,12 +387,12 @@ Acceptance Criteria:
 
 # UX4 — Custom Graph Builder (Metric vs Metric)
 
-* [ ] Create graph builder screen
-* [ ] Add metric A selector
-* [ ] Add metric B selector
-* [ ] Add chart type selector
-* [ ] Add time range selector
-* [ ] Generate dynamic graph
+* [x] Create graph builder screen
+* [x] Add metric A selector
+* [x] Add metric B selector
+* [x] Add chart type selector
+* [x] Add time range selector
+* [x] Generate dynamic graph
 
 Acceptance Criteria:
 

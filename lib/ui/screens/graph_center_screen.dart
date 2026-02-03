@@ -73,6 +73,15 @@ class _GraphCenterScreenState extends ConsumerState<GraphCenterScreen> {
         category: ChartCategory.advanced,
         screenBuilder: (churchId) => AdvancedChartsScreen(churchId: churchId),
       ),
+      ChartItem(
+        title: 'Custom Graph Builder',
+        description: 'Create dynamic charts with any two metrics',
+        icon: Icons.auto_graph,
+        color: Colors.teal,
+        category: ChartCategory.advanced,
+        screenBuilder: (churchId) =>
+            CustomGraphBuilderScreen(churchId: churchId),
+      ),
     ];
   }
 

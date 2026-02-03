@@ -11,6 +11,7 @@ import 'ui/screens/church_selection_screen.dart';
 import 'ui/screens/church_settings_screen.dart';
 import 'ui/screens/correlation_charts_screen.dart';
 import 'ui/screens/csv_import_screen.dart';
+import 'ui/screens/custom_graph_builder_screen.dart';
 import 'ui/screens/dashboard_screen.dart';
 import 'ui/screens/financial_charts_screen.dart';
 import 'ui/screens/graph_center_screen.dart';
@@ -148,6 +149,16 @@ class ChurchAnalyticsApp extends ConsumerWidget {
             }
             return MaterialPageRoute(
               builder: (context) => FinancialChartsScreen(churchId: churchId),
+            );
+          case '/charts/custom':
+            if (churchId == null) {
+              return MaterialPageRoute(
+                builder: (context) => const StartupGateScreen(),
+              );
+            }
+            return MaterialPageRoute(
+              builder: (context) =>
+                  CustomGraphBuilderScreen(churchId: churchId),
             );
           case '/app-settings':
             return MaterialPageRoute(
