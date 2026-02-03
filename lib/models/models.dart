@@ -2,6 +2,7 @@
 export 'admin_user.dart';
 export 'app_settings.dart';
 export 'church.dart';
+export 'dashboard_config.dart';
 export 'derived_metrics.dart';
 export 'export_history.dart';
 export 'weekly_record.dart';

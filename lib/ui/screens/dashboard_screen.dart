@@ -122,6 +122,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         title: const Text('Church Analytics Dashboard'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
+          IconButton(
+            icon: const Icon(Icons.dashboard_customize),
+            onPressed: _openLayoutEditor,
+            tooltip: 'Customize Dashboard',
+          ),
           ChurchSelectorWidget(onChurchChanged: _loadData),
           if (_profileService != null)
             ProfileSwitcherWidget(
@@ -312,6 +317,24 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Widget _buildDashboardContent() {
+    final config = ref.watch(dashboardConfigProvider);
+    final visibleSections = config.order
+        .where((section) => config.isVisible(section))
+        .toList();
+
+    final sectionWidgets = <Widget>[];
+
+    for (final section in visibleSections) {
+      if (sectionWidgets.isNotEmpty) {
+        sectionWidgets.add(const SizedBox(height: 24));
+      }
+      sectionWidgets.add(_buildSection(section));
+    }
+
+    if (sectionWidgets.isEmpty) {
+      sectionWidgets.add(_buildEmptyLayoutView());
+    }
+
     return RefreshIndicator(
       onRefresh: _loadData,
       child: SingleChildScrollView(
@@ -319,17 +342,48 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          children: sectionWidgets,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSection(models.DashboardSection section) {
+    return switch (section) {
+      models.DashboardSection.kpiCards => _buildKpiCards(),
+      models.DashboardSection.quickActions => _buildQuickActions(),
+      models.DashboardSection.recentWeeks => _buildRecentWeeksList(),
+    };
+  }
+
+  Widget _buildEmptyLayoutView() {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24.0),
+        child: Column(
           children: [
-            // KPI Cards
-            _buildKpiCards(),
-            const SizedBox(height: 24),
-
-            // Quick Actions / Graph Buttons
-            _buildQuickActions(),
-            const SizedBox(height: 24),
-
-            // Recent Weeks List
-            _buildRecentWeeksList(),
+            Icon(
+              Icons.dashboard_customize,
+              size: 64,
+              color: Theme.of(context).colorScheme.outline,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'No dashboard widgets selected',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Enable sections in the layout editor to see them here.',
+              style: Theme.of(context).textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: _openLayoutEditor,
+              icon: const Icon(Icons.tune),
+              label: const Text('Edit Layout'),
+            ),
           ],
         ),
       ),
@@ -791,6 +845,15 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       SnackBar(
         content: Text('$feature coming soon!'),
         duration: const Duration(seconds: 2),
+      ),
+    );
+  }
+
+  void _openLayoutEditor() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const DashboardLayoutEditorScreen(),
       ),
     );
   }

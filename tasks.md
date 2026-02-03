@@ -405,11 +405,11 @@ Acceptance Criteria:
 
 # UX5 — Dashboard Widget Customization
 
-* [ ] Create dashboard config model
-* [ ] Add widget toggles
-* [ ] Build layout editor UI
-* [ ] Persist layout config
-* [ ] Apply layout dynamically
+* [x] Create dashboard config model
+* [x] Add widget toggles
+* [x] Build layout editor UI
+* [x] Persist layout config
+* [x] Apply layout dynamically
 
 Acceptance Criteria:
 
