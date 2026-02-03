@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
+import 'services/settings_service.dart';
 import 'ui/screens/advanced_charts_screen.dart';
+import 'ui/screens/app_settings_screen.dart';
 import 'ui/screens/attendance_charts_screen.dart';
 import 'ui/screens/church_selection_screen.dart';
 import 'ui/screens/church_settings_screen.dart';
@@ -14,8 +17,18 @@ import 'ui/screens/profile_selection_screen.dart';
 import 'ui/screens/startup_gate_screen.dart';
 import 'ui/screens/weekly_entry_screen.dart';
 
-void main() {
-  runApp(const ProviderScope(child: ChurchAnalyticsApp()));
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  final sharedPreferences = await SharedPreferences.getInstance();
+
+  runApp(
+    ProviderScope(
+      overrides: [
+        sharedPreferencesProvider.overrideWithValue(sharedPreferences),
+      ],
+      child: const ChurchAnalyticsApp(),
+    ),
+  );
 }
 
 class ChurchAnalyticsApp extends StatelessWidget {
@@ -127,6 +140,10 @@ class ChurchAnalyticsApp extends StatelessWidget {
             }
             return MaterialPageRoute(
               builder: (context) => FinancialChartsScreen(churchId: churchId),
+            );
+          case '/app-settings':
+            return MaterialPageRoute(
+              builder: (context) => const AppSettingsScreen(),
             );
           default:
             return null;

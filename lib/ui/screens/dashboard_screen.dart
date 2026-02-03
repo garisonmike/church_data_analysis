@@ -142,21 +142,46 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             },
             tooltip: 'Reports & Backup',
           ),
-          IconButton(
+          PopupMenuButton<String>(
             icon: const Icon(Icons.settings),
-            onPressed: () async {
-              final result = await Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      ChurchSettingsScreen(churchId: widget.churchId),
-                ),
-              );
-              if (result == true) {
-                _loadData();
+            tooltip: 'Settings',
+            onSelected: (value) async {
+              switch (value) {
+                case 'church':
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          ChurchSettingsScreen(churchId: widget.churchId),
+                    ),
+                  );
+                  if (result == true) {
+                    _loadData();
+                  }
+                  break;
+                case 'app':
+                  Navigator.pushNamed(context, '/app-settings');
+                  break;
               }
             },
-            tooltip: 'Church Settings',
+            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+              const PopupMenuItem<String>(
+                value: 'church',
+                child: ListTile(
+                  leading: Icon(Icons.church),
+                  title: Text('Church Settings'),
+                  subtitle: Text('Church details & preferences'),
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'app',
+                child: ListTile(
+                  leading: Icon(Icons.tune),
+                  title: Text('App Settings'),
+                  subtitle: Text('Currency, locale & display'),
+                ),
+              ),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -756,7 +781,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   String _formatCurrency(double amount) {
-    return NumberFormat.currency(symbol: '\$', decimalDigits: 0).format(amount);
+    // Use app settings currency formatter
+    final notifier = ref.read(appSettingsProvider.notifier);
+    return notifier.formatCurrency(amount);
   }
 
   void _showComingSoon(String feature) {

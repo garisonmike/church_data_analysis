@@ -331,14 +331,14 @@
 
 # UX1 — App Settings (Currency, Location Defaults, Kenyan Presets)
 
-* [ ] Create AppSettings model
-* [ ] Create Riverpod settings provider
-* [ ] Add currency enum + dropdown
-* [ ] Set default currency = KES
-* [ ] Set default locale = Nairobi, Kenya
-* [ ] Persist settings locally
-* [ ] Build settings screen UI
-* [ ] Apply currency formatting globally
+* [x] Create AppSettings model
+* [x] Create Riverpod settings provider
+* [x] Add currency enum + dropdown
+* [x] Set default currency = KES
+* [x] Set default locale = Nairobi, Kenya
+* [x] Persist settings locally
+* [x] Build settings screen UI
+* [x] Apply currency formatting globally
 
 Acceptance Criteria:
 

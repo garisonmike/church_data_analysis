@@ -1,5 +1,6 @@
 // Export all data models
 export 'admin_user.dart';
+export 'app_settings.dart';
 export 'church.dart';
 export 'derived_metrics.dart';
 export 'export_history.dart';
