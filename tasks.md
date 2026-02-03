@@ -421,12 +421,12 @@ Acceptance Criteria:
 
 # UX6 — CSV Schema Mapping UI
 
-* [ ] Build column mapping screen
-* [ ] Add field-to-column selectors
-* [ ] Add optional column flags
-* [ ] Add preview table
-* [ ] Add validation checks
-* [ ] Support missing columns
+* [x] Build column mapping screen
+* [x] Add field-to-column selectors
+* [x] Add optional column flags
+* [x] Add preview table
+* [x] Add validation checks
+* [x] Support missing columns
 
 Acceptance Criteria:
 

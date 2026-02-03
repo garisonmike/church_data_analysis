@@ -166,7 +166,10 @@ void main() {
           'plannedCollection': 9,
         };
 
-        final result = service.validateAndConvertRow(row, mapping, 1, 2, null);
+        final result = service.validateAndConvertRow(row, mapping, 1, 2, null, {
+          'emergencyCollection',
+          'plannedCollection',
+        });
 
         expect(result.success, true);
         expect(result.record, isNotNull);
@@ -208,7 +211,10 @@ void main() {
           'plannedCollection': 9,
         };
 
-        final result = service.validateAndConvertRow(row, mapping, 1, 2, null);
+        final result = service.validateAndConvertRow(row, mapping, 1, 2, null, {
+          'emergencyCollection',
+          'plannedCollection',
+        });
 
         expect(result.success, false);
         expect(result.errors, isNotNull);
@@ -242,7 +248,10 @@ void main() {
           'plannedCollection': 9,
         };
 
-        final result = service.validateAndConvertRow(row, mapping, 1, 2, null);
+        final result = service.validateAndConvertRow(row, mapping, 1, 2, null, {
+          'emergencyCollection',
+          'plannedCollection',
+        });
 
         expect(result.success, false);
         expect(result.errors, isNotNull);
@@ -276,7 +285,10 @@ void main() {
           'plannedCollection': 9,
         };
 
-        final result = service.validateAndConvertRow(row, mapping, 1, 2, null);
+        final result = service.validateAndConvertRow(row, mapping, 1, 2, null, {
+          'emergencyCollection',
+          'plannedCollection',
+        });
 
         expect(result.success, false);
         expect(result.errors, isNotNull);
@@ -310,7 +322,10 @@ void main() {
           'plannedCollection': 9,
         };
 
-        final result = service.validateAndConvertRow(row, mapping, 1, 2, null);
+        final result = service.validateAndConvertRow(row, mapping, 1, 2, null, {
+          'emergencyCollection',
+          'plannedCollection',
+        });
 
         expect(result.success, false);
         expect(result.errors, isNotNull);

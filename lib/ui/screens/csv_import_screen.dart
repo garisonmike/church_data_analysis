@@ -37,6 +37,9 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
     'sundayHomeChurch',
     'tithe',
     'offerings',
+  ];
+
+  final List<String> _optionalFields = [
     'emergencyCollection',
     'plannedCollection',
   ];
@@ -136,6 +139,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
         widget.churchId,
         i + 2, // +2 because row 1 is headers and display is 1-indexed
         currentAdminId,
+        _optionalFields.toSet(),
       );
       results.add(result);
     }
@@ -441,7 +445,17 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
       children: [
         const Text('Map CSV columns to fields:'),
         const SizedBox(height: 16),
-        ..._requiredFields.map((field) => _buildMappingDropdown(field)),
+        Text('Required fields', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
+        ..._requiredFields.map(
+          (field) => _buildMappingDropdown(field, isOptional: false),
+        ),
+        const SizedBox(height: 16),
+        Text('Optional fields', style: Theme.of(context).textTheme.titleSmall),
+        const SizedBox(height: 8),
+        ..._optionalFields.map(
+          (field) => _buildMappingDropdown(field, isOptional: true),
+        ),
         const SizedBox(height: 16),
         Text(
           'Preview: ${_rows!.take(3).length} of ${_rows!.length} rows',
@@ -465,12 +479,37 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
     );
   }
 
-  Widget _buildMappingDropdown(String field) {
+  Widget _buildMappingDropdown(String field, {required bool isOptional}) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
         children: [
-          Expanded(flex: 2, child: Text(_fieldLabels[field]!)),
+          Expanded(
+            flex: 2,
+            child: Row(
+              children: [
+                Expanded(child: Text(_fieldLabels[field]!)),
+                if (isOptional)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      'Optional',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
           Expanded(
             flex: 3,
             child: DropdownButtonFormField<int>(

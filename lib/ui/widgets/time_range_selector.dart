@@ -62,7 +62,7 @@ class TimeRangeSelector extends ConsumerWidget {
                   Icon(
                     _getIconForTimeRange(timeRange),
                     size: 16,
-                    color: theme.colorScheme.onSurface.withOpacity(0.7),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.7),
                   ),
                   const SizedBox(width: 8),
                   Text(timeRange.displayName),
@@ -116,7 +116,7 @@ class TimeRangeSelector extends ConsumerWidget {
                 size: 16,
                 color: isSelected
                     ? theme.colorScheme.onSecondaryContainer
-                    : theme.colorScheme.onSurface.withOpacity(0.7),
+                    : theme.colorScheme.onSurface.withValues(alpha: 0.7),
               ),
               onSelected: (bool selected) {
                 if (selected) {
@@ -130,7 +130,7 @@ class TimeRangeSelector extends ConsumerWidget {
               side: BorderSide(
                 color: isSelected
                     ? theme.colorScheme.secondary
-                    : theme.colorScheme.outline.withOpacity(0.5),
+                    : theme.colorScheme.outline.withValues(alpha: 0.5),
                 width: 1,
               ),
             ),
@@ -194,7 +194,7 @@ class LabeledTimeRangeSelector extends StatelessWidget {
             label,
             style: theme.textTheme.bodySmall?.copyWith(
               fontWeight: FontWeight.w500,
-              color: theme.colorScheme.onSurface.withOpacity(0.8),
+              color: theme.colorScheme.onSurface.withValues(alpha: 0.8),
             ),
           ),
           const SizedBox(height: 8),

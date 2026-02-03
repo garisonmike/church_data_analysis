@@ -12,6 +12,10 @@ class ValidationService {
     'sundayHomeChurch',
     'tithe',
     'offerings',
+  ];
+
+  /// Optional fields for CSV import
+  static const List<String> optionalCsvFields = [
     'emergencyCollection',
     'plannedCollection',
   ];

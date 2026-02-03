@@ -50,6 +50,7 @@ class CsvImportService {
     int churchId,
     int rowNumber,
     int? adminId,
+    Set<String> optionalFields,
   ) {
     final errors = <String>[];
 
@@ -77,11 +78,18 @@ class CsvImportService {
       }
 
       // Parse attendance fields
-      int? parseIntField(String fieldName, String label) {
+      int? parseIntField(
+        String fieldName,
+        String label, {
+        bool required = true,
+      }) {
         final valueStr = getValue(fieldName);
         if (valueStr == null || valueStr.isEmpty) {
-          errors.add('$label is required');
-          return null;
+          if (required) {
+            errors.add('$label is required');
+            return null;
+          }
+          return 0;
         }
         final value = int.tryParse(valueStr);
         if (value == null) {
@@ -96,11 +104,18 @@ class CsvImportService {
       }
 
       // Parse financial fields
-      double? parseDoubleField(String fieldName, String label) {
+      double? parseDoubleField(
+        String fieldName,
+        String label, {
+        bool required = true,
+      }) {
         final valueStr = getValue(fieldName);
         if (valueStr == null || valueStr.isEmpty) {
-          errors.add('$label is required');
-          return null;
+          if (required) {
+            errors.add('$label is required');
+            return null;
+          }
+          return 0;
         }
         final value = double.tryParse(valueStr);
         if (value == null) {
@@ -128,10 +143,12 @@ class CsvImportService {
       final emergencyCollection = parseDoubleField(
         'emergencyCollection',
         'Emergency Collection',
+        required: !optionalFields.contains('emergencyCollection'),
       );
       final plannedCollection = parseDoubleField(
         'plannedCollection',
         'Planned Collection',
+        required: !optionalFields.contains('plannedCollection'),
       );
 
       if (errors.isNotEmpty) {
