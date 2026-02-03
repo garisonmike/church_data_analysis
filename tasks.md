@@ -491,11 +491,11 @@ Acceptance Criteria:
 
 # UX10 — Kenyan Sample Data & Templates
 
-* [ ] Create sample church seed
-* [ ] Create Kenyan weekly dataset
-* [ ] Create CSV template file
-* [ ] Add demo dashboard seed
-* [ ] Auto-load demo data when empty
+* [x] Create sample church seed
+* [x] Create Kenyan weekly dataset
+* [x] Create CSV template file
+* [x] Add demo dashboard seed
+* [x] Auto-load demo data when empty
 
 Acceptance Criteria:
 
