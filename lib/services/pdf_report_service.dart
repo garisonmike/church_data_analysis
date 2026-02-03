@@ -358,6 +358,7 @@ class PdfReportService {
   static Future<String?> savePdf({
     required pw.Document pdf,
     required String fileName,
+    String? customPath,
   }) async {
     try {
       final fileStorage = getFileStorage();
@@ -366,6 +367,11 @@ class PdfReportService {
       final fullFileName = fileName.endsWith('.pdf')
           ? fileName
           : '$fileName.pdf';
+      final fullPath = customPath == null
+          ? null
+          : customPath.endsWith('.pdf')
+          ? customPath
+          : '$customPath.pdf';
 
       // Generate PDF bytes
       final bytes = await pdf.save();
@@ -374,6 +380,7 @@ class PdfReportService {
       final path = await fileStorage.saveFileBytes(
         fileName: fullFileName,
         bytes: bytes,
+        fullPath: fullPath,
       );
 
       return path;

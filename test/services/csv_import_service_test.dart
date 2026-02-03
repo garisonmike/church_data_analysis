@@ -17,6 +17,7 @@ class _FakeBytesFileStorage implements FileStorage {
   Future<String?> saveFile({
     required String fileName,
     required String content,
+    String? fullPath,
   }) async {
     throw UnimplementedError();
   }
@@ -25,8 +26,17 @@ class _FakeBytesFileStorage implements FileStorage {
   Future<String?> saveFileBytes({
     required String fileName,
     required Uint8List bytes,
+    String? fullPath,
   }) async {
     throw UnimplementedError();
+  }
+
+  @override
+  Future<String?> pickSaveLocation({
+    required String suggestedName,
+    required List<String> allowedExtensions,
+  }) async {
+    return null;
   }
 
   @override

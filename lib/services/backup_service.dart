@@ -266,11 +266,16 @@ class BackupService {
       );
 
       String fileName;
+      String? fullPath;
       if (customPath != null) {
-        fileName = customPath.contains('/')
-            ? customPath.split('/').last
-            : customPath;
+        final hasPath = customPath.contains('/');
+        fileName = hasPath ? customPath.split('/').last : customPath;
         if (!fileName.endsWith('.json')) fileName += '.json';
+        if (hasPath) {
+          fullPath = customPath.endsWith('.json')
+              ? customPath
+              : '$customPath.json';
+        }
       } else {
         fileName = generateBackupFilename();
       }
@@ -282,6 +287,7 @@ class BackupService {
       final savedPath = await _fileStorage.saveFile(
         fileName: fileName,
         content: jsonString,
+        fullPath: fullPath,
       );
 
       return BackupResult.success(savedPath ?? fileName, metadata);

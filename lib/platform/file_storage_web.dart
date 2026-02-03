@@ -28,19 +28,38 @@ class FileStorageImpl implements FileStorage {
   }
 
   @override
+  Future<String?> pickSaveLocation({
+    required String suggestedName,
+    required List<String> allowedExtensions,
+  }) async {
+    return suggestedName;
+  }
+
+  @override
   Future<String?> saveFile({
     required String fileName,
     required String content,
+    String? fullPath,
   }) async {
     final bytes = utf8.encode(content);
-    return saveFileBytes(fileName: fileName, bytes: Uint8List.fromList(bytes));
+    return saveFileBytes(
+      fileName: fileName,
+      bytes: Uint8List.fromList(bytes),
+      fullPath: fullPath,
+    );
   }
 
   @override
   Future<String?> saveFileBytes({
     required String fileName,
     required Uint8List bytes,
+    String? fullPath,
   }) async {
+    final rawName = fullPath ?? fileName;
+    final normalized = rawName.replaceAll('\\', '/');
+    final effectiveName = normalized.contains('/')
+        ? normalized.split('/').last
+        : normalized;
     final lower = fileName.toLowerCase();
     final String? mimeType = lower.endsWith('.png')
         ? 'image/png'
@@ -57,7 +76,7 @@ class FileStorageImpl implements FileStorage {
         : html.Blob([bytes], mimeType);
     final url = html.Url.createObjectUrlFromBlob(blob);
     html.AnchorElement(href: url)
-      ..setAttribute("download", fileName)
+      ..setAttribute("download", effectiveName)
       ..click();
     html.Url.revokeObjectUrl(url);
     return "Download started";

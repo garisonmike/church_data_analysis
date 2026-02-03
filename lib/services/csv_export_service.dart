@@ -156,12 +156,17 @@ class CsvExportService {
 
       final csv = const ListToCsvConverter().convert(rows);
       String fileName;
+      String? fullPath;
       if (customPath != null) {
         // If it looks like a path, take the filename
-        fileName = customPath.contains('/')
-            ? customPath.split('/').last
-            : customPath;
+        final hasPath = customPath.contains('/');
+        fileName = hasPath ? customPath.split('/').last : customPath;
         if (!fileName.endsWith('.csv')) fileName += '.csv';
+        if (hasPath) {
+          fullPath = customPath.endsWith('.csv')
+              ? customPath
+              : '$customPath.csv';
+        }
       } else {
         fileName = generateExportFilename('weekly_records');
       }
@@ -169,6 +174,7 @@ class CsvExportService {
       final savedPath = await _fileStorage.saveFile(
         fileName: fileName,
         content: csv,
+        fullPath: fullPath,
       );
 
       return CsvExportResult.success(savedPath ?? fileName, records.length);
@@ -191,11 +197,16 @@ class CsvExportService {
 
       final csv = const ListToCsvConverter().convert(rows);
       String fileName;
+      String? fullPath;
       if (customPath != null) {
-        fileName = customPath.contains('/')
-            ? customPath.split('/').last
-            : customPath;
+        final hasPath = customPath.contains('/');
+        fileName = hasPath ? customPath.split('/').last : customPath;
         if (!fileName.endsWith('.csv')) fileName += '.csv';
+        if (hasPath) {
+          fullPath = customPath.endsWith('.csv')
+              ? customPath
+              : '$customPath.csv';
+        }
       } else {
         fileName = generateExportFilename('churches');
       }
@@ -203,6 +214,7 @@ class CsvExportService {
       final savedPath = await _fileStorage.saveFile(
         fileName: fileName,
         content: csv,
+        fullPath: fullPath,
       );
 
       return CsvExportResult.success(savedPath ?? fileName, churches.length);
@@ -228,11 +240,16 @@ class CsvExportService {
 
       final csv = const ListToCsvConverter().convert(rows);
       String fileName;
+      String? fullPath;
       if (customPath != null) {
-        fileName = customPath.contains('/')
-            ? customPath.split('/').last
-            : customPath;
+        final hasPath = customPath.contains('/');
+        fileName = hasPath ? customPath.split('/').last : customPath;
         if (!fileName.endsWith('.csv')) fileName += '.csv';
+        if (hasPath) {
+          fullPath = customPath.endsWith('.csv')
+              ? customPath
+              : '$customPath.csv';
+        }
       } else {
         fileName = generateExportFilename('admin_users');
       }
@@ -240,6 +257,7 @@ class CsvExportService {
       final savedPath = await _fileStorage.saveFile(
         fileName: fileName,
         content: csv,
+        fullPath: fullPath,
       );
 
       return CsvExportResult.success(savedPath ?? fileName, admins.length);

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -21,6 +22,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   final _fileStorage = getFileStorage();
 
   bool _isProcessing = false;
+  bool _promptForLocation = true;
+  String? _lastExportPath;
 
   // Helper to get data for exports
   Future<List<WeeklyRecord>> _getRecords() async {
@@ -71,12 +74,23 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         chartImages: const {},
       );
 
+      final suggestedName = PdfReportService.generatePdfFileName(
+        churchName: churchName,
+        reportType: 'analytics_report',
+      );
+      final customPath = await _pickExportPath(
+        suggestedName: '$suggestedName.pdf',
+        allowedExtensions: const ['pdf'],
+      );
+      if (_promptForLocation && customPath == null) {
+        _showStatus('PDF export cancelled');
+        return;
+      }
+
       final savedPath = await PdfReportService.savePdf(
         pdf: pdf,
-        fileName: PdfReportService.generatePdfFileName(
-          churchName: churchName,
-          reportType: 'analytics_report',
-        ),
+        fileName: suggestedName,
+        customPath: customPath,
       );
 
       _showStatus(
@@ -93,7 +107,22 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     setState(() => _isProcessing = true);
     try {
       final records = await _getRecords();
-      final result = await _csvService.exportWeeklyRecords(records);
+      final suggestedName = _csvService.generateExportFilename(
+        'weekly_records',
+      );
+      final customPath = await _pickExportPath(
+        suggestedName: suggestedName,
+        allowedExtensions: const ['csv'],
+      );
+      if (_promptForLocation && customPath == null) {
+        _showStatus('CSV export cancelled');
+        return;
+      }
+
+      final result = await _csvService.exportWeeklyRecords(
+        records,
+        customPath: customPath,
+      );
       if (result.success) {
         _showStatus('CSV Exported to ${result.filePath}');
       } else {
@@ -113,10 +142,21 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       final churches = await _getChurches();
       final admins = await _getAdmins();
 
+      final suggestedName = _backupService.generateBackupFilename();
+      final customPath = await _pickExportPath(
+        suggestedName: suggestedName,
+        allowedExtensions: const ['json'],
+      );
+      if (_promptForLocation && customPath == null) {
+        _showStatus('Backup cancelled');
+        return;
+      }
+
       final result = await _backupService.createBackup(
         churches: churches,
         admins: admins,
         records: records,
+        customPath: customPath,
       );
 
       if (result.success) {
@@ -150,6 +190,75 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     }
   }
 
+  Widget _buildExportLocationCard() {
+    final locationLabel = kIsWeb
+        ? 'Browser downloads'
+        : (_lastExportPath ?? 'Default app exports folder');
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Export Location',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Choose save location'),
+              subtitle: Text(
+                kIsWeb
+                    ? 'Web downloads are handled by the browser.'
+                    : 'When enabled, you will pick a save location for each export.',
+              ),
+              value: _promptForLocation,
+              onChanged: (value) {
+                setState(() => _promptForLocation = value);
+              },
+            ),
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.folder_open, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    locationLabel,
+                    style: Theme.of(context).textTheme.bodySmall,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<String?> _pickExportPath({
+    required String suggestedName,
+    required List<String> allowedExtensions,
+  }) async {
+    if (!_promptForLocation) {
+      return null;
+    }
+
+    final pickedPath = await _fileStorage.pickSaveLocation(
+      suggestedName: suggestedName,
+      allowedExtensions: allowedExtensions,
+    );
+
+    if (pickedPath != null && mounted) {
+      setState(() => _lastExportPath = pickedPath);
+    }
+
+    return pickedPath;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -161,6 +270,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (_isProcessing) const CircularProgressIndicator(),
+              const SizedBox(height: 20),
+              _buildExportLocationCard(),
               const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: _isProcessing ? null : _exportPdf,

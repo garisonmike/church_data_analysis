@@ -439,11 +439,11 @@ Acceptance Criteria:
 
 # UX7 — Export Location Picker
 
-* [ ] Add export location picker UI
-* [ ] Integrate platform storage layer
-* [ ] Update PDF export path logic
-* [ ] Update CSV export path logic
-* [ ] Update backup export path logic
+* [x] Add export location picker UI
+* [x] Integrate platform storage layer
+* [x] Update PDF export path logic
+* [x] Update CSV export path logic
+* [x] Update backup export path logic
 
 Acceptance Criteria:
 

@@ -48,13 +48,34 @@ class FileStorageImpl implements FileStorage {
   }
 
   @override
+  Future<String?> pickSaveLocation({
+    required String suggestedName,
+    required List<String> allowedExtensions,
+  }) async {
+    try {
+      final result = await FilePicker.platform.saveFile(
+        dialogTitle: 'Select export location',
+        fileName: suggestedName,
+        allowedExtensions: allowedExtensions,
+        type: FileType.custom,
+      );
+      return result;
+    } catch (e) {
+      debugPrint('Error picking save location: $e');
+      return null;
+    }
+  }
+
+  @override
   Future<String?> saveFile({
     required String fileName,
     required String content,
+    String? fullPath,
   }) async {
     try {
-      final exportDir = await _getExportDirectory();
-      final file = File('${exportDir.path}/$fileName');
+      final file = fullPath != null
+          ? File(fullPath)
+          : File('${(await _getExportDirectory()).path}/$fileName');
       await file.writeAsString(content);
       return file.path;
     } catch (e) {
@@ -67,10 +88,12 @@ class FileStorageImpl implements FileStorage {
   Future<String?> saveFileBytes({
     required String fileName,
     required Uint8List bytes,
+    String? fullPath,
   }) async {
     try {
-      final exportDir = await _getExportDirectory();
-      final file = File('${exportDir.path}/$fileName');
+      final file = fullPath != null
+          ? File(fullPath)
+          : File('${(await _getExportDirectory()).path}/$fileName');
       await file.writeAsBytes(bytes);
       return file.path;
     } catch (e) {
