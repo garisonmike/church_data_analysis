@@ -668,15 +668,15 @@ Acceptance Criteria:
 
 ### R4 — Customizable Dashboard Layout
 
-* [ ] Allow users to choose which widgets appear on the dashboard
-* [ ] Persist dashboard layout locally
-* [ ] Provide sensible Kenyan-default dashboard on first run
+* [x] Allow users to choose which widgets appear on the dashboard
+* [x] Persist dashboard layout locally
+* [x] Provide sensible Kenyan-default dashboard on first run
 
 **Acceptance Criteria**
 
-* Users can add/remove dashboard widgets
-* Layout persists after app restart
-* No empty or broken dashboard state
+* [x] Users can add/remove dashboard widgets
+* [x] Layout persists after app restart
+* [x] No empty or broken dashboard state
 
 ---
 
