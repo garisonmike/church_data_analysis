@@ -2,6 +2,7 @@ import 'package:church_analytics/database/app_database.dart' as db;
 import 'package:church_analytics/models/models.dart' as models;
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/admin_profile_service.dart';
+import 'package:church_analytics/services/settings_service.dart';
 import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -300,7 +301,7 @@ class _CorrelationChartsScreenState
                             );
                           } else {
                             return LineTooltipItem(
-                              'Income\n$date: \$${record.totalIncome.toStringAsFixed(2)}',
+                              'Income\n$date: ${_formatCurrency(record.totalIncome)}',
                               const TextStyle(color: Colors.white),
                             );
                           }
@@ -519,7 +520,7 @@ class _CorrelationChartsScreenState
                                     'Planned',
                                   ];
                                   return BarTooltipItem(
-                                    '${labels[group.x.toInt()]}\n\$${rod.toY.toStringAsFixed(2)}',
+                                    '${labels[group.x.toInt()]}\n${_formatCurrency(rod.toY)}',
                                     const TextStyle(color: Colors.white),
                                   );
                                 },
@@ -532,7 +533,7 @@ class _CorrelationChartsScreenState
                                   reservedSize: 50,
                                   getTitlesWidget: (value, meta) {
                                     return Text(
-                                      '\$${(value / 1000).toStringAsFixed(0)}k',
+                                      _formatCurrencyCompact(value),
                                       style: const TextStyle(fontSize: 10),
                                     );
                                   },
@@ -714,7 +715,7 @@ class _CorrelationChartsScreenState
                           children: [
                             TextSpan(
                               text:
-                                  '\nAttendance: ${record.totalAttendance}\nIncome: \$${record.totalIncome.toStringAsFixed(2)}',
+                                  '\nAttendance: ${record.totalAttendance}\nIncome: ${_formatCurrency(record.totalIncome)}',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontWeight: FontWeight.normal,
@@ -864,7 +865,7 @@ class _CorrelationChartsScreenState
                             );
                           } else {
                             return LineTooltipItem(
-                              'Tithe+Offerings\n$date: \$${(record.tithe + record.offerings).toStringAsFixed(2)}',
+                              'Tithe+Offerings\n$date: ${_formatCurrency(record.tithe + record.offerings)}',
                               const TextStyle(color: Colors.white),
                             );
                           }
@@ -888,6 +889,16 @@ class _CorrelationChartsScreenState
         ),
       ),
     );
+  }
+
+  String _formatCurrency(double amount) {
+    final settingsNotifier = ref.read(appSettingsProvider.notifier);
+    return settingsNotifier.formatCurrencyPrecise(amount);
+  }
+
+  String _formatCurrencyCompact(double amount) {
+    final currency = ref.read(appSettingsProvider).currency;
+    return '${currency.symbol} ${(amount / 1000).toStringAsFixed(0)}k';
   }
 
   Widget _buildLegendItem(String label, Color color) {

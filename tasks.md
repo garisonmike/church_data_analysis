@@ -386,18 +386,18 @@ Acceptance Criteria:
 
 # S4 — Centralized Formatting & Currency Application
 
-* [ ] Create centralized formatting service
-* [ ] Remove hardcoded currency symbols
-* [ ] Apply formatter to dashboard values
-* [ ] Apply formatter to all graphs
-* [ ] Ensure currency updates propagate globally
+* [x] Create centralized formatting service
+* [x] Remove hardcoded currency symbols
+* [x] Apply formatter to dashboard values
+* [x] Apply formatter to all graphs
+* [x] Ensure currency updates propagate globally
 
 Acceptance Criteria:
 
-* No `$` symbols hardcoded anywhere
-* Currency change updates dashboard and graphs
-* KES formatting is consistent everywhere
-* Restart preserves correct formatting
+* No `$` symbols hardcoded anywhere ✅
+* Currency change updates dashboard and graphs ✅
+* KES formatting is consistent everywhere ✅
+* Restart preserves correct formatting ✅
 
 ---
 

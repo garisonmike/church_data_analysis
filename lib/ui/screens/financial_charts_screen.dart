@@ -2,6 +2,7 @@ import 'package:church_analytics/database/app_database.dart' as db;
 import 'package:church_analytics/models/models.dart' as models;
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/admin_profile_service.dart';
+import 'package:church_analytics/services/settings_service.dart';
 import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
@@ -265,7 +266,7 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                               ? 'Tithe'
                               : 'Offerings';
                           return LineTooltipItem(
-                            '$label\n$date: \$${value.toStringAsFixed(2)}',
+                            '$label\n$date: ${_formatCurrency(value)}',
                             const TextStyle(color: Colors.white),
                           );
                         }).toList();
@@ -315,7 +316,7 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                           'MM/dd',
                         ).format(record.weekStartDate);
                         return BarTooltipItem(
-                          '$date\nTotal: \$${record.totalIncome.toStringAsFixed(2)}',
+                          '$date\nTotal: ${_formatCurrency(record.totalIncome)}',
                           const TextStyle(color: Colors.white),
                         );
                       },
@@ -538,19 +539,19 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
               alignment: WrapAlignment.center,
               children: [
                 _buildLegendItem(
-                  'Tithe: \$${totalTithe.toStringAsFixed(2)}',
+                  'Tithe: ${_formatCurrency(totalTithe)}',
                   Colors.blue,
                 ),
                 _buildLegendItem(
-                  'Offerings: \$${totalOfferings.toStringAsFixed(2)}',
+                  'Offerings: ${_formatCurrency(totalOfferings)}',
                   Colors.green,
                 ),
                 _buildLegendItem(
-                  'Emergency: \$${totalEmergency.toStringAsFixed(2)}',
+                  'Emergency: ${_formatCurrency(totalEmergency)}',
                   Colors.orange,
                 ),
                 _buildLegendItem(
-                  'Planned: \$${totalPlanned.toStringAsFixed(2)}',
+                  'Planned: ${_formatCurrency(totalPlanned)}',
                   Colors.purple,
                 ),
               ],
@@ -694,7 +695,7 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                           ).format(record.weekStartDate);
                           if (spot.barIndex == 0) {
                             return LineTooltipItem(
-                              'Income\n$date: \$${record.totalIncome.toStringAsFixed(2)}',
+                              'Income\n$date: ${_formatCurrency(record.totalIncome)}',
                               const TextStyle(color: Colors.white),
                             );
                           } else {
@@ -723,6 +724,11 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
         ),
       ),
     );
+  }
+
+  String _formatCurrency(double amount) {
+    final settingsNotifier = ref.read(appSettingsProvider.notifier);
+    return settingsNotifier.formatCurrencyPrecise(amount);
   }
 
   Widget _buildLegendItem(String label, Color color) {

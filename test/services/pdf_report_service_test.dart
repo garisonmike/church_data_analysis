@@ -95,7 +95,7 @@ void main() {
           ),
           KpiMetric(
             label: 'Total Income',
-            value: '\$5000',
+            value: 'KES 5000.00',
             subtitle: '12 weeks',
           ),
         ];
