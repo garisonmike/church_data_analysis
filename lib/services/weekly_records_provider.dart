@@ -81,11 +81,10 @@ final chartTimeRangeProvider = StateProvider<ChartTimeRange>((ref) {
 final currentAdminIdProvider = FutureProvider<int?>((ref) async {
   try {
     final prefs = await SharedPreferences.getInstance();
-    final adminDb = AppDatabase();
+    final adminDb = ref.watch(databaseProvider);
     final adminRepo = AdminUserRepository(adminDb);
     final profileService = AdminProfileService(adminRepo, prefs);
     final currentAdminId = profileService.getCurrentProfileId();
-    await adminDb.close();
     return currentAdminId;
   } catch (e) {
     return null;
@@ -99,7 +98,8 @@ final weeklyRecordsProvider =
       WeeklyRecordsState,
       WeeklyRecordsParams
     >((ref, params) {
-      return WeeklyRecordsNotifier(params);
+      final database = ref.watch(databaseProvider);
+      return WeeklyRecordsNotifier(params, database);
     });
 
 /// Convenience provider that combines church ID and current time range
@@ -137,8 +137,10 @@ final weeklyRecordsForChurchProvider =
 /// State notifier for managing weekly records
 class WeeklyRecordsNotifier extends StateNotifier<WeeklyRecordsState> {
   final WeeklyRecordsParams params;
+  final AppDatabase database;
 
-  WeeklyRecordsNotifier(this.params) : super(const WeeklyRecordsState()) {
+  WeeklyRecordsNotifier(this.params, this.database)
+    : super(const WeeklyRecordsState()) {
     _loadData();
   }
 
@@ -146,9 +148,7 @@ class WeeklyRecordsNotifier extends StateNotifier<WeeklyRecordsState> {
   Future<void> _loadData() async {
     state = state.copyWith(isLoading: true, error: null);
 
-    AppDatabase? database;
     try {
-      database = AppDatabase();
       final repository = WeeklyRecordRepository(database);
 
       List<models.WeeklyRecord> records;
@@ -185,8 +185,6 @@ class WeeklyRecordsNotifier extends StateNotifier<WeeklyRecordsState> {
         isLoading: false,
         error: 'Error loading data: ${e.toString()}',
       );
-    } finally {
-      await database?.close();
     }
   }
 

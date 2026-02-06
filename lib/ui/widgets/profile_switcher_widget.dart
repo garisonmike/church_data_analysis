@@ -3,9 +3,10 @@ import 'package:church_analytics/models/admin_user.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// A widget that displays the current admin profile and allows switching between profiles
-class ProfileSwitcherWidget extends StatelessWidget {
+class ProfileSwitcherWidget extends ConsumerWidget {
   final int churchId;
   final AdminProfileService profileService;
   final VoidCallback? onProfileChanged;
@@ -18,7 +19,7 @@ class ProfileSwitcherWidget extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return FutureBuilder<AdminUser?>(
       future: profileService.getCurrentProfile(),
       builder: (context, snapshot) {
@@ -69,9 +70,9 @@ class ProfileSwitcherWidget extends StatelessWidget {
           ),
           onSelected: (value) async {
             if (value == 'switch') {
-              await _showProfileSelectionDialog(context);
+              await _showProfileSelectionDialog(context, ref);
             } else if (value == 'create') {
-              await _showCreateProfileDialog(context);
+              await _showCreateProfileDialog(context, ref);
             }
           },
           itemBuilder: (context) => [
@@ -101,11 +102,13 @@ class ProfileSwitcherWidget extends StatelessWidget {
     );
   }
 
-  Future<void> _showProfileSelectionDialog(BuildContext context) async {
-    final database = db.AppDatabase();
+  Future<void> _showProfileSelectionDialog(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
+    final database = ref.read(db.databaseProvider);
     final repository = AdminUserRepository(database);
     final profiles = await repository.getActiveUsersByChurch(churchId);
-    await database.close();
 
     if (!context.mounted) return;
 
@@ -197,7 +200,10 @@ class ProfileSwitcherWidget extends StatelessWidget {
     );
   }
 
-  Future<void> _showCreateProfileDialog(BuildContext context) async {
+  Future<void> _showCreateProfileDialog(
+    BuildContext context,
+    WidgetRef ref,
+  ) async {
     final usernameController = TextEditingController();
     final fullNameController = TextEditingController();
     final emailController = TextEditingController();

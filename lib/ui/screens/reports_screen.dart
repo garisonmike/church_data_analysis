@@ -56,24 +56,16 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
   // Helper to get data for exports
   Future<List<WeeklyRecord>> _getRecords() async {
-    final database = db.AppDatabase();
-    try {
-      final repository = WeeklyRecordRepository(database);
-      return await repository.getRecordsByChurch(widget.churchId);
-    } finally {
-      await database.close();
-    }
+    final database = ref.read(db.databaseProvider);
+    final repository = WeeklyRecordRepository(database);
+    return await repository.getRecordsByChurch(widget.churchId);
   }
 
   Future<List<Church>> _getChurches() async {
-    final database = db.AppDatabase();
-    try {
-      final repository = ChurchRepository(database);
-      final church = await repository.getChurchById(widget.churchId);
-      return church != null ? [church] : [];
-    } finally {
-      await database.close();
-    }
+    final database = ref.read(db.databaseProvider);
+    final repository = ChurchRepository(database);
+    final church = await repository.getChurchById(widget.churchId);
+    return church != null ? [church] : [];
   }
 
   Future<List<AdminUser>> _getAdmins() async {

@@ -3,20 +3,22 @@ import 'package:church_analytics/models/models.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Widget for selecting and switching between churches
 /// Displays the current church and allows switching or creating new churches
-class ChurchSelectorWidget extends StatefulWidget {
+class ChurchSelectorWidget extends ConsumerStatefulWidget {
   final VoidCallback? onChurchChanged;
 
   const ChurchSelectorWidget({super.key, this.onChurchChanged});
 
   @override
-  State<ChurchSelectorWidget> createState() => _ChurchSelectorWidgetState();
+  ConsumerState<ChurchSelectorWidget> createState() =>
+      _ChurchSelectorWidgetState();
 }
 
-class _ChurchSelectorWidgetState extends State<ChurchSelectorWidget> {
+class _ChurchSelectorWidgetState extends ConsumerState<ChurchSelectorWidget> {
   ChurchService? _churchService;
   Church? _currentChurch;
   bool _isLoading = true;
@@ -29,7 +31,7 @@ class _ChurchSelectorWidgetState extends State<ChurchSelectorWidget> {
 
   Future<void> _initializeService() async {
     final prefs = await SharedPreferences.getInstance();
-    final db = AppDatabase();
+    final db = ref.read(databaseProvider);
     final churchRepo = ChurchRepository(db);
 
     setState(() {

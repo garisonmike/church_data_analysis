@@ -2,18 +2,19 @@ import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Startup gate that enforces required context (church + admin profile)
 /// before allowing the user into the dashboard.
-class StartupGateScreen extends StatefulWidget {
+class StartupGateScreen extends ConsumerStatefulWidget {
   const StartupGateScreen({super.key});
 
   @override
-  State<StartupGateScreen> createState() => _StartupGateScreenState();
+  ConsumerState<StartupGateScreen> createState() => _StartupGateScreenState();
 }
 
-class _StartupGateScreenState extends State<StartupGateScreen> {
+class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
   Object? _error;
 
   @override
@@ -25,77 +26,71 @@ class _StartupGateScreenState extends State<StartupGateScreen> {
   Future<void> _routeFromState() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final db = AppDatabase();
-      try {
-        final churchRepo = ChurchRepository(db);
-        final adminRepo = AdminUserRepository(db);
+      final db = ref.read(databaseProvider);
+      final churchRepo = ChurchRepository(db);
+      final adminRepo = AdminUserRepository(db);
 
-        final churchService = ChurchService(churchRepo, prefs);
-        final profileService = AdminProfileService(adminRepo, prefs);
+      final churchService = ChurchService(churchRepo, prefs);
+      final profileService = AdminProfileService(adminRepo, prefs);
 
-        final churches = await churchRepo.getAllChurches();
-        if (churches.isEmpty) {
-          await churchService.clearCurrentChurch();
-          await profileService.clearCurrentProfile();
-          if (!mounted) return;
-          Navigator.of(context).pushReplacementNamed('/select-church');
-          return;
-        }
+      final churches = await churchRepo.getAllChurches();
+      if (churches.isEmpty) {
+        await churchService.clearCurrentChurch();
+        await profileService.clearCurrentProfile();
+        if (!mounted) return;
+        Navigator.of(context).pushReplacementNamed('/select-church');
+        return;
+      }
 
-        final currentChurchId = churchService.getCurrentChurchId();
-        if (currentChurchId == null) {
-          await churchService.clearCurrentChurch();
-          await profileService.clearCurrentProfile();
-          if (!mounted) return;
-          Navigator.of(context).pushReplacementNamed('/select-church');
-          return;
-        }
+      final currentChurchId = churchService.getCurrentChurchId();
+      if (currentChurchId == null) {
+        await churchService.clearCurrentChurch();
+        await profileService.clearCurrentProfile();
+        if (!mounted) return;
+        Navigator.of(context).pushReplacementNamed('/select-church');
+        return;
+      }
 
-        final currentChurchExists = churches.any(
-          (c) => c.id == currentChurchId,
-        );
-        if (!currentChurchExists) {
-          await churchService.clearCurrentChurch();
-          await profileService.clearCurrentProfile();
-          if (!mounted) return;
-          Navigator.of(context).pushReplacementNamed('/select-church');
-          return;
-        }
+      final currentChurchExists = churches.any((c) => c.id == currentChurchId);
+      if (!currentChurchExists) {
+        await churchService.clearCurrentChurch();
+        await profileService.clearCurrentProfile();
+        if (!mounted) return;
+        Navigator.of(context).pushReplacementNamed('/select-church');
+        return;
+      }
 
-        final churchId = currentChurchId;
+      final churchId = currentChurchId;
 
-        // Admin profile must exist, be active, and belong to the selected church.
-        final currentProfileId = profileService.getCurrentProfileId();
-        if (currentProfileId == null) {
-          if (!mounted) return;
-          Navigator.of(
-            context,
-          ).pushReplacementNamed('/select-profile', arguments: churchId);
-          return;
-        }
-
-        final currentProfile = await adminRepo.getUserById(currentProfileId);
-        final validProfile =
-            currentProfile != null &&
-            currentProfile.isActive &&
-            currentProfile.churchId == churchId;
-
-        if (!validProfile) {
-          await profileService.clearCurrentProfile();
-          if (!mounted) return;
-          Navigator.of(
-            context,
-          ).pushReplacementNamed('/select-profile', arguments: churchId);
-          return;
-        }
-
+      // Admin profile must exist, be active, and belong to the selected church.
+      final currentProfileId = profileService.getCurrentProfileId();
+      if (currentProfileId == null) {
         if (!mounted) return;
         Navigator.of(
           context,
-        ).pushReplacementNamed('/dashboard', arguments: churchId);
-      } finally {
-        await db.close();
+        ).pushReplacementNamed('/select-profile', arguments: churchId);
+        return;
       }
+
+      final currentProfile = await adminRepo.getUserById(currentProfileId);
+      final validProfile =
+          currentProfile != null &&
+          currentProfile.isActive &&
+          currentProfile.churchId == churchId;
+
+      if (!validProfile) {
+        await profileService.clearCurrentProfile();
+        if (!mounted) return;
+        Navigator.of(
+          context,
+        ).pushReplacementNamed('/select-profile', arguments: churchId);
+        return;
+      }
+
+      if (!mounted) return;
+      Navigator.of(
+        context,
+      ).pushReplacementNamed('/dashboard', arguments: churchId);
     } catch (e) {
       if (!mounted) return;
       setState(() {

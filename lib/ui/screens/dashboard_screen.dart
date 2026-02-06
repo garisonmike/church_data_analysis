@@ -36,7 +36,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   Future<void> _initializeProfileService() async {
-    final database = AppDatabase();
+    final database = ref.read(databaseProvider);
     final repository = AdminUserRepository(database);
     final prefs = await SharedPreferences.getInstance();
 
@@ -55,9 +55,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       _errorMessage = null;
     });
 
-    AppDatabase? database;
     try {
-      database = AppDatabase();
+      final database = ref.read(databaseProvider);
       final repository = WeeklyRecordRepository(database);
 
       // Get current admin ID if profile service is initialized
@@ -110,8 +109,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           _isLoading = false;
         });
       }
-    } finally {
-      await database?.close();
     }
   }
 

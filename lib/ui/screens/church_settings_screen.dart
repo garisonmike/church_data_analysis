@@ -3,19 +3,21 @@ import 'package:church_analytics/models/models.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Screen for viewing and editing church settings
-class ChurchSettingsScreen extends StatefulWidget {
+class ChurchSettingsScreen extends ConsumerStatefulWidget {
   final int churchId;
 
   const ChurchSettingsScreen({super.key, required this.churchId});
 
   @override
-  State<ChurchSettingsScreen> createState() => _ChurchSettingsScreenState();
+  ConsumerState<ChurchSettingsScreen> createState() =>
+      _ChurchSettingsScreenState();
 }
 
-class _ChurchSettingsScreenState extends State<ChurchSettingsScreen> {
+class _ChurchSettingsScreenState extends ConsumerState<ChurchSettingsScreen> {
   final _formKey = GlobalKey<FormState>();
   ChurchService? _churchService;
   Church? _church;
@@ -51,7 +53,7 @@ class _ChurchSettingsScreenState extends State<ChurchSettingsScreen> {
 
   Future<void> _initializeService() async {
     final prefs = await SharedPreferences.getInstance();
-    final db = AppDatabase();
+    final db = ref.read(databaseProvider);
     final churchRepo = ChurchRepository(db);
 
     setState(() {

@@ -1,4 +1,4 @@
-import 'package:church_analytics/database/app_database.dart';
+import 'package:church_analytics/database/app_database.dart' as db;
 import 'package:church_analytics/models/models.dart' as models;
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/admin_profile_service.dart';
@@ -36,18 +36,15 @@ class _AdvancedChartsScreenState extends ConsumerState<AdvancedChartsScreen> {
       _errorMessage = null;
     });
 
-    AppDatabase? database;
     try {
-      database = AppDatabase();
+      final database = ref.read(db.databaseProvider);
       final repository = WeeklyRecordRepository(database);
 
       // Get current admin ID to filter records
       final prefs = await SharedPreferences.getInstance();
-      final adminDb = AppDatabase();
-      final adminRepo = AdminUserRepository(adminDb);
+      final adminRepo = AdminUserRepository(database);
       final profileService = AdminProfileService(adminRepo, prefs);
       final currentAdminId = profileService.getCurrentProfileId();
-      await adminDb.close();
 
       // Get records for the last 12 weeks - filtered by admin if ID exists
       List<models.WeeklyRecord> records;
@@ -74,8 +71,6 @@ class _AdvancedChartsScreenState extends ConsumerState<AdvancedChartsScreen> {
           _isLoading = false;
         });
       }
-    } finally {
-      await database?.close();
     }
   }
 

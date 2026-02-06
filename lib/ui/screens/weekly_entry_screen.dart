@@ -69,7 +69,7 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
 
   Future<void> _initializeChurchService() async {
     final prefs = await SharedPreferences.getInstance();
-    final db = AppDatabase();
+    final db = ref.read(databaseProvider);
     final churchRepo = ChurchRepository(db);
 
     setState(() {
@@ -249,9 +249,8 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
       _isLoading = true;
     });
 
-    AppDatabase? database;
     try {
-      database = AppDatabase();
+      final database = ref.read(databaseProvider);
       final repository = WeeklyRecordRepository(database);
 
       // Check for duplicate week (only if creating new or date changed)
@@ -277,11 +276,9 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
 
       // Get current admin ID
       final prefs = await SharedPreferences.getInstance();
-      final adminDb = AppDatabase();
-      final adminRepo = AdminUserRepository(adminDb);
+      final adminRepo = AdminUserRepository(database);
       final profileService = AdminProfileService(adminRepo, prefs);
       final currentAdminId = profileService.getCurrentProfileId();
-      await adminDb.close();
 
       final record = models.WeeklyRecord(
         id: widget.existingRecord?.id ?? 0, // 0 for new records
@@ -328,9 +325,6 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
         _errorMessage = 'Error saving record: ${e.toString()}';
         _isLoading = false;
       });
-    } finally {
-      // Always close database
-      await database?.close();
     }
   }
 

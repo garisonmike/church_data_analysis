@@ -3,16 +3,18 @@ import 'package:church_analytics/models/church.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class ChurchSelectionScreen extends StatefulWidget {
+class ChurchSelectionScreen extends ConsumerStatefulWidget {
   const ChurchSelectionScreen({super.key});
 
   @override
-  State<ChurchSelectionScreen> createState() => _ChurchSelectionScreenState();
+  ConsumerState<ChurchSelectionScreen> createState() =>
+      _ChurchSelectionScreenState();
 }
 
-class _ChurchSelectionScreenState extends State<ChurchSelectionScreen> {
+class _ChurchSelectionScreenState extends ConsumerState<ChurchSelectionScreen> {
   bool _loading = true;
   Object? _error;
   List<Church> _churches = const [];
@@ -30,17 +32,13 @@ class _ChurchSelectionScreenState extends State<ChurchSelectionScreen> {
     });
 
     try {
-      final database = db.AppDatabase();
-      try {
-        final repo = ChurchRepository(database);
-        final churches = await repo.getAllChurches();
-        if (mounted) {
-          setState(() {
-            _churches = churches;
-          });
-        }
-      } finally {
-        await database.close();
+      final database = ref.read(db.databaseProvider);
+      final repo = ChurchRepository(database);
+      final churches = await repo.getAllChurches();
+      if (mounted) {
+        setState(() {
+          _churches = churches;
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -63,22 +61,18 @@ class _ChurchSelectionScreenState extends State<ChurchSelectionScreen> {
     final navigator = Navigator.of(context);
 
     final prefs = await SharedPreferences.getInstance();
-    final database = db.AppDatabase();
-    try {
-      final churchService = ChurchService(ChurchRepository(database), prefs);
-      final ok = await churchService.setCurrentChurchId(church.id!);
-      if (!ok) {
-        throw StateError('Failed to select church');
-      }
-
-      if (!mounted) return;
-      navigator.pushReplacementNamed('/');
-    } finally {
-      await database.close();
+    final database = ref.read(db.databaseProvider);
+    final churchService = ChurchService(ChurchRepository(database), prefs);
+    final ok = await churchService.setCurrentChurchId(church.id!);
+    if (!ok) {
+      throw StateError('Failed to select church');
     }
+
+    if (!mounted) return;
+    navigator.pushReplacementNamed('/');
   }
 
-  Future<void> _createChurch() async {
+  Future<void> createChurch() async {
     final nameController = TextEditingController();
     final addressController = TextEditingController();
     final emailController = TextEditingController();
@@ -186,14 +180,10 @@ class _ChurchSelectionScreenState extends State<ChurchSelectionScreen> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final database = db.AppDatabase();
-      try {
-        final churchService = ChurchService(ChurchRepository(database), prefs);
-        final newId = await churchService.createChurch(church);
-        await churchService.setCurrentChurchId(newId);
-      } finally {
-        await database.close();
-      }
+      final database = ref.read(db.databaseProvider);
+      final churchService = ChurchService(ChurchRepository(database), prefs);
+      final newId = await churchService.createChurch(church);
+      await churchService.setCurrentChurchId(newId);
 
       if (!mounted) return;
       await _load();
@@ -215,7 +205,7 @@ class _ChurchSelectionScreenState extends State<ChurchSelectionScreen> {
         actions: [
           IconButton(
             tooltip: 'Create church',
-            onPressed: _createChurch,
+            onPressed: createChurch,
             icon: const Icon(Icons.add),
           ),
         ],
@@ -237,7 +227,7 @@ class _ChurchSelectionScreenState extends State<ChurchSelectionScreen> {
                     ),
                     const SizedBox(height: 12),
                     ElevatedButton.icon(
-                      onPressed: _createChurch,
+                      onPressed: createChurch,
                       icon: const Icon(Icons.add),
                       label: const Text('Create Church'),
                     ),

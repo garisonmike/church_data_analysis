@@ -336,11 +336,11 @@
 
 # S1 — App-Scoped Database Lifecycle
 
-* [ ] Create a single AppDatabase provider (Riverpod)
-* [ ] Ensure only one AppDatabase instance exists app-wide
-* [ ] Remove all ad-hoc `AppDatabase()` instantiations
-* [ ] Fix dashboard DB lifecycle leak
-* [ ] Properly dispose database on app exit
+* [x] Create a single AppDatabase provider (Riverpod)
+* [x] Ensure only one AppDatabase instance exists app-wide
+* [x] Remove all ad-hoc `AppDatabase()` instantiations
+* [x] Fix dashboard DB lifecycle leak
+* [x] Properly dispose database on app exit
 
 Acceptance Criteria:
 

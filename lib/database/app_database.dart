@@ -1,7 +1,19 @@
 import 'package:church_analytics/database/connection/connection.dart';
 import 'package:drift/drift.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 part 'app_database.g.dart';
+
+/// Global provider for the app database
+/// This ensures only one database instance exists throughout the app lifecycle
+final databaseProvider = Provider<AppDatabase>((ref) {
+  final database = AppDatabase();
+  // Dispose the database when the provider is disposed
+  ref.onDispose(() {
+    database.close();
+  });
+  return database;
+});
 
 /// Churches table definition
 class Churches extends Table {

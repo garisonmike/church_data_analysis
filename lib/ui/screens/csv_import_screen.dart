@@ -126,11 +126,10 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
 
     // Get current admin ID
     final prefs = await SharedPreferences.getInstance();
-    final database = AppDatabase();
+    final database = ref.read(databaseProvider);
     final adminRepo = AdminUserRepository(database);
     final profileService = AdminProfileService(adminRepo, prefs);
     final currentAdminId = profileService.getCurrentProfileId();
-    await database.close();
 
     for (var i = 0; i < _rows!.length; i++) {
       final result = _csvService.validateAndConvertRow(
@@ -195,9 +194,8 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
       _errorMessage = null;
     });
 
-    AppDatabase? database;
     try {
-      database = AppDatabase();
+      final database = ref.read(databaseProvider);
       final repository = WeeklyRecordRepository(database);
 
       int successCount = 0;
@@ -273,8 +271,6 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
         _errorMessage = 'Import failed: ${e.toString()}';
         _isLoading = false;
       });
-    } finally {
-      await database?.close();
     }
   }
 

@@ -3,18 +3,21 @@ import 'package:church_analytics/models/admin_user.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class ProfileSelectionScreen extends StatefulWidget {
+class ProfileSelectionScreen extends ConsumerStatefulWidget {
   final int churchId;
 
   const ProfileSelectionScreen({super.key, required this.churchId});
 
   @override
-  State<ProfileSelectionScreen> createState() => _ProfileSelectionScreenState();
+  ConsumerState<ProfileSelectionScreen> createState() =>
+      _ProfileSelectionScreenState();
 }
 
-class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
+class _ProfileSelectionScreenState
+    extends ConsumerState<ProfileSelectionScreen> {
   bool _loading = true;
   Object? _error;
   List<AdminUser> _profiles = const [];
@@ -32,17 +35,13 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
     });
 
     try {
-      final database = db.AppDatabase();
-      try {
-        final repo = AdminUserRepository(database);
-        final profiles = await repo.getActiveUsersByChurch(widget.churchId);
-        if (mounted) {
-          setState(() {
-            _profiles = profiles;
-          });
-        }
-      } finally {
-        await database.close();
+      final database = ref.read(db.databaseProvider);
+      final repo = AdminUserRepository(database);
+      final profiles = await repo.getActiveUsersByChurch(widget.churchId);
+      if (mounted) {
+        setState(() {
+          _profiles = profiles;
+        });
       }
     } catch (e) {
       if (mounted) {
@@ -65,19 +64,15 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
     final navigator = Navigator.of(context);
 
     final prefs = await SharedPreferences.getInstance();
-    final database = db.AppDatabase();
-    try {
-      final service = AdminProfileService(AdminUserRepository(database), prefs);
-      final ok = await service.switchProfile(profile.id!);
-      if (!ok) {
-        throw StateError('Failed to switch profile');
-      }
-
-      if (!mounted) return;
-      navigator.pushReplacementNamed('/');
-    } finally {
-      await database.close();
+    final database = ref.read(db.databaseProvider);
+    final service = AdminProfileService(AdminUserRepository(database), prefs);
+    final ok = await service.switchProfile(profile.id!);
+    if (!ok) {
+      throw StateError('Failed to switch profile');
     }
+
+    if (!mounted) return;
+    navigator.pushReplacementNamed('/');
   }
 
   Future<void> _createProfile() async {
@@ -142,24 +137,17 @@ class _ProfileSelectionScreenState extends State<ProfileSelectionScreen> {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      final database = db.AppDatabase();
-      try {
-        final service = AdminProfileService(
-          AdminUserRepository(database),
-          prefs,
-        );
-        await service.createProfile(
-          username: usernameController.text.trim(),
-          fullName: fullNameController.text.trim(),
-          email: emailController.text.trim().isEmpty
-              ? null
-              : emailController.text.trim(),
-          churchId: widget.churchId,
-          setAsActive: true,
-        );
-      } finally {
-        await database.close();
-      }
+      final database = ref.read(db.databaseProvider);
+      final service = AdminProfileService(AdminUserRepository(database), prefs);
+      await service.createProfile(
+        username: usernameController.text.trim(),
+        fullName: fullNameController.text.trim(),
+        email: emailController.text.trim().isEmpty
+            ? null
+            : emailController.text.trim(),
+        churchId: widget.churchId,
+        setAsActive: true,
+      );
 
       if (!mounted) return;
       await _load();
