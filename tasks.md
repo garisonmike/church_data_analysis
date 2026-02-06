@@ -328,6 +328,112 @@
 * [x] Verify restore correctness
 
 ---
+# Phase S — Stability, Architecture & Safety
+
+> This phase stabilizes the app before further UX or feature expansion. No new features. No visual refactors. Goal is correctness, safety, and future-proofing.
+
+---
+
+# S1 — App-Scoped Database Lifecycle
+
+* [ ] Create a single AppDatabase provider (Riverpod)
+* [ ] Ensure only one AppDatabase instance exists app-wide
+* [ ] Remove all ad-hoc `AppDatabase()` instantiations
+* [ ] Fix dashboard DB lifecycle leak
+* [ ] Properly dispose database on app exit
+
+Acceptance Criteria:
+
+* Only one AppDatabase instance exists at runtime
+* No screen or service directly instantiates AppDatabase
+* Dashboard no longer creates or leaks DB instances
+* App runs without DB warnings or locks
+* flutter analyze shows no DB lifecycle issues
+
+---
+
+# S2 — Safe Provider Defaults (No Crash Footguns)
+
+* [ ] Remove `throw UnimplementedError` from providers
+* [ ] Provide safe default implementations
+* [ ] Allow ProviderScope overrides but do not require them
+* [ ] App must not crash when overrides are missing
+
+Acceptance Criteria:
+
+* App boots without ProviderScope overrides
+* Tests no longer crash due to missing providers
+* Overrides still work when explicitly provided
+* No runtime crashes caused by provider initialization
+
+---
+
+# S3 — Fix & Stabilize Test Suite
+
+* [ ] Fix ProviderScope overrides in all tests
+* [ ] Remove duplicate attendance test
+* [ ] Ensure tests use real-safe providers
+* [ ] Run full test suite
+
+Acceptance Criteria:
+
+* `flutter test` passes with zero failures
+* No test-only hacks or conditional code
+* Tests reflect real app behavior
+* CI-ready test stability
+
+---
+
+# S4 — Centralized Formatting & Currency Application
+
+* [ ] Create centralized formatting service
+* [ ] Remove hardcoded currency symbols
+* [ ] Apply formatter to dashboard values
+* [ ] Apply formatter to all graphs
+* [ ] Ensure currency updates propagate globally
+
+Acceptance Criteria:
+
+* No `$` symbols hardcoded anywhere
+* Currency change updates dashboard and graphs
+* KES formatting is consistent everywhere
+* Restart preserves correct formatting
+
+---
+
+# S5 — Demo Mode vs Real Mode Boundary
+
+* [ ] Introduce explicit demo mode flag
+* [ ] Restrict auto-seeding to demo mode only
+* [ ] Ensure real installs start with empty data
+* [ ] Prevent admin/demo auto-creation in real mode
+
+Acceptance Criteria:
+
+* Fresh real install has no demo data
+* Demo mode loads sample data predictably
+* User can clearly distinguish demo vs real mode
+* No unintended reseeding occurs
+
+---
+
+# S6 — Navigation Safety Hardening
+
+* [ ] Add safe fallback route for unknown paths
+* [ ] Prevent null route returns
+* [ ] Guard `/entry` route consistently
+* [ ] Ensure navigation failures do not crash app
+
+Acceptance Criteria:
+
+* Unknown routes show fallback screen
+* `/entry` route behavior matches other guarded routes
+* No navigation-related runtime exceptions
+* App navigation is resilient
+
+---
+# Phase U — UX, Configurability & Production Safety.
+---
 
 # UX1 — App Settings (Currency, Location Defaults, Kenyan Presets)
 
@@ -506,7 +612,3 @@ Acceptance Criteria:
 
 ---
 
-
-# ✅ Usage
-
-Copy this file directly into your repository as `tasks.md`. Copilot should only tick checkboxes — not re
