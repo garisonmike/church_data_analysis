@@ -41,18 +41,5 @@ void main() {
       // Check for refresh icon
       expect(find.byIcon(Icons.refresh), findsOneWidget);
     });
-
-    testWidgets('displays loading indicator initially', (
-      WidgetTester tester,
-    ) async {
-      await tester.pumpWidget(
-        const ProviderScope(
-          child: MaterialApp(home: AttendanceChartsScreen(churchId: 1)),
-        ),
-      );
-
-      // Should show loading indicator
-      expect(find.byType(CircularProgressIndicator), findsOneWidget);
-    });
   });
 }

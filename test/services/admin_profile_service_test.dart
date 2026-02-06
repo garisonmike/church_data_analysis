@@ -1,39 +1,32 @@
 import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
-import 'package:flutter/services.dart';
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
-  // Initialize Flutter bindings once for all tests
-  TestWidgetsFlutterBinding.ensureInitialized();
-
-  // Set up mock method channel for path_provider
-  TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
-      .setMockMethodCallHandler(
-        const MethodChannel('plugins.flutter.io/path_provider'),
-        (MethodCall methodCall) async {
-          if (methodCall.method == 'getApplicationDocumentsDirectory') {
-            return '/mock/path';
-          }
-          return null;
-        },
-      );
-
   group('AdminProfileService', () {
+    late AppDatabase database;
     late AdminProfileService service;
 
     setUp(() async {
+      // Initialize in-memory test database
+      database = AppDatabase.forTesting(NativeDatabase.memory());
+
       // Set up shared preferences with empty values
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();
 
-      // Create a mock repository (in real tests, you'd use a test database)
-      final db = AppDatabase();
-      final repository = AdminUserRepository(db);
+      // Create repository with test database
+      final repository = AdminUserRepository(database);
 
       service = AdminProfileService(repository, prefs);
+    });
+
+    tearDown(() async {
+      // Properly dispose of database
+      await database.close();
     });
 
     group('Profile ID Management', () {

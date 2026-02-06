@@ -105,10 +105,13 @@ class _AttendanceChartsScreenState
         title: const Text('Attendance Charts'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          // Time range selector in app bar
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            child: TimeRangeSelector(compact: true),
+          // Time range selector in app bar (constrained to prevent overflow)
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: TimeRangeSelector(compact: true),
+            ),
           ),
           IconButton(
             icon: const Icon(Icons.refresh),

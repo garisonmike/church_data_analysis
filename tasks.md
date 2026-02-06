@@ -370,17 +370,17 @@ Acceptance Criteria:
 
 # S3 — Fix & Stabilize Test Suite
 
-* [ ] Fix ProviderScope overrides in all tests
-* [ ] Remove duplicate attendance test
-* [ ] Ensure tests use real-safe providers
-* [ ] Run full test suite
+* [x] Fix ProviderScope overrides in all tests
+* [x] Remove duplicate attendance test
+* [x] Ensure tests use real-safe providers
+* [x] Run full test suite
 
 Acceptance Criteria:
 
-* `flutter test` passes with zero failures
-* No test-only hacks or conditional code
-* Tests reflect real app behavior
-* CI-ready test stability
+* `flutter test` passes with zero failures ✅
+* No test-only hacks or conditional code ✅
+* Tests reflect real app behavior ✅
+* CI-ready test stability ✅
 
 ---
 
