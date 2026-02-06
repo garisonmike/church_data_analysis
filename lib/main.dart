@@ -26,6 +26,8 @@ void main() async {
   runApp(
     ProviderScope(
       overrides: [
+        // Override with real SharedPreferences for persistence
+        // Without this override, app uses non-persisting in-memory implementation
         sharedPreferencesProvider.overrideWithValue(sharedPreferences),
         platformBrightnessProvider.overrideWith(
           (ref) =>

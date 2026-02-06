@@ -10,7 +10,7 @@ class AppThemes {
   static const Color _lightPrimary = Color(0xFF2196F3);
   static const Color _lightSurface = Color(0xFFFAFAFA);
   static const Color _lightBackground = Color(0xFFFFFFFF);
-  
+
   // Dark theme colors
   static const Color _darkPrimary = Color(0xFF90CAF9);
   static const Color _darkSurface = Color(0xFF121212);
@@ -112,15 +112,15 @@ class AppThemes {
 final themeProvider = Provider<ThemeData>((ref) {
   final settings = ref.watch(appSettingsProvider);
   final brightness = ref.watch(platformBrightnessProvider);
-  
+
   switch (settings.themeMode) {
     case AppThemeMode.light:
       return AppThemes.lightTheme;
     case AppThemeMode.dark:
       return AppThemes.darkTheme;
     case AppThemeMode.system:
-      return brightness == Brightness.dark 
-          ? AppThemes.darkTheme 
+      return brightness == Brightness.dark
+          ? AppThemes.darkTheme
           : AppThemes.lightTheme;
   }
 });
@@ -151,7 +151,7 @@ final themeModeProvider = Provider<ThemeMode>((ref) {
 final chartColorsProvider = Provider<List<Color>>((ref) {
   final settings = ref.watch(appSettingsProvider);
   final brightness = ref.watch(platformBrightnessProvider);
-  
+
   switch (settings.themeMode) {
     case AppThemeMode.light:
       return AppThemes.lightChartColors;
@@ -168,7 +168,7 @@ final chartColorsProvider = Provider<List<Color>>((ref) {
 final isDarkThemeProvider = Provider<bool>((ref) {
   final settings = ref.watch(appSettingsProvider);
   final brightness = ref.watch(platformBrightnessProvider);
-  
+
   switch (settings.themeMode) {
     case AppThemeMode.light:
       return false;

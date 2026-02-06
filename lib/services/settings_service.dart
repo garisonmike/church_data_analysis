@@ -42,9 +42,93 @@ class SettingsService {
   }
 }
 
+/// Mock SharedPreferences for safe default (non-persisting)
+class _InMemorySharedPreferences implements SharedPreferences {
+  final Map<String, Object> _data = {};
+
+  @override
+  Set<String> getKeys() => _data.keys.toSet();
+
+  @override
+  Object? get(String key) => _data[key];
+
+  @override
+  bool? getBool(String key) => _data[key] as bool?;
+
+  @override
+  double? getDouble(String key) => _data[key] as double?;
+
+  @override
+  int? getInt(String key) => _data[key] as int?;
+
+  @override
+  String? getString(String key) => _data[key] as String?;
+
+  @override
+  List<String>? getStringList(String key) =>
+      (_data[key] as List?)?.cast<String>();
+
+  @override
+  Future<bool> setBool(String key, bool value) async {
+    _data[key] = value;
+    return true;
+  }
+
+  @override
+  Future<bool> setDouble(String key, double value) async {
+    _data[key] = value;
+    return true;
+  }
+
+  @override
+  Future<bool> setInt(String key, int value) async {
+    _data[key] = value;
+    return true;
+  }
+
+  @override
+  Future<bool> setString(String key, String value) async {
+    _data[key] = value;
+    return true;
+  }
+
+  @override
+  Future<bool> setStringList(String key, List<String> value) async {
+    _data[key] = value;
+    return true;
+  }
+
+  @override
+  Future<bool> remove(String key) async {
+    _data.remove(key);
+    return true;
+  }
+
+  @override
+  Future<bool> clear() async {
+    _data.clear();
+    return true;
+  }
+
+  @override
+  Future<bool> commit() async => true;
+
+  @override
+  Future<void> reload() async {}
+
+  @override
+  bool containsKey(String key) => _data.containsKey(key);
+}
+
 /// Provider for SharedPreferences instance
+/// Safe default: Uses in-memory implementation (non-persisting)
+/// Should be overridden in main() with real SharedPreferences for persistence
+/// In tests: Override with SharedPreferences.getInstance() after setMockInitialValues()
 final sharedPreferencesProvider = Provider<SharedPreferences>((ref) {
-  throw UnimplementedError('SharedPreferences must be initialized in main()');
+  // Safe default: return non-persisting in-memory implementation
+  // This prevents crashes and allows app/tests to run without overrides
+  // For persistence, override in main() with await SharedPreferences.getInstance()
+  return _InMemorySharedPreferences();
 });
 
 /// Provider for SettingsService

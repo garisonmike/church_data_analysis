@@ -142,10 +142,7 @@ class AppSettingsScreen extends ConsumerWidget {
                         value: mode,
                         child: Row(
                           children: [
-                            Icon(
-                              _getThemeIcon(mode),
-                              size: 20,
-                            ),
+                            Icon(_getThemeIcon(mode), size: 20),
                             const SizedBox(width: 8),
                             Text(mode.displayName),
                           ],
@@ -163,7 +160,9 @@ class AppSettingsScreen extends ConsumerWidget {
                   Container(
                     padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
@@ -178,8 +177,8 @@ class AppSettingsScreen extends ConsumerWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                Theme.of(context).brightness == Brightness.dark 
-                                    ? 'Dark Mode' 
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? 'Dark Mode'
                                     : 'Light Mode',
                                 style: Theme.of(context).textTheme.titleMedium,
                               ),

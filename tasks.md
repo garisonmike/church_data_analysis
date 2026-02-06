@@ -354,10 +354,10 @@ Acceptance Criteria:
 
 # S2 — Safe Provider Defaults (No Crash Footguns)
 
-* [ ] Remove `throw UnimplementedError` from providers
-* [ ] Provide safe default implementations
-* [ ] Allow ProviderScope overrides but do not require them
-* [ ] App must not crash when overrides are missing
+* [x] Remove `throw UnimplementedError` from providers
+* [x] Provide safe default implementations
+* [x] Allow ProviderScope overrides but do not require them  
+* [x] App must not crash when overrides are missing
 
 Acceptance Criteria:
 
