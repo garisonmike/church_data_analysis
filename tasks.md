@@ -612,3 +612,120 @@ Acceptance Criteria:
 
 ---
 
+## Phase R — Release Readiness (Interactive Analytics & UX Finalization)
+
+> Goal: Make the app genuinely usable and trustworthy for real users before any public/beta release.
+> Scope: UX + analytics behavior only. No architectural refactors (Phase S already completed).
+
+### R1 — Interactive Graph Engine (Pan / Zoom / Resize)
+
+* [ ] Replace static chart widgets with interactive chart widgets (pan, zoom, scale)
+* [ ] Support time-range control (e.g. week range slider or selector)
+* [ ] Graphs must resize correctly with window/screen size
+
+**Acceptance Criteria**
+
+* User can pan and zoom graphs smoothly (desktop + mobile)
+* Resizing the window resizes graphs without overflow or clipping
+* No loss of existing graph types
+* App compiles on all targets
+
+---
+
+### R2 — Global Currency Application (UI + Graphs)
+
+* [ ] Ensure selected currency applies everywhere (dashboard, tables, exports, graphs)
+* [ ] Update all graph Y-axes to display selected currency (e.g. KES, not $)
+* [ ] Remove any remaining hardcoded currency symbols
+
+**Acceptance Criteria**
+
+* Changing currency updates:
+
+  * Dashboard values
+  * All graph Y-axis labels
+  * Tooltips / legends (if present)
+  * Exported PDF/CSV headers
+* Default currency is KES
+* No "$" remains in UI unless USD is selected
+
+---
+
+### R3 — User-Selectable Graph Builder (X vs Y)
+
+* [ ] Add UI to let user choose what metric is plotted against what
+* [ ] Support Attendance vs Attendance, Attendance vs Funds, Funds vs Funds
+* [ ] Persist last selection locally
+
+**Acceptance Criteria**
+
+* User can select X-axis and Y-axis metrics
+* Graph updates live without restart
+* Invalid combinations are prevented gracefully
+* Existing predefined graphs still work
+
+---
+
+### R4 — Customizable Dashboard Layout
+
+* [ ] Allow users to choose which widgets appear on the dashboard
+* [ ] Persist dashboard layout locally
+* [ ] Provide sensible Kenyan-default dashboard on first run
+
+**Acceptance Criteria**
+
+* Users can add/remove dashboard widgets
+* Layout persists after app restart
+* No empty or broken dashboard state
+
+---
+
+### R5 — Safe CSV Import Configuration
+
+* [ ] Before import, allow user to map CSV columns to expected fields
+* [ ] Allow missing optional columns (e.g. Youth, Emergency Collection)
+* [ ] Show preview before committing import
+
+**Acceptance Criteria**
+
+* User explicitly confirms column mapping
+* Import never crashes on missing columns
+* No data written before confirmation
+
+---
+
+### R6 — Export Customization (PDF / CSV)
+
+* [ ] Let user choose export location
+* [ ] Let user choose what to include (graphs, tables, summaries)
+* [ ] Respect currency and locale in exports
+
+**Acceptance Criteria**
+
+* User controls export destination
+* Export reflects selected currency
+* Export content matches user selection
+
+---
+
+### R7 — Dark Mode & Visual Polish
+
+* [ ] Add dark mode toggle
+* [ ] Ensure charts and dashboard render correctly in dark mode
+
+**Acceptance Criteria**
+
+* Dark mode applies globally
+* Charts remain readable
+* User preference persists
+
+---
+
+### Phase R Exit Gate
+
+* [ ] All R-tasks completed
+* [ ] flutter test passes
+* [ ] Manual sanity check on desktop
+* [ ] No regression from Phase S
+
+> Only after this phase may a beta or release build be cut.
