@@ -1,8 +1,10 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../models/weekly_record.dart';
+import '../../services/settings_service.dart';
 import '../../services/weekly_records_provider.dart';
 import '../widgets/responsive_chart_container.dart';
 import '../widgets/time_range_selector.dart';
@@ -12,11 +14,13 @@ class ChartMetric {
   final String key;
   final String displayName;
   final String Function(WeeklyRecord) valueExtractor;
+  final bool isCurrency;
 
   const ChartMetric({
     required this.key,
     required this.displayName,
     required this.valueExtractor,
+    this.isCurrency = false,
   });
 
   double getValue(WeeklyRecord record) {
@@ -61,35 +65,102 @@ final List<ChartMetric> availableMetrics = [
     key: 'tithe',
     displayName: 'Tithe',
     valueExtractor: (record) => record.tithe.toString(),
+    isCurrency: true,
   ),
   ChartMetric(
     key: 'offerings',
     displayName: 'Offerings',
     valueExtractor: (record) => record.offerings.toString(),
+    isCurrency: true,
   ),
   ChartMetric(
     key: 'emergencyCollection',
     displayName: 'Emergency Collection',
     valueExtractor: (record) => record.emergencyCollection.toString(),
+    isCurrency: true,
   ),
   ChartMetric(
     key: 'plannedCollection',
     displayName: 'Planned Collection',
     valueExtractor: (record) => record.plannedCollection.toString(),
+    isCurrency: true,
   ),
   ChartMetric(
     key: 'totalIncome',
     displayName: 'Total Income',
     valueExtractor: (record) => record.totalIncome.toString(),
+    isCurrency: true,
   ),
 ];
 
 enum ChartType { scatter, line, bar }
 
-// Providers for the graph builder state
-final xAxisMetricProvider = StateProvider<ChartMetric?>((ref) => null);
-final yAxisMetricProvider = StateProvider<ChartMetric?>((ref) => null);
-final chartTypeProvider = StateProvider<ChartType>((ref) => ChartType.scatter);
+// StateNotifier for persisting metric selections
+class MetricSelectionNotifier extends StateNotifier<ChartMetric?> {
+  final String _key;
+
+  MetricSelectionNotifier(this._key, ChartMetric? initial) : super(initial) {
+    _loadSelection();
+  }
+
+  Future<void> _loadSelection() async {
+    final prefs = await SharedPreferences.getInstance();
+    final metricKey = prefs.getString(_key);
+    if (metricKey != null) {
+      final metric = availableMetrics.firstWhere(
+        (m) => m.key == metricKey,
+        orElse: () => availableMetrics.first,
+      );
+      state = metric;
+    }
+  }
+
+  Future<void> setMetric(ChartMetric? metric) async {
+    state = metric;
+    if (metric != null) {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_key, metric.key);
+    }
+  }
+}
+
+// StateNotifier for persisting chart type
+class ChartTypeNotifier extends StateNotifier<ChartType> {
+  static const String _key = 'custom_chart_type';
+
+  ChartTypeNotifier() : super(ChartType.scatter) {
+    _loadChartType();
+  }
+
+  Future<void> _loadChartType() async {
+    final prefs = await SharedPreferences.getInstance();
+    final typeIndex = prefs.getInt(_key);
+    if (typeIndex != null && typeIndex < ChartType.values.length) {
+      state = ChartType.values[typeIndex];
+    }
+  }
+
+  Future<void> setChartType(ChartType type) async {
+    state = type;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_key, type.index);
+  }
+}
+
+// Providers for the graph builder state with persistence
+final xAxisMetricProvider =
+    StateNotifierProvider<MetricSelectionNotifier, ChartMetric?>(
+      (ref) => MetricSelectionNotifier('custom_chart_x_axis', null),
+    );
+
+final yAxisMetricProvider =
+    StateNotifierProvider<MetricSelectionNotifier, ChartMetric?>(
+      (ref) => MetricSelectionNotifier('custom_chart_y_axis', null),
+    );
+
+final chartTypeProvider = StateNotifierProvider<ChartTypeNotifier, ChartType>(
+  (ref) => ChartTypeNotifier(),
+);
 
 class CustomGraphBuilderScreen extends ConsumerWidget {
   final int churchId;
@@ -100,6 +171,12 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final theme = Theme.of(context);
     final colorScheme = theme.colorScheme;
+    final xMetric = ref.watch(xAxisMetricProvider);
+    final yMetric = ref.watch(yAxisMetricProvider);
+
+    // Check for validation issues
+    final bool hasInvalidSelection =
+        xMetric != null && yMetric != null && xMetric.key == yMetric.key;
 
     return Scaffold(
       appBar: AppBar(
@@ -143,12 +220,37 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
 
                 // Chart type selector
                 _buildChartTypeSelector(ref),
+
+                // Validation warning
+                if (hasInvalidSelection) ...[
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.warning, color: Colors.orange.shade700),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            'Please select different metrics for X and Y axes',
+                            style: TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
 
           // Chart area
-          Expanded(child: _buildChart(ref, theme)),
+          Expanded(child: _buildChart(ref, theme, hasInvalidSelection)),
         ],
       ),
     );
@@ -156,7 +258,7 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
 
   Widget _buildMetricSelector(
     String label,
-    StateProvider<ChartMetric?> provider,
+    StateNotifierProvider<MetricSelectionNotifier, ChartMetric?> provider,
     WidgetRef ref,
   ) {
     final selectedMetric = ref.watch(provider);
@@ -186,7 +288,7 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
             );
           }).toList(),
           onChanged: (metric) {
-            ref.read(provider.notifier).state = metric;
+            ref.read(provider.notifier).setMetric(metric);
           },
         ),
       ],
@@ -227,14 +329,16 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
           ],
           selected: {selectedType},
           onSelectionChanged: (Set<ChartType> newSelection) {
-            ref.read(chartTypeProvider.notifier).state = newSelection.first;
+            ref
+                .read(chartTypeProvider.notifier)
+                .setChartType(newSelection.first);
           },
         ),
       ],
     );
   }
 
-  Widget _buildChart(WidgetRef ref, ThemeData theme) {
+  Widget _buildChart(WidgetRef ref, ThemeData theme, bool hasInvalidSelection) {
     final xMetric = ref.watch(xAxisMetricProvider);
     final yMetric = ref.watch(yAxisMetricProvider);
     final chartType = ref.watch(chartTypeProvider);
@@ -268,6 +372,35 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
             );
           }
 
+          // Show validation message if same metric selected
+          if (hasInvalidSelection) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.error_outline,
+                    size: 64,
+                    color: Colors.orange.shade700,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Cannot plot the same metric on both axes',
+                    style: TextStyle(
+                      color: theme.colorScheme.onSurfaceVariant,
+                      fontSize: 16,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Please select different metrics',
+                    style: TextStyle(fontSize: 14),
+                  ),
+                ],
+              ),
+            );
+          }
+
           if (records.isEmpty) {
             return Center(
               child: Text(
@@ -283,6 +416,7 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
             yMetric,
             chartType,
             theme,
+            ref,
           );
         },
       ),
@@ -295,6 +429,7 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
     ChartMetric yMetric,
     ChartType chartType,
     ThemeData theme,
+    WidgetRef ref,
   ) {
     final data = records
         .map(
@@ -305,12 +440,28 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
 
     switch (chartType) {
       case ChartType.scatter:
-        return _buildScatterChart(data, xMetric, yMetric, theme);
+        return _buildScatterChart(data, xMetric, yMetric, theme, ref);
       case ChartType.line:
-        return _buildLineChart(data, xMetric, yMetric, theme);
+        return _buildLineChart(data, xMetric, yMetric, theme, ref);
       case ChartType.bar:
-        return _buildBarChart(records, xMetric, yMetric, theme);
+        return _buildBarChart(records, xMetric, yMetric, theme, ref);
     }
+  }
+
+  String _formatAxisValue(double value, ChartMetric metric, WidgetRef ref) {
+    if (metric.isCurrency) {
+      final settings = ref.watch(appSettingsProvider);
+      return '${settings.currency.symbol}${value.toInt()}';
+    }
+    return value.toInt().toString();
+  }
+
+  String _getAxisLabel(ChartMetric metric, WidgetRef ref) {
+    if (metric.isCurrency) {
+      final settings = ref.watch(appSettingsProvider);
+      return '${metric.displayName} (${settings.currency.symbol})';
+    }
+    return metric.displayName;
   }
 
   Widget _buildScatterChart(
@@ -318,6 +469,7 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
     ChartMetric xMetric,
     ChartMetric yMetric,
     ThemeData theme,
+    WidgetRef ref,
   ) {
     return Padding(
       padding: const EdgeInsets.all(16.0),
@@ -336,17 +488,40 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
           titlesData: FlTitlesData(
             bottomTitles: AxisTitles(
               axisNameWidget: Text(
-                xMetric.displayName,
-                style: TextStyle(color: theme.colorScheme.onSurface),
+                _getAxisLabel(xMetric, ref),
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              sideTitles: const SideTitles(showTitles: true),
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    _formatAxisValue(value, xMetric, ref),
+                    style: const TextStyle(fontSize: 10),
+                  );
+                },
+              ),
             ),
             leftTitles: AxisTitles(
               axisNameWidget: Text(
-                yMetric.displayName,
-                style: TextStyle(color: theme.colorScheme.onSurface),
+                _getAxisLabel(yMetric, ref),
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              sideTitles: const SideTitles(showTitles: true),
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 60,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    _formatAxisValue(value, yMetric, ref),
+                    style: const TextStyle(fontSize: 10),
+                  );
+                },
+              ),
             ),
             topTitles: const AxisTitles(
               sideTitles: SideTitles(showTitles: false),
@@ -384,6 +559,7 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
     ChartMetric xMetric,
     ChartMetric yMetric,
     ThemeData theme,
+    WidgetRef ref,
   ) {
     // Sort data by x-axis for proper line connection
     data.sort((a, b) => a.x.compareTo(b.x));
@@ -407,17 +583,40 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
           titlesData: FlTitlesData(
             bottomTitles: AxisTitles(
               axisNameWidget: Text(
-                xMetric.displayName,
-                style: TextStyle(color: theme.colorScheme.onSurface),
+                _getAxisLabel(xMetric, ref),
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              sideTitles: const SideTitles(showTitles: true),
+              sideTitles: SideTitles(
+                showTitles: true,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    _formatAxisValue(value, xMetric, ref),
+                    style: const TextStyle(fontSize: 10),
+                  );
+                },
+              ),
             ),
             leftTitles: AxisTitles(
               axisNameWidget: Text(
-                yMetric.displayName,
-                style: TextStyle(color: theme.colorScheme.onSurface),
+                _getAxisLabel(yMetric, ref),
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              sideTitles: const SideTitles(showTitles: true),
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 60,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    _formatAxisValue(value, yMetric, ref),
+                    style: const TextStyle(fontSize: 10),
+                  );
+                },
+              ),
             ),
             topTitles: const AxisTitles(
               sideTitles: SideTitles(showTitles: false),
@@ -455,6 +654,7 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
     ChartMetric xMetric,
     ChartMetric yMetric,
     ThemeData theme,
+    WidgetRef ref,
   ) {
     final barGroups = records.asMap().entries.map((entry) {
       final index = entry.key;
@@ -480,7 +680,10 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
             bottomTitles: AxisTitles(
               axisNameWidget: Text(
                 '${xMetric.displayName} (Record Index)',
-                style: TextStyle(color: theme.colorScheme.onSurface),
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               sideTitles: SideTitles(
                 showTitles: true,
@@ -489,7 +692,7 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
                   if (index >= 0 && index < records.length) {
                     final xValue = xMetric.getValue(records[index]);
                     return Text(
-                      xValue.toStringAsFixed(0),
+                      _formatAxisValue(xValue, xMetric, ref),
                       style: TextStyle(
                         fontSize: 10,
                         color: theme.colorScheme.onSurfaceVariant,
@@ -502,10 +705,22 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
             ),
             leftTitles: AxisTitles(
               axisNameWidget: Text(
-                yMetric.displayName,
-                style: TextStyle(color: theme.colorScheme.onSurface),
+                _getAxisLabel(yMetric, ref),
+                style: TextStyle(
+                  color: theme.colorScheme.onSurface,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-              sideTitles: const SideTitles(showTitles: true),
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 60,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    _formatAxisValue(value, yMetric, ref),
+                    style: const TextStyle(fontSize: 10),
+                  );
+                },
+              ),
             ),
             topTitles: const AxisTitles(
               sideTitles: SideTitles(showTitles: false),

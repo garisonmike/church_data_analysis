@@ -653,16 +653,16 @@ Acceptance Criteria:
 
 ### R3 — User-Selectable Graph Builder (X vs Y)
 
-* [ ] Add UI to let user choose what metric is plotted against what
-* [ ] Support Attendance vs Attendance, Attendance vs Funds, Funds vs Funds
-* [ ] Persist last selection locally
+* [x] Add UI to let user choose what metric is plotted against what
+* [x] Support Attendance vs Attendance, Attendance vs Funds, Funds vs Funds
+* [x] Persist last selection locally
 
 **Acceptance Criteria**
 
-* User can select X-axis and Y-axis metrics
-* Graph updates live without restart
-* Invalid combinations are prevented gracefully
-* Existing predefined graphs still work
+* [x] User can select X-axis and Y-axis metrics
+* [x] Graph updates live without restart
+* [x] Invalid combinations are prevented gracefully
+* [x] Existing predefined graphs still work
 
 ---
 
