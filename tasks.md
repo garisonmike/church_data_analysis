@@ -682,15 +682,15 @@ Acceptance Criteria:
 
 ### R5 — Safe CSV Import Configuration
 
-* [ ] Before import, allow user to map CSV columns to expected fields
-* [ ] Allow missing optional columns (e.g. Youth, Emergency Collection)
-* [ ] Show preview before committing import
+* [x] Before import, allow user to map CSV columns to expected fields
+* [x] Allow missing optional columns (e.g. Youth, Emergency Collection)
+* [x] Show preview before committing import
 
 **Acceptance Criteria**
 
-* User explicitly confirms column mapping
-* Import never crashes on missing columns
-* No data written before confirmation
+* [x] User explicitly confirms column mapping
+* [x] Import never crashes on missing columns
+* [x] No data written before confirmation
 
 ---
 
