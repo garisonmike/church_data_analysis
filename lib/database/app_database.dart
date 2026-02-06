@@ -4,6 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 part 'app_database.g.dart';
 
+/// Demo mode flag: Set to true to auto-seed demo data on fresh installs.
+/// Set to false for production to ensure fresh installs start with empty data.
+const bool _kDemoMode = false;
+
 /// Global provider for the app database
 /// This ensures only one database instance exists throughout the app lifecycle
 final databaseProvider = Provider<AppDatabase>((ref) {
@@ -147,17 +151,20 @@ class AppDatabase extends _$AppDatabase {
       // Enable foreign keys
       await customStatement('PRAGMA foreign_keys = ON');
 
-      // Optional: Add seed data if database is empty
-      if (details.wasCreated) {
-        await _insertSeedData();
-      } else {
-        await _ensureDemoData();
+      // Optional: Add seed data if database is empty (demo mode only)
+      if (_kDemoMode) {
+        if (details.wasCreated) {
+          await _insertSeedData();
+        } else {
+          await _ensureDemoData();
+        }
       }
     },
   );
 
-  /// Insert optional seed data for testing
+  /// Insert optional seed data for testing (demo mode only)
   Future<void> _insertSeedData() async {
+    if (!_kDemoMode) return;
     // Insert a default Kenyan church
     final now = DateTime.now();
     final churchId = await into(churches).insert(
@@ -188,6 +195,8 @@ class AppDatabase extends _$AppDatabase {
   }
 
   Future<void> _ensureDemoData() async {
+    if (!_kDemoMode) return;
+
     final existingChurches = await select(churches).get();
     if (existingChurches.isEmpty) {
       await _insertSeedData();

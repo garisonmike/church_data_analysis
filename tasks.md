@@ -403,17 +403,17 @@ Acceptance Criteria:
 
 # S5 — Demo Mode vs Real Mode Boundary
 
-* [ ] Introduce explicit demo mode flag
-* [ ] Restrict auto-seeding to demo mode only
-* [ ] Ensure real installs start with empty data
-* [ ] Prevent admin/demo auto-creation in real mode
+* [x] Introduce explicit demo mode flag
+* [x] Restrict auto-seeding to demo mode only
+* [x] Ensure real installs start with empty data
+* [x] Prevent admin/demo auto-creation in real mode
 
 Acceptance Criteria:
 
-* Fresh real install has no demo data
-* Demo mode loads sample data predictably
-* User can clearly distinguish demo vs real mode
-* No unintended reseeding occurs
+* Fresh real install has no demo data ✅
+* Demo mode loads sample data predictably ✅
+* User can clearly distinguish demo vs real mode ✅
+* No unintended reseeding occurs ✅
 
 ---
 

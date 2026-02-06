@@ -119,6 +119,19 @@ lib/
 See `tasks.md` for current development roadmap.
 See `plan.md` for detailed feature specifications.
 
+### Demo Mode
+
+The app includes a demo mode flag in `lib/database/app_database.dart`:
+
+```dart
+const bool _kDemoMode = false;
+```
+
+- **Production (false)**: Fresh installs start with empty data. Users create their own churches and profiles.
+- **Demo/Testing (true)**: Fresh installs auto-seed with sample church, admin, and weekly records.
+
+Change this flag to `true` during development/testing to explore the app with pre-populated data.
+
 ## Legacy Reference
 
 The `data.py` file contains the original Python CLI prototype and serves as a reference for business logic and analytics calculations.
