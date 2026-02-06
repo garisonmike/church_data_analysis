@@ -15,6 +15,7 @@ import 'ui/screens/custom_graph_builder_screen.dart';
 import 'ui/screens/dashboard_screen.dart';
 import 'ui/screens/financial_charts_screen.dart';
 import 'ui/screens/graph_center_screen.dart';
+import 'ui/screens/not_found_screen.dart';
 import 'ui/screens/profile_selection_screen.dart';
 import 'ui/screens/startup_gate_screen.dart';
 import 'ui/screens/weekly_entry_screen.dart';
@@ -86,6 +87,11 @@ class ChurchAnalyticsApp extends ConsumerWidget {
               builder: (context) => ProfileSelectionScreen(churchId: churchId),
             );
           case '/entry':
+            if (churchId == null) {
+              return MaterialPageRoute(
+                builder: (context) => const StartupGateScreen(),
+              );
+            }
             return MaterialPageRoute(
               builder: (context) => const WeeklyEntryScreen(),
             );
@@ -167,7 +173,10 @@ class ChurchAnalyticsApp extends ConsumerWidget {
               builder: (context) => const AppSettingsScreen(),
             );
           default:
-            return null;
+            return MaterialPageRoute(
+              builder: (context) =>
+                  NotFoundScreen(attemptedRoute: settings.name),
+            );
         }
       },
       debugShowCheckedModeBanner: false,

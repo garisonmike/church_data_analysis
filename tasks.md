@@ -419,17 +419,17 @@ Acceptance Criteria:
 
 # S6 — Navigation Safety Hardening
 
-* [ ] Add safe fallback route for unknown paths
-* [ ] Prevent null route returns
-* [ ] Guard `/entry` route consistently
-* [ ] Ensure navigation failures do not crash app
+* [x] Add safe fallback route for unknown paths
+* [x] Prevent null route returns
+* [x] Guard `/entry` route consistently
+* [x] Ensure navigation failures do not crash app
 
 Acceptance Criteria:
 
-* Unknown routes show fallback screen
-* `/entry` route behavior matches other guarded routes
-* No navigation-related runtime exceptions
-* App navigation is resilient
+* [x] Unknown routes show fallback screen
+* [x] `/entry` route behavior matches other guarded routes
+* [x] No navigation-related runtime exceptions
+* [x] App navigation is resilient
 
 ---
 # Phase U — UX, Configurability & Production Safety.
