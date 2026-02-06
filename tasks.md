@@ -634,20 +634,20 @@ Acceptance Criteria:
 
 ### R2 — Global Currency Application (UI + Graphs)
 
-* [ ] Ensure selected currency applies everywhere (dashboard, tables, exports, graphs)
-* [ ] Update all graph Y-axes to display selected currency (e.g. KES, not $)
-* [ ] Remove any remaining hardcoded currency symbols
+* [x] Ensure selected currency applies everywhere (dashboard, tables, exports, graphs)
+* [x] Update all graph Y-axes to display selected currency (e.g. KES, not $)
+* [x] Remove any remaining hardcoded currency symbols
 
 **Acceptance Criteria**
 
 * Changing currency updates:
 
-  * Dashboard values
-  * All graph Y-axis labels
-  * Tooltips / legends (if present)
-  * Exported PDF/CSV headers
-* Default currency is KES
-* No "$" remains in UI unless USD is selected
+  * [x] Dashboard values (uses _formatCurrency)
+  * [x] All graph Y-axis labels (all chart screens updated)
+  * [x] Tooltips / legends (uses _formatCurrency and _getCurrencySymbol)
+  * [x] Exported PDF/CSV headers (PDF uses formatCurrency, CSV exports raw values)
+* [x] Default currency is KES
+* [x] No "$" remains in UI unless USD is selected
 
 ---
 

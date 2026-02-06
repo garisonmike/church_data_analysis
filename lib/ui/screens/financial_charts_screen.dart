@@ -186,12 +186,12 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                         reservedSize: 60,
                         getTitlesWidget: (value, meta) {
                           return Text(
-                            '\$${value.toInt()}',
+                            '${_getCurrencySymbol()}${value.toInt()}',
                             style: const TextStyle(fontSize: 10),
                           );
                         },
                       ),
-                      axisNameWidget: const Text('Amount (\$)'),
+                      axisNameWidget: Text('Amount (${_getCurrencySymbol()})'),
                     ),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
@@ -329,12 +329,12 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                         reservedSize: 60,
                         getTitlesWidget: (value, meta) {
                           return Text(
-                            '\$${value.toInt()}',
+                            '${_getCurrencySymbol()}${value.toInt()}',
                             style: const TextStyle(fontSize: 10),
                           );
                         },
                       ),
-                      axisNameWidget: const Text('Amount (\$)'),
+                      axisNameWidget: Text('Amount (${_getCurrencySymbol()})'),
                     ),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
@@ -596,12 +596,12 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                         reservedSize: 60,
                         getTitlesWidget: (value, meta) {
                           return Text(
-                            '\$${value.toInt()}',
+                            '${_getCurrencySymbol()}${value.toInt()}',
                             style: const TextStyle(fontSize: 10),
                           );
                         },
                       ),
-                      axisNameWidget: const Text('Income (\$)'),
+                      axisNameWidget: Text('Income (${_getCurrencySymbol()})'),
                     ),
                     rightTitles: AxisTitles(
                       sideTitles: SideTitles(
@@ -729,6 +729,11 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
   String _formatCurrency(double amount) {
     final settingsNotifier = ref.read(appSettingsProvider.notifier);
     return settingsNotifier.formatCurrencyPrecise(amount);
+  }
+
+  String _getCurrencySymbol() {
+    final settings = ref.read(appSettingsProvider);
+    return settings.currency.symbol;
   }
 
   Widget _buildLegendItem(String label, Color color) {

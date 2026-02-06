@@ -211,12 +211,12 @@ class _CorrelationChartsScreenState
                               ? (value / maxAttendance) * maxIncome
                               : 0;
                           return Text(
-                            '\$${incomeValue.toInt()}',
+                            '${_getCurrencySymbol()}${incomeValue.toInt()}',
                             style: const TextStyle(fontSize: 10),
                           );
                         },
                       ),
-                      axisNameWidget: const Text('Income (\$)'),
+                      axisNameWidget: Text('Income (${_getCurrencySymbol()})'),
                     ),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
@@ -661,12 +661,14 @@ class _CorrelationChartsScreenState
                         reservedSize: 60,
                         getTitlesWidget: (value, meta) {
                           return Text(
-                            '\$${value.toInt()}',
+                            '${_getCurrencySymbol()}${value.toInt()}',
                             style: const TextStyle(fontSize: 10),
                           );
                         },
                       ),
-                      axisNameWidget: const Text('Total Income (\$)'),
+                      axisNameWidget: Text(
+                        'Total Income (${_getCurrencySymbol()})',
+                      ),
                     ),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
@@ -778,12 +780,12 @@ class _CorrelationChartsScreenState
                         reservedSize: 60,
                         getTitlesWidget: (value, meta) {
                           return Text(
-                            '\$${value.toInt()}',
+                            '${_getCurrencySymbol()}${value.toInt()}',
                             style: const TextStyle(fontSize: 10),
                           );
                         },
                       ),
-                      axisNameWidget: const Text('Amount (\$)'),
+                      axisNameWidget: Text('Amount (${_getCurrencySymbol()})'),
                     ),
                     bottomTitles: AxisTitles(
                       sideTitles: SideTitles(
@@ -882,7 +884,10 @@ class _CorrelationChartsScreenState
               children: [
                 _buildLegendItem('Adults (Men+Women)', Colors.blue),
                 const SizedBox(width: 24),
-                _buildLegendItem('Tithe + Offerings (\$)', Colors.green),
+                _buildLegendItem(
+                  'Tithe + Offerings (${_getCurrencySymbol()})',
+                  Colors.green,
+                ),
               ],
             ),
           ],
@@ -899,6 +904,11 @@ class _CorrelationChartsScreenState
   String _formatCurrencyCompact(double amount) {
     final currency = ref.read(appSettingsProvider).currency;
     return '${currency.symbol} ${(amount / 1000).toStringAsFixed(0)}k';
+  }
+
+  String _getCurrencySymbol() {
+    final settings = ref.read(appSettingsProvider);
+    return settings.currency.symbol;
   }
 
   Widget _buildLegendItem(String label, Color color) {
