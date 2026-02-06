@@ -619,16 +619,16 @@ Acceptance Criteria:
 
 ### R1 — Interactive Graph Engine (Pan / Zoom / Resize)
 
-* [ ] Replace static chart widgets with interactive chart widgets (pan, zoom, scale)
-* [ ] Support time-range control (e.g. week range slider or selector)
-* [ ] Graphs must resize correctly with window/screen size
+* [x] Replace static chart widgets with interactive chart widgets (pan, zoom, scale)
+* [x] Support time-range control (e.g. week range slider or selector)
+* [x] Graphs must resize correctly with window/screen size
 
 **Acceptance Criteria**
 
-* User can pan and zoom graphs smoothly (desktop + mobile)
-* Resizing the window resizes graphs without overflow or clipping
-* No loss of existing graph types
-* App compiles on all targets
+* [x] User can pan and zoom graphs smoothly (desktop + mobile)
+* [x] Resizing the window resizes graphs without overflow or clipping
+* [x] No loss of existing graph types
+* [x] App compiles on all targets
 
 ---
 

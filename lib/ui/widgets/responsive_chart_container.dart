@@ -26,6 +26,9 @@ class ResponsiveChartContainer extends StatelessWidget {
   /// Background decoration for the container
   final Decoration? decoration;
 
+  /// Whether to enable pan/zoom interactivity (default: true)
+  final bool enableInteractive;
+
   const ResponsiveChartContainer({
     super.key,
     required this.child,
@@ -35,6 +38,7 @@ class ResponsiveChartContainer extends StatelessWidget {
     this.useAvailableSpace = false,
     this.padding,
     this.decoration,
+    this.enableInteractive = true,
   });
 
   @override
@@ -62,12 +66,29 @@ class ResponsiveChartContainer extends StatelessWidget {
           height = (height * 0.85).clamp(minHeight * 0.8, maxHeight * 0.9);
         }
 
+        Widget chartWidget = child;
+
+        // Wrap in InteractiveViewer if interactivity is enabled
+        if (enableInteractive) {
+          chartWidget = InteractiveViewer(
+            constrained: false,
+            minScale: 0.5,
+            maxScale: 4.0,
+            boundaryMargin: const EdgeInsets.all(double.infinity),
+            child: SizedBox(
+              height: height,
+              width: constraints.maxWidth,
+              child: child,
+            ),
+          );
+        }
+
         return Container(
           decoration: decoration,
           height: height,
           width: double.infinity,
           padding: padding,
-          child: child,
+          child: chartWidget,
         );
       },
     );
@@ -101,6 +122,9 @@ class ResponsiveLazyChart extends StatelessWidget {
   /// Padding around the chart content
   final EdgeInsetsGeometry? padding;
 
+  /// Whether to enable pan/zoom interactivity (default: true)
+  final bool enableInteractive;
+
   const ResponsiveLazyChart({
     super.key,
     required this.child,
@@ -111,6 +135,7 @@ class ResponsiveLazyChart extends StatelessWidget {
     this.fadeInDuration = const Duration(milliseconds: 300),
     this.onVisibilityChanged,
     this.padding,
+    this.enableInteractive = true,
   });
 
   @override
@@ -144,6 +169,7 @@ class ResponsiveLazyChart extends StatelessWidget {
             aspectRatio: aspectRatio,
             useAvailableSpace: useAvailableSpace,
             padding: padding,
+            enableInteractive: enableInteractive,
             child: child,
           ),
         );
