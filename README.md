@@ -40,7 +40,7 @@ This app replaces the legacy Python CLI + matplotlib workflow with a modern, UI-
 ### Clone & Run (Recommended)
 
 ```bash
-git clone <repo-url>
+git clone https://github.com/garisonmike/church_data_analysis.git
 cd church_data_analysis
 
 # Fetch dependencies

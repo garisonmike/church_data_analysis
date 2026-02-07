@@ -1,6 +1,6 @@
-# ✅ Church Analytics Flutter App — Build Tasks
+#  Church Analytics Flutter App — Build Tasks
 
-⚠️ PLAN STATE CHANGE — FOUNDATION CORRECTION PHASE ACTIVE
+ PLAN STATE CHANGE — FOUNDATION CORRECTION PHASE ACTIVE
 >
 > The following repair tasks MUST be completed first before continuing normal build tasks. These align the codebase with plan.md and fix web, bootstrap, and architecture violations.
 
