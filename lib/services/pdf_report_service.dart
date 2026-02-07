@@ -24,8 +24,11 @@ class PdfReportService {
     required String title,
     required String churchName,
     required DateTime generatedDate,
+    String? locale,
   }) {
-    final dateFormat = DateFormat('MMMM d, yyyy');
+    final dateFormat = locale == null
+        ? DateFormat('MMMM d, yyyy')
+        : DateFormat('MMMM d, yyyy', locale);
 
     return pw.Container(
       padding: const pw.EdgeInsets.only(bottom: 20),
@@ -204,12 +207,25 @@ class PdfReportService {
     bool includeKpi = true,
     bool includeTable = true,
     bool includeTrends = true,
+    String? locale,
+    String? currencySymbol,
+    String Function(double)? formatCurrency,
+    String Function(double)? formatCurrencyPrecise,
   }) async {
     final pdf = pw.Document();
     final date = reportDate ?? DateTime.now();
+    final numberFormat = locale == null
+        ? NumberFormat.decimalPattern()
+        : NumberFormat.decimalPattern(locale);
 
     // Calculate KPI metrics
-    final kpis = _calculateKpis(records);
+    final kpis = _calculateKpis(
+      records,
+      numberFormat: numberFormat,
+      currencySymbol: currencySymbol,
+      formatCurrency: formatCurrency,
+      formatCurrencyPrecise: formatCurrencyPrecise,
+    );
 
     pdf.addPage(
       pw.MultiPage(
@@ -219,6 +235,7 @@ class PdfReportService {
           title: 'Church Analytics Report',
           churchName: churchName,
           generatedDate: date,
+          locale: locale,
         ),
         footer: (context) => buildFooter(context),
         build: (context) => [
@@ -245,10 +262,21 @@ class PdfReportService {
             pw.SizedBox(height: 20),
           ],
           if (includeTable) ...[
-            _buildRecordsTable(records),
+            _buildRecordsTable(
+              records,
+              numberFormat: numberFormat,
+              locale: locale,
+              currencySymbol: currencySymbol,
+              formatCurrencyPrecise: formatCurrencyPrecise,
+            ),
             pw.SizedBox(height: 20),
           ],
-          if (includeTrends) _buildSummarySection(records),
+          if (includeTrends)
+            _buildSummarySection(
+              records,
+              locale: locale,
+              numberFormat: numberFormat,
+            ),
         ],
       ),
     );
@@ -257,7 +285,13 @@ class PdfReportService {
   }
 
   /// Calculates KPI metrics from weekly records
-  static List<KpiMetric> _calculateKpis(List<models.WeeklyRecord> records) {
+  static List<KpiMetric> _calculateKpis(
+    List<models.WeeklyRecord> records, {
+    required NumberFormat numberFormat,
+    String? currencySymbol,
+    String Function(double)? formatCurrency,
+    String Function(double)? formatCurrencyPrecise,
+  }) {
     if (records.isEmpty) {
       return [KpiMetric(label: 'No Data', value: '-', subtitle: 'Add records')];
     }
@@ -280,34 +314,51 @@ class PdfReportService {
       (sum, r) => sum + r.offerings,
     );
 
+    String formatCurrencyValue(double value, {bool precise = false}) {
+      if (precise && formatCurrencyPrecise != null) {
+        return formatCurrencyPrecise(value);
+      }
+      if (!precise && formatCurrency != null) {
+        return formatCurrency(value);
+      }
+      final symbol = currencySymbol ?? r'\$';
+      return '$symbol ${value.toStringAsFixed(0)}';
+    }
+
+    String formatPercent(double numerator, double denominator) {
+      if (denominator == 0) {
+        return '0%';
+      }
+      final percent = (numerator / denominator) * 100;
+      return '${percent.toStringAsFixed(0)}%';
+    }
+
     return [
       KpiMetric(
         label: 'Avg Attendance',
-        value: avgAttendance.toStringAsFixed(0),
+        value: numberFormat.format(avgAttendance.round()),
         subtitle: 'per week',
         color: PdfColors.blue50,
         borderColor: PdfColors.blue200,
       ),
       KpiMetric(
         label: 'Total Income',
-        value: '\$${totalIncome.toStringAsFixed(0)}',
+        value: formatCurrencyValue(totalIncome, precise: true),
         subtitle: '${records.length} weeks',
         color: PdfColors.green50,
         borderColor: PdfColors.green200,
       ),
       KpiMetric(
         label: 'Total Tithe',
-        value: '\$${totalTithe.toStringAsFixed(0)}',
-        subtitle:
-            '${(totalTithe / totalIncome * 100).toStringAsFixed(0)}% of income',
+        value: formatCurrencyValue(totalTithe, precise: true),
+        subtitle: '${formatPercent(totalTithe, totalIncome)} of income',
         color: PdfColors.purple50,
         borderColor: PdfColors.purple200,
       ),
       KpiMetric(
         label: 'Total Offerings',
-        value: '\$${totalOfferings.toStringAsFixed(0)}',
-        subtitle:
-            '${(totalOfferings / totalIncome * 100).toStringAsFixed(0)}% of income',
+        value: formatCurrencyValue(totalOfferings, precise: true),
+        subtitle: '${formatPercent(totalOfferings, totalIncome)} of income',
         color: PdfColors.orange50,
         borderColor: PdfColors.orange200,
       ),
@@ -315,7 +366,11 @@ class PdfReportService {
   }
 
   /// Builds a summary section with insights
-  static pw.Widget _buildSummarySection(List<models.WeeklyRecord> records) {
+  static pw.Widget _buildSummarySection(
+    List<models.WeeklyRecord> records, {
+    required String? locale,
+    required NumberFormat numberFormat,
+  }) {
     if (records.isEmpty) {
       return pw.Container();
     }
@@ -325,7 +380,9 @@ class PdfReportService {
 
     final firstDate = sortedByDate.first.weekStartDate;
     final lastDate = sortedByDate.last.weekStartDate;
-    final dateFormat = DateFormat('MMM d, yyyy');
+    final dateFormat = locale == null
+        ? DateFormat('MMM d, yyyy')
+        : DateFormat('MMM d, yyyy', locale);
 
     return pw.Container(
       padding: const pw.EdgeInsets.all(16),
@@ -351,7 +408,7 @@ class PdfReportService {
           ),
           pw.SizedBox(height: 4),
           pw.Text(
-            'Total Weeks: ${records.length}',
+            'Total Weeks: ${numberFormat.format(records.length)}',
             style: const pw.TextStyle(fontSize: 12),
           ),
         ],
@@ -359,18 +416,34 @@ class PdfReportService {
     );
   }
 
-  static pw.Widget _buildRecordsTable(List<models.WeeklyRecord> records) {
+  static pw.Widget _buildRecordsTable(
+    List<models.WeeklyRecord> records, {
+    required NumberFormat numberFormat,
+    String? locale,
+    String? currencySymbol,
+    String Function(double)? formatCurrencyPrecise,
+  }) {
     if (records.isEmpty) {
       return pw.Container();
     }
 
-    final dateFormat = DateFormat('MMM d, yyyy');
+    final dateFormat = locale == null
+        ? DateFormat('MMM d, yyyy')
+        : DateFormat('MMM d, yyyy', locale);
+    final symbol = currencySymbol ?? r'\$';
+
+    String formatCurrencyValue(double value) {
+      if (formatCurrencyPrecise != null) {
+        return formatCurrencyPrecise(value);
+      }
+      return '$symbol ${value.toStringAsFixed(2)}';
+    }
 
     final rows = records.map((record) {
       return [
         dateFormat.format(record.weekStartDate),
-        record.totalAttendance.toString(),
-        record.totalIncome.toStringAsFixed(2),
+        numberFormat.format(record.totalAttendance),
+        formatCurrencyValue(record.totalIncome),
       ];
     }).toList();
 
@@ -394,7 +467,7 @@ class PdfReportService {
           headerDecoration: const pw.BoxDecoration(color: PdfColors.blue50),
           cellAlignment: pw.Alignment.centerLeft,
           cellStyle: const pw.TextStyle(fontSize: 10),
-          headers: const ['Week Start', 'Attendance', 'Total Income'],
+          headers: ['Week Start', 'Attendance', 'Total Income ($symbol)'],
           data: rows,
         ),
       ],

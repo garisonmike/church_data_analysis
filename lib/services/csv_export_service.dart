@@ -30,11 +30,29 @@ class CsvExportResult {
   }
 }
 
+/// Options for customizing the weekly records CSV export
+class CsvExportOptions {
+  final bool includeAttendance;
+  final bool includeFinancial;
+  final bool includeTotals;
+  final bool includeMetadata;
+
+  const CsvExportOptions({
+    this.includeAttendance = true,
+    this.includeFinancial = true,
+    this.includeTotals = true,
+    this.includeMetadata = true,
+  });
+}
+
 /// Service for exporting data to CSV files
 class CsvExportService {
   final FileStorage _fileStorage = getFileStorage();
 
-  /// CSV headers for weekly records export
+  /// Options for customizing CSV export content
+  static const CsvExportOptions defaultOptions = CsvExportOptions();
+
+  /// CSV headers for weekly records export (full default)
   static const List<String> weeklyRecordHeaders = [
     'id',
     'church_id',
@@ -143,6 +161,8 @@ class CsvExportService {
   Future<CsvExportResult> exportWeeklyRecords(
     List<WeeklyRecord> records, {
     String? customPath,
+    CsvExportOptions options = defaultOptions,
+    String? currencyCode,
   }) async {
     if (records.isEmpty) {
       return CsvExportResult.error('No records to export');
@@ -150,8 +170,8 @@ class CsvExportService {
 
     try {
       final rows = <List<dynamic>>[
-        weeklyRecordHeaders,
-        ...records.map(weeklyRecordToRow),
+        _buildWeeklyRecordHeaders(options, currencyCode: currencyCode),
+        ...records.map((record) => _buildWeeklyRecordRow(record, options)),
       ];
 
       final csv = const ListToCsvConverter().convert(rows);
@@ -181,6 +201,106 @@ class CsvExportService {
     } catch (e) {
       return CsvExportResult.error('Failed to export weekly records: $e');
     }
+  }
+
+  List<String> _buildWeeklyRecordHeaders(
+    CsvExportOptions options, {
+    String? currencyCode,
+  }) {
+    final suffix = (currencyCode == null || currencyCode.isEmpty)
+        ? ''
+        : ' ($currencyCode)';
+
+    final headers = <String>[];
+    if (options.includeMetadata) {
+      headers.addAll(['id', 'church_id', 'created_by_admin_id']);
+    }
+    headers.add('week_start_date');
+
+    if (options.includeAttendance) {
+      headers.addAll([
+        'men',
+        'women',
+        'youth',
+        'children',
+        'sunday_home_church',
+      ]);
+    }
+
+    if (options.includeTotals) {
+      headers.add('total_attendance');
+    }
+
+    if (options.includeFinancial) {
+      headers.addAll([
+        'tithe$suffix',
+        'offerings$suffix',
+        'emergency_collection$suffix',
+        'planned_collection$suffix',
+      ]);
+    }
+
+    if (options.includeTotals) {
+      headers.add('total_income$suffix');
+    }
+
+    if (options.includeMetadata) {
+      headers.addAll(['created_at', 'updated_at']);
+    }
+
+    return headers;
+  }
+
+  List<dynamic> _buildWeeklyRecordRow(
+    WeeklyRecord record,
+    CsvExportOptions options,
+  ) {
+    final row = <dynamic>[];
+    if (options.includeMetadata) {
+      row.addAll([
+        record.id ?? '',
+        record.churchId,
+        record.createdByAdminId ?? '',
+      ]);
+    }
+
+    row.add(record.weekStartDate.toIso8601String());
+
+    if (options.includeAttendance) {
+      row.addAll([
+        record.men,
+        record.women,
+        record.youth,
+        record.children,
+        record.sundayHomeChurch,
+      ]);
+    }
+
+    if (options.includeTotals) {
+      row.add(record.totalAttendance);
+    }
+
+    if (options.includeFinancial) {
+      row.addAll([
+        record.tithe,
+        record.offerings,
+        record.emergencyCollection,
+        record.plannedCollection,
+      ]);
+    }
+
+    if (options.includeTotals) {
+      row.add(record.totalIncome);
+    }
+
+    if (options.includeMetadata) {
+      row.addAll([
+        record.createdAt.toIso8601String(),
+        record.updatedAt.toIso8601String(),
+      ]);
+    }
+
+    return row;
   }
 
   /// Export churches to CSV

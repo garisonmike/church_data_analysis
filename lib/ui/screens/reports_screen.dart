@@ -53,6 +53,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   bool _promptForLocation = true;
   String? _lastExportPath;
   _ReportOptions _reportOptions = const _ReportOptions();
+  CsvExportOptions _csvOptions = const CsvExportOptions();
 
   // Helper to get data for exports
   Future<List<WeeklyRecord>> _getRecords() async {
@@ -93,6 +94,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       final records = await _getRecords();
       final churches = await _getChurches();
       final churchName = churches.isNotEmpty ? churches.first.name : 'Church';
+      final settings = ref.read(appSettingsProvider);
+      final formatCurrency = ref.read(currencyFormatterProvider);
+      final formatCurrencyPrecise = ref.read(currencyFormatterPreciseProvider);
 
       final pdf = await PdfReportService.buildMultiChartReport(
         churchName: churchName,
@@ -102,6 +106,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         includeKpi: selectedOptions.includeKpi,
         includeTable: selectedOptions.includeTable,
         includeTrends: selectedOptions.includeTrends,
+        locale: settings.locale,
+        currencySymbol: settings.currency.symbol,
+        formatCurrency: formatCurrency,
+        formatCurrencyPrecise: formatCurrencyPrecise,
       );
 
       final suggestedName = PdfReportService.generatePdfFileName(
@@ -134,9 +142,15 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   Future<void> _exportCsv() async {
+    final selectedOptions = await _promptCsvOptions();
+    if (selectedOptions == null) {
+      return;
+    }
+    setState(() => _csvOptions = selectedOptions);
     setState(() => _isProcessing = true);
     try {
       final records = await _getRecords();
+      final settings = ref.read(appSettingsProvider);
       final suggestedName = _csvService.generateExportFilename(
         'weekly_records',
       );
@@ -152,6 +166,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       final result = await _csvService.exportWeeklyRecords(
         records,
         customPath: customPath,
+        options: selectedOptions,
+        currencyCode: settings.currency.code,
       );
       if (result.success) {
         _showStatus('CSV Exported to ${result.filePath}');
@@ -302,6 +318,39 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
+  Widget _buildCsvOptionsCard() {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'CSV Export Options',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Choose which columns to include in the CSV export.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildChip('Attendance', _csvOptions.includeAttendance),
+                _buildChip('Financial', _csvOptions.includeFinancial),
+                _buildChip('Totals', _csvOptions.includeTotals),
+                _buildChip('Metadata', _csvOptions.includeMetadata),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _buildChip(String label, bool enabled) {
     return Chip(
       label: Text(label),
@@ -371,6 +420,111 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     return result;
   }
 
+  bool _hasCsvContent(CsvExportOptions options) {
+    return options.includeAttendance ||
+        options.includeFinancial ||
+        options.includeTotals ||
+        options.includeMetadata;
+  }
+
+  Future<CsvExportOptions?> _promptCsvOptions() async {
+    var options = _csvOptions;
+
+    final result = await showDialog<CsvExportOptions>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Customize CSV Export'),
+        content: StatefulBuilder(
+          builder: (context, setState) {
+            final hasContent = _hasCsvContent(options);
+            return Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SwitchListTile(
+                  title: const Text('Include attendance columns'),
+                  value: options.includeAttendance,
+                  onChanged: (value) => setState(
+                    () => options = CsvExportOptions(
+                      includeAttendance: value,
+                      includeFinancial: options.includeFinancial,
+                      includeTotals: options.includeTotals,
+                      includeMetadata: options.includeMetadata,
+                    ),
+                  ),
+                ),
+                SwitchListTile(
+                  title: const Text('Include financial columns'),
+                  value: options.includeFinancial,
+                  onChanged: (value) => setState(
+                    () => options = CsvExportOptions(
+                      includeAttendance: options.includeAttendance,
+                      includeFinancial: value,
+                      includeTotals: options.includeTotals,
+                      includeMetadata: options.includeMetadata,
+                    ),
+                  ),
+                ),
+                SwitchListTile(
+                  title: const Text('Include totals'),
+                  value: options.includeTotals,
+                  onChanged: (value) => setState(
+                    () => options = CsvExportOptions(
+                      includeAttendance: options.includeAttendance,
+                      includeFinancial: options.includeFinancial,
+                      includeTotals: value,
+                      includeMetadata: options.includeMetadata,
+                    ),
+                  ),
+                ),
+                SwitchListTile(
+                  title: const Text('Include metadata'),
+                  value: options.includeMetadata,
+                  onChanged: (value) => setState(
+                    () => options = CsvExportOptions(
+                      includeAttendance: options.includeAttendance,
+                      includeFinancial: options.includeFinancial,
+                      includeTotals: options.includeTotals,
+                      includeMetadata: value,
+                    ),
+                  ),
+                ),
+                if (!hasContent) ...[
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      const Icon(Icons.warning, color: Colors.orange),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Select at least one column group',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            );
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: _hasCsvContent(options)
+                ? () => Navigator.pop(context, options)
+                : null,
+            child: const Text('Continue'),
+          ),
+        ],
+      ),
+    );
+
+    return result;
+  }
+
   Future<String?> _pickExportPath({
     required String suggestedName,
     required List<String> allowedExtensions,
@@ -406,6 +560,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               _buildExportLocationCard(),
               const SizedBox(height: 12),
               _buildReportBuilderCard(),
+              const SizedBox(height: 12),
+              _buildCsvOptionsCard(),
               const SizedBox(height: 20),
               ElevatedButton.icon(
                 onPressed: _isProcessing ? null : _exportPdf,

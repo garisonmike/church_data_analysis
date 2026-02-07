@@ -696,15 +696,15 @@ Acceptance Criteria:
 
 ### R6 — Export Customization (PDF / CSV)
 
-* [ ] Let user choose export location
-* [ ] Let user choose what to include (graphs, tables, summaries)
-* [ ] Respect currency and locale in exports
+* [x] Let user choose export location
+* [x] Let user choose what to include (graphs, tables, summaries)
+* [x] Respect currency and locale in exports
 
 **Acceptance Criteria**
 
-* User controls export destination
-* Export reflects selected currency
-* Export content matches user selection
+* [x] User controls export destination
+* [x] Export reflects selected currency
+* [x] Export content matches user selection
 
 ---
 
