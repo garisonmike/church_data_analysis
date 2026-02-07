@@ -24,7 +24,7 @@ class DashboardScreen extends ConsumerStatefulWidget {
 class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   bool _isLoading = true;
   String? _errorMessage;
-  List<models.WeeklyRecord> _recentRecords = [];
+  final List<models.WeeklyRecord> _recentRecords = [];
   Map<String, dynamic>? _summaryMetrics;
   AdminProfileService? _profileService;
 
@@ -93,7 +93,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
       if (mounted) {
         setState(() {
-          _recentRecords = records;
+          _recentRecords
+            ..clear()
+            ..addAll(records);
           _summaryMetrics = metrics;
           _isLoading = false;
         });
@@ -114,77 +116,37 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isCompactLayout = MediaQuery.of(context).size.width < 600;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Church Analytics Dashboard'),
+        title: const Text(
+          'Church Analytics Dashboard',
+          overflow: TextOverflow.ellipsis,
+        ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.dashboard_customize),
-            onPressed: _openLayoutEditor,
-            tooltip: 'Customize Dashboard',
-          ),
-          ChurchSelectorWidget(onChurchChanged: _loadData),
-          if (_profileService != null)
-            ProfileSwitcherWidget(
-              churchId: widget.churchId,
-              profileService: _profileService!,
-              onProfileChanged: _loadData,
+          if (!isCompactLayout) ...[
+            IconButton(
+              icon: const Icon(Icons.dashboard_customize),
+              onPressed: _openLayoutEditor,
+              tooltip: 'Customize Dashboard',
             ),
-          IconButton(
-            icon: const Icon(Icons.analytics_outlined),
-            onPressed: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      ReportsScreen(churchId: widget.churchId),
-                ),
-              );
-            },
-            tooltip: 'Reports & Backup',
-          ),
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.settings),
-            tooltip: 'Settings',
-            onSelected: (value) async {
-              switch (value) {
-                case 'church':
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) =>
-                          ChurchSettingsScreen(churchId: widget.churchId),
-                    ),
-                  );
-                  if (result == true) {
-                    _loadData();
-                  }
-                  break;
-                case 'app':
-                  Navigator.pushNamed(context, '/app-settings');
-                  break;
-              }
-            },
-            itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
-              const PopupMenuItem<String>(
-                value: 'church',
-                child: ListTile(
-                  leading: Icon(Icons.church),
-                  title: Text('Church Settings'),
-                  subtitle: Text('Church details & preferences'),
-                ),
+            ChurchSelectorWidget(onChurchChanged: _loadData),
+            if (_profileService != null)
+              ProfileSwitcherWidget(
+                churchId: widget.churchId,
+                profileService: _profileService!,
+                onProfileChanged: _loadData,
               ),
-              const PopupMenuItem<String>(
-                value: 'app',
-                child: ListTile(
-                  leading: Icon(Icons.tune),
-                  title: Text('App Settings'),
-                  subtitle: Text('Currency, locale & display'),
-                ),
-              ),
-            ],
-          ),
+            IconButton(
+              icon: const Icon(Icons.analytics_outlined),
+              onPressed: _openReports,
+              tooltip: 'Reports & Backup',
+            ),
+          ],
+          _buildSettingsMenu(),
+          if (isCompactLayout) _buildOverflowMenu(),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadData,
@@ -851,6 +813,185 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       context,
       MaterialPageRoute(
         builder: (context) => const DashboardLayoutEditorScreen(),
+      ),
+    );
+  }
+
+  void _openReports() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => ReportsScreen(churchId: widget.churchId),
+      ),
+    );
+  }
+
+  Widget _buildSettingsMenu() {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.settings),
+      tooltip: 'Settings',
+      onSelected: (value) async {
+        switch (value) {
+          case 'church':
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    ChurchSettingsScreen(churchId: widget.churchId),
+              ),
+            );
+            if (result == true) {
+              _loadData();
+            }
+            break;
+          case 'app':
+            Navigator.pushNamed(context, '/app-settings');
+            break;
+        }
+      },
+      itemBuilder: (BuildContext context) => <PopupMenuEntry<String>>[
+        const PopupMenuItem<String>(
+          value: 'church',
+          child: Row(
+            children: [
+              Icon(Icons.church),
+              SizedBox(width: 8),
+              Text('Church Settings'),
+            ],
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'app',
+          child: Row(
+            children: [
+              Icon(Icons.settings_applications),
+              SizedBox(width: 8),
+              Text('App Settings'),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildOverflowMenu() {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.more_vert),
+      tooltip: 'More',
+      onSelected: (value) {
+        switch (value) {
+          case 'customize':
+            _openLayoutEditor();
+            break;
+          case 'reports':
+            _openReports();
+            break;
+          case 'church':
+            _showChurchSelectorSheet();
+            break;
+          case 'profile':
+            _showProfileSwitcherSheet();
+            break;
+        }
+      },
+      itemBuilder: (context) => <PopupMenuEntry<String>>[
+        const PopupMenuItem<String>(
+          value: 'customize',
+          child: Row(
+            children: [
+              Icon(Icons.dashboard_customize),
+              SizedBox(width: 8),
+              Text('Customize Dashboard'),
+            ],
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'reports',
+          child: Row(
+            children: [
+              Icon(Icons.analytics_outlined),
+              SizedBox(width: 8),
+              Text('Reports & Backup'),
+            ],
+          ),
+        ),
+        const PopupMenuItem<String>(
+          value: 'church',
+          child: Row(
+            children: [
+              Icon(Icons.church),
+              SizedBox(width: 8),
+              Text('Switch Church'),
+            ],
+          ),
+        ),
+        if (_profileService != null)
+          const PopupMenuItem<String>(
+            value: 'profile',
+            child: Row(
+              children: [
+                Icon(Icons.switch_account),
+                SizedBox(width: 8),
+                Text('Switch Profile'),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _showChurchSelectorSheet() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Switch Church',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              ChurchSelectorWidget(onChurchChanged: _loadData),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showProfileSwitcherSheet() {
+    if (_profileService == null) {
+      return;
+    }
+
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Switch Profile',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: 12),
+              ProfileSwitcherWidget(
+                churchId: widget.churchId,
+                profileService: _profileService!,
+                onProfileChanged: _loadData,
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
