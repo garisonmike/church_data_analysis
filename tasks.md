@@ -710,14 +710,14 @@ Acceptance Criteria:
 
 ### R7 — Dark Mode & Visual Polish
 
-* [ ] Add dark mode toggle
-* [ ] Ensure charts and dashboard render correctly in dark mode
+* [x] Add dark mode toggle
+* [x] Ensure charts and dashboard render correctly in dark mode
 
 **Acceptance Criteria**
 
-* Dark mode applies globally
-* Charts remain readable
-* User preference persists
+* [x] Dark mode applies globally
+* [x] Charts remain readable
+* [x] User preference persists
 
 ---
 
