@@ -245,7 +245,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   context,
                   MaterialPageRoute(
                     builder: (context) =>
-                        CsvImportScreen(churchId: widget.churchId),
+                        ImportScreen(churchId: widget.churchId),
                   ),
                 );
                 if (result == true) {
@@ -586,7 +586,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                               context,
                               MaterialPageRoute(
                                 builder: (context) =>
-                                    CsvImportScreen(churchId: widget.churchId),
+                                    ImportScreen(churchId: widget.churchId),
                               ),
                             );
                             if (result == true) {
@@ -679,7 +679,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         context,
                         MaterialPageRoute(
                           builder: (context) =>
-                              CsvImportScreen(churchId: widget.churchId),
+                              ImportScreen(churchId: widget.churchId),
                         ),
                       );
                       if (result == true) {

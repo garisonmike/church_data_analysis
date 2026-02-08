@@ -3,22 +3,34 @@ import 'package:church_analytics/platform/file_storage.dart';
 import 'package:church_analytics/platform/file_storage_interface.dart';
 import 'package:church_analytics/services/validation_service.dart';
 import 'package:csv/csv.dart';
+import 'package:excel/excel.dart';
 
-/// Service for importing weekly records from CSV files
-class CsvImportService {
+/// Service for importing weekly records from CSV or XLSX files
+class ImportService {
   final ValidationService _validationService = ValidationService();
   final FileStorage _fileStorage;
 
-  CsvImportService({FileStorage? fileStorage})
+  ImportService({FileStorage? fileStorage})
     : _fileStorage = fileStorage ?? getFileStorage();
 
-  /// Pick a CSV file from the device
-  Future<PlatformFileResult?> pickCsvFile() async {
-    return _fileStorage.pickFile(allowedExtensions: ['csv']);
+  /// Pick a CSV or XLSX file from the device
+  Future<PlatformFileResult?> pickFile() async {
+    return _fileStorage.pickFile(allowedExtensions: ['csv', 'xlsx']);
+  }
+  
+  /// Parse file and return raw data as list of lists
+  Future<ParseResult> parseFile(PlatformFileResult file) async {
+    if (file.name.toLowerCase().endsWith('.csv')) {
+      return _parseCsvFile(file);
+    } else if (file.name.toLowerCase().endsWith('.xlsx')) {
+      return _parseXlsxFile(file);
+    } else {
+      return ParseResult.error('Unsupported file type. Please select a .csv or .xlsx file.');
+    }
   }
 
   /// Parse CSV file and return raw data as list of lists
-  Future<CsvParseResult> parseCsvFile(PlatformFileResult file) async {
+  Future<ParseResult> _parseCsvFile(PlatformFileResult file) async {
     try {
       final input = await _fileStorage.readFileAsString(file);
       final normalized = input
@@ -30,16 +42,42 @@ class CsvImportService {
       final fields = const CsvToListConverter(eol: '\n').convert(normalized);
 
       if (fields.isEmpty) {
-        return CsvParseResult.error('CSV file is empty');
+        return ParseResult.error('CSV file is empty');
       }
 
       // First row is assumed to be headers
       final headers = fields.first.map((e) => e.toString().trim()).toList();
       final rows = fields.skip(1).toList();
 
-      return CsvParseResult.success(headers, rows);
+      return ParseResult.success(headers, rows);
     } catch (e) {
-      return CsvParseResult.error('Failed to parse CSV: ${e.toString()}');
+      return ParseResult.error('Failed to parse CSV: ${e.toString()}');
+    }
+  }
+
+  /// Parse XLSX file and return raw data as list of lists
+  Future<ParseResult> _parseXlsxFile(PlatformFileResult file) async {
+    try {
+      final bytes = await _fileStorage.readFileAsBytes(file);
+      final excel = Excel.decodeBytes(bytes);
+
+      if (excel.tables.keys.isEmpty) {
+        return ParseResult.error('XLSX file contains no sheets');
+      }
+
+      final sheet = excel.tables[excel.tables.keys.first]!;
+      if (sheet.rows.isEmpty) {
+        return ParseResult.error('XLSX sheet is empty');
+      }
+      
+      final headers = sheet.rows.first.map((e) => e?.value.toString().trim() ?? '').toList();
+      final rows = sheet.rows.skip(1).map((row) {
+        return row.map((cell) => cell?.value).toList();
+      }).toList();
+
+      return ParseResult.success(headers, rows);
+    } catch (e) {
+      return ParseResult.error('Failed to parse XLSX: ${e.toString()}');
     }
   }
 
@@ -191,7 +229,6 @@ class CsvImportService {
         'date',
         'week',
         'weekdate',
-        'week_start_date',
         'week_date',
         'startdate',
       ],
@@ -201,7 +238,6 @@ class CsvImportService {
       'children': ['children', 'kids', 'children_attendance'],
       'sundayHomeChurch': [
         'sundayhomechurch',
-        'sunday_home_church',
         'home_church',
         'shc',
       ],
@@ -209,25 +245,38 @@ class CsvImportService {
       'offerings': ['offerings', 'offering', 'offertory'],
       'emergencyCollection': [
         'emergencycollection',
-        'emergency_collection',
         'emergency',
       ],
       'plannedCollection': [
         'plannedcollection',
-        'planned_collection',
         'planned',
       ],
     };
 
-    for (final entry in fieldVariations.entries) {
-      final fieldName = entry.key;
-      final variations = entry.value;
+    final allFields = fieldVariations.keys.toList();
+    final cleanedHeaders = headers
+        .map((h) => h.toLowerCase().replaceAll(' ', '').replaceAll('_', ''))
+        .toList();
 
-      for (var i = 0; i < headers.length; i++) {
-        final header = headers[i].toLowerCase().replaceAll(' ', '');
-        if (variations.contains(header)) {
-          mapping[fieldName] = i;
-          break;
+    for (final fieldName in allFields) {
+      // 1. Prioritize exact match (after cleaning)
+      var headerIndex = cleanedHeaders.indexOf(fieldName.toLowerCase());
+
+      // 2. If no exact match, check common variations
+      if (headerIndex == -1) {
+        for (final variation in fieldVariations[fieldName]!) {
+          final variationIndex = cleanedHeaders.indexOf(variation);
+          if (variationIndex != -1) {
+            headerIndex = variationIndex;
+            break;
+          }
+        }
+      }
+      
+      if (headerIndex != -1) {
+        // Ensure the same header is not used for multiple fields
+        if (!mapping.containsValue(headerIndex)) {
+            mapping[fieldName] = headerIndex;
         }
       }
     }
@@ -244,18 +293,18 @@ class CsvImportService {
   }
 }
 
-/// Result of CSV parsing
-class CsvParseResult {
+/// Result of parsing
+class ParseResult {
   final bool success;
   final String? error;
   final List<String>? headers;
   final List<List<dynamic>>? rows;
 
-  CsvParseResult.success(this.headers, this.rows)
+  ParseResult.success(this.headers, this.rows)
     : success = true,
       error = null;
 
-  CsvParseResult.error(this.error)
+  ParseResult.error(this.error)
     : success = false,
       headers = null,
       rows = null;

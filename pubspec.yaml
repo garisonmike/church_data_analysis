@@ -63,6 +63,7 @@ dependencies:
   
   # Internationalization
   intl: ^0.19.0
+  excel: ^2.1.0
 
 dev_dependencies:
   flutter_test:
