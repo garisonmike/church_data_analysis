@@ -10,7 +10,7 @@ import 'ui/screens/attendance_charts_screen.dart';
 import 'ui/screens/church_selection_screen.dart';
 import 'ui/screens/church_settings_screen.dart';
 import 'ui/screens/correlation_charts_screen.dart';
-import 'ui/screens/csv_import_screen.dart';
+import 'ui/screens/import_screen.dart';
 import 'ui/screens/custom_graph_builder_screen.dart';
 import 'ui/screens/dashboard_screen.dart';
 import 'ui/screens/financial_charts_screen.dart';
@@ -102,7 +102,7 @@ class ChurchAnalyticsApp extends ConsumerWidget {
               );
             }
             return MaterialPageRoute(
-              builder: (context) => CsvImportScreen(churchId: churchId),
+              builder: (context) => ImportScreen(churchId: churchId),
             );
           case '/settings':
             if (churchId == null) {

@@ -6,17 +6,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-class CsvImportScreen extends ConsumerStatefulWidget {
+class ImportScreen extends ConsumerStatefulWidget {
   final int churchId;
 
-  const CsvImportScreen({super.key, required this.churchId});
+  const ImportScreen({super.key, required this.churchId});
 
   @override
-  ConsumerState<CsvImportScreen> createState() => _CsvImportScreenState();
+  ConsumerState<ImportScreen> createState() => _ImportScreenState();
 }
 
-class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
-  final _csvService = CsvImportService();
+class _ImportScreenState extends ConsumerState<ImportScreen> {
+  final _importService = ImportService();
 
   PlatformFileResult? _selectedFile;
   List<String>? _headers;
@@ -25,7 +25,6 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
   List<WeeklyRecordImportResult>? _validationResults;
   bool _isLoading = false;
   String? _errorMessage;
-  int _currentStep = 0;
 
   // Field names that need to be mapped
   final List<String> _requiredFields = [
@@ -64,7 +63,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
     });
 
     try {
-      final file = await _csvService.pickCsvFile();
+      final file = await _importService.pickFile();
 
       if (file == null) {
         setState(() {
@@ -73,7 +72,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
         return;
       }
 
-      final result = await _csvService.parseCsvFile(file);
+      final result = await _importService.parseFile(file);
 
       if (!result.success) {
         setState(() {
@@ -87,9 +86,9 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
         _selectedFile = file;
         _headers = result.headers;
         _rows = result.rows;
-        _columnMapping = _csvService.suggestColumnMapping(result.headers!);
+        _columnMapping = _importService.suggestColumnMapping(result.headers!);
         _isLoading = false;
-        _currentStep = 1; // Move to column mapping step
+        _validationResults = null; // Reset validation
       });
     } catch (e) {
       setState(() {
@@ -109,7 +108,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
 
     // Check that all required fields are mapped
     final unmappedFields = _requiredFields
-        .where((field) => !_columnMapping.containsKey(field))
+        .where((field) => !_columnMapping.containsKey(field) || _columnMapping[field] == null)
         .toList();
 
     if (unmappedFields.isNotEmpty) {
@@ -132,7 +131,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
     final currentAdminId = profileService.getCurrentProfileId();
 
     for (var i = 0; i < _rows!.length; i++) {
-      final result = _csvService.validateAndConvertRow(
+      final result = _importService.validateAndConvertRow(
         _rows![i],
         _columnMapping,
         widget.churchId,
@@ -146,7 +145,6 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
     setState(() {
       _validationResults = results;
       _isLoading = false;
-      _currentStep = 2; // Move to preview/validation step
     });
   }
 
@@ -274,12 +272,31 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
     }
   }
 
+  void _reset() {
+    setState(() {
+      _selectedFile = null;
+      _headers = null;
+      _rows = null;
+      _columnMapping = {};
+      _validationResults = null;
+      _isLoading = false;
+      _errorMessage = null;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Import CSV'),
+        title: const Text('Import Data'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _reset,
+            tooltip: 'Start Over',
+          ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -299,23 +316,14 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
               const SizedBox(height: 16),
               Text(
                 _errorMessage!,
-                style: const TextStyle(color: Colors.red),
+                style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.red),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 16),
-              ElevatedButton(
-                onPressed: () {
-                  setState(() {
-                    _errorMessage = null;
-                    _currentStep = 0;
-                    _selectedFile = null;
-                    _headers = null;
-                    _rows = null;
-                    _columnMapping = {};
-                    _validationResults = null;
-                  });
-                },
-                child: const Text('Start Over'),
+              const SizedBox(height: 24),
+              ElevatedButton.icon(
+                onPressed: _reset,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Start Over'),
               ),
             ],
           ),
@@ -323,159 +331,163 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
       );
     }
 
-    return Stepper(
-      currentStep: _currentStep,
-      onStepContinue: _onStepContinue,
-      onStepCancel: _onStepCancel,
-      controlsBuilder: (context, details) {
-        return Row(
-          children: [
-            if (details.stepIndex < 2)
-              ElevatedButton(
-                onPressed: details.onStepContinue,
-                child: Text(details.stepIndex == 1 ? 'Validate' : 'Continue'),
-              ),
-            if (details.stepIndex == 2)
-              ElevatedButton(
-                onPressed: _importData,
-                child: const Text('Import'),
-              ),
-            const SizedBox(width: 8),
-            if (details.stepIndex > 0)
-              TextButton(
-                onPressed: details.onStepCancel,
-                child: const Text('Back'),
-              ),
-          ],
-        );
-      },
-      steps: [
-        Step(
-          title: const Text('Select File'),
-          content: _buildFilePickerStep(),
-          isActive: _currentStep >= 0,
-          state: _currentStep > 0 ? StepState.complete : StepState.indexed,
-        ),
-        Step(
-          title: const Text('Map Columns'),
-          content: _buildColumnMappingStep(),
-          isActive: _currentStep >= 1,
-          state: _currentStep > 1 ? StepState.complete : StepState.indexed,
-        ),
-        Step(
-          title: const Text('Preview & Import'),
-          content: _buildPreviewStep(),
-          isActive: _currentStep >= 2,
-        ),
+    return ListView(
+      padding: const EdgeInsets.all(16.0),
+      children: [
+        _buildFilePickerStep(),
+        if (_headers != null && _rows != null) ...[
+          const SizedBox(height: 24),
+          _buildColumnMappingStep(),
+          const SizedBox(height: 24),
+           _buildActionsStep(),
+        ],
+        if (_validationResults != null) ...[
+          const SizedBox(height: 24),
+          _buildPreviewStep(),
+        ]
       ],
     );
   }
 
-  void _onStepContinue() {
-    if (_currentStep == 0) {
-      _pickFile();
-    } else if (_currentStep == 1) {
-      _validateData();
-    }
-  }
-
-  void _onStepCancel() {
-    if (_currentStep > 0) {
-      setState(() {
-        _currentStep--;
-      });
-    }
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16.0),
+      child: Text(
+        title,
+        style: Theme.of(context).textTheme.headlineSmall,
+      ),
+    );
   }
 
   Widget _buildFilePickerStep() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Select a CSV file to import weekly records.'),
-        const SizedBox(height: 16),
-        if (_selectedFile != null) ...[
-          Card(
-            child: ListTile(
-              leading: const Icon(Icons.insert_drive_file),
-              title: Text(_selectedFile!.name),
-              subtitle: Text('${_rows?.length ?? 0} rows'),
-              trailing: IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () {
-                  setState(() {
-                    _selectedFile = null;
-                    _headers = null;
-                    _rows = null;
-                    _currentStep = 0;
-                  });
-                },
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                child: Text('1', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+              title: Text(
+                'Select File',
+                style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
-          ),
-        ] else ...[
-          ElevatedButton.icon(
-            onPressed: _pickFile,
-            icon: const Icon(Icons.folder_open),
-            label: const Text('Choose CSV File'),
-          ),
-        ],
-        const SizedBox(height: 16),
-        const Text(
-          'CSV Format Requirements:\n'
-          '• First row must contain column headers\n'
-          '• Date format: YYYY-MM-DD\n'
-          '• Numbers should not have commas',
-          style: TextStyle(fontSize: 12, color: Colors.grey),
+            const SizedBox(height: 16),
+            if (_selectedFile != null) ...[
+              Text('Selected: ${_selectedFile!.name} (${_rows?.length ?? 0} rows)'),
+              const SizedBox(height: 16),
+              Center(
+                child: ElevatedButton.icon(
+                  onPressed: _pickFile,
+                  icon: const Icon(Icons.replay),
+                  label: const Text('Choose a different file'),
+                ),
+              ),
+            ] else ...[
+              const Text('Select a CSV or XLSX file to import weekly records.'),
+              const SizedBox(height: 16),
+               Center(
+                child: ElevatedButton.icon(
+                  onPressed: _pickFile,
+                  icon: const Icon(Icons.folder_open),
+                  label: const Text('Choose File'),
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            const Text(
+              'Format Requirements:\n'
+              '• First row must contain column headers\n'
+              '• Date format: YYYY-MM-DD\n'
+              '• Numbers should not have commas',
+              style: TextStyle(fontSize: 12, color: Colors.grey),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
   Widget _buildColumnMappingStep() {
-    if (_headers == null || _rows == null) {
-      return const Text('No file selected');
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text('Map CSV columns to fields:'),
-        const SizedBox(height: 16),
-        Text('Required fields', style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 8),
-        ..._requiredFields.map(
-          (field) => _buildMappingDropdown(field, isOptional: false),
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+             ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                child: Text('2', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+              title: Text(
+                'Map Columns',
+                style: Theme.of(context).textTheme.titleLarge,
+              ),
+               subtitle: const Text('Match file columns to database fields.'),
+            ),
+            const SizedBox(height: 16),
+            Text('Required fields', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            ..._requiredFields.map(
+              (field) => _buildMappingDropdown(field, isOptional: false),
+            ),
+            const SizedBox(height: 16),
+            Text('Optional fields', style: Theme.of(context).textTheme.titleSmall),
+            const SizedBox(height: 8),
+            ..._optionalFields.map(
+              (field) => _buildMappingDropdown(field, isOptional: true),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Preview: First ${_rows!.take(3).length} of ${_rows!.length} data rows',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: DataTable(
+                columns: _headers!.map((h) => DataColumn(label: Text(h))).toList(),
+                rows: _rows!.take(3).map((row) {
+                  return DataRow(
+                    cells: row
+                        .map((cell) => DataCell(Text(cell.toString())))
+                        .toList(),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 16),
-        Text('Optional fields', style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 8),
-        ..._optionalFields.map(
-          (field) => _buildMappingDropdown(field, isOptional: true),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'Preview: ${_rows!.take(3).length} of ${_rows!.length} rows',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        const SizedBox(height: 8),
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: DataTable(
-            columns: _headers!.map((h) => DataColumn(label: Text(h))).toList(),
-            rows: _rows!.take(3).map((row) {
-              return DataRow(
-                cells: row
-                    .map((cell) => DataCell(Text(cell.toString())))
-                    .toList(),
-              );
-            }).toList(),
-          ),
-        ),
-      ],
+      ),
     );
+  }
+  
+  Widget _buildActionsStep() {
+     return Padding(
+       padding: const EdgeInsets.symmetric(vertical: 16.0),
+       child: Center(
+         child: ElevatedButton.icon(
+            onPressed: _validateData,
+            icon: const Icon(Icons.check_circle_outline),
+            label: const Text('Validate Data'),
+            style: ElevatedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+              textStyle: Theme.of(context).textTheme.titleMedium,
+            ),
+          ),
+       ),
+     );
   }
 
   Widget _buildMappingDropdown(String field, {required bool isOptional}) {
+    final mappedIndices = _columnMapping.values.toList();
+    final currentValue = _columnMapping[field];
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Row(
@@ -509,7 +521,7 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
           Expanded(
             flex: 3,
             child: DropdownButtonFormField<int>(
-              initialValue: _columnMapping[field],
+              value: _columnMapping[field],
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 contentPadding: EdgeInsets.symmetric(
@@ -524,9 +536,16 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
                   child: Text('-- Not mapped --'),
                 ),
                 ..._headers!.asMap().entries.map((entry) {
+                  final isMapped = mappedIndices.contains(entry.key) && entry.key != currentValue;
                   return DropdownMenuItem(
                     value: entry.key,
-                    child: Text(entry.value),
+                    enabled: !isMapped,
+                    child: Text(
+                      isMapped ? '${entry.value} (mapped)' : entry.value,
+                      style: TextStyle(
+                        color: isMapped ? Colors.grey : null,
+                      ),
+                    ),
                   );
                 }),
               ],
@@ -548,60 +567,96 @@ class _CsvImportScreenState extends ConsumerState<CsvImportScreen> {
 
   Widget _buildPreviewStep() {
     if (_validationResults == null) {
-      return const Text('No validation results');
+      return const SizedBox.shrink();
     }
 
     final validCount = _validationResults!.where((r) => r.success).length;
     final errorCount = _validationResults!.where((r) => !r.success).length;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Card(
-          color: Colors.blue.shade50,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Validation Summary',
-                  style: Theme.of(context).textTheme.titleMedium,
-                ),
-                const SizedBox(height: 8),
-                Text('✓ Valid records: $validCount'),
-                Text('✗ Invalid records: $errorCount'),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
-        if (errorCount > 0) ...[
-          Text('Errors Found:', style: Theme.of(context).textTheme.titleMedium),
-          const SizedBox(height: 8),
-          Container(
-            constraints: const BoxConstraints(maxHeight: 300),
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: _validationResults!
-                    .where((r) => !r.success)
-                    .map(
-                      (r) => Card(
-                        color: Colors.red.shade50,
-                        child: ListTile(
-                          leading: const Icon(Icons.error, color: Colors.red),
-                          title: Text('Row ${r.rowNumber}'),
-                          subtitle: Text(r.errors!.join('\n')),
-                        ),
-                      ),
-                    )
-                    .toList(),
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+             ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: CircleAvatar(
+                child: Text('3', style: TextStyle(fontWeight: FontWeight.bold)),
+              ),
+              title: Text(
+                'Validation Results',
+                style: Theme.of(context).textTheme.titleLarge,
               ),
             ),
-          ),
-        ],
-      ],
+            const SizedBox(height: 16),
+            Card(
+              color: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.5),
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Column(
+                      children: [
+                        Text('✓', style: TextStyle(color: Colors.green, fontSize: 24)),
+                        Text('$validCount Valid'),
+                      ],
+                    ),
+                     Column(
+                      children: [
+                        Text('✗', style: TextStyle(color: Colors.red, fontSize: 24)),
+                        Text('$errorCount Invalid'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (errorCount > 0) ...[
+              const SizedBox(height: 16),
+              Text('Errors Found:', style: Theme.of(context).textTheme.titleMedium),
+              const SizedBox(height: 8),
+              Container(
+                constraints: const BoxConstraints(maxHeight: 300),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _validationResults!
+                        .where((r) => !r.success)
+                        .map(
+                          (r) => Card(
+                            elevation: 1,
+                            color: Colors.red.shade50,
+                            child: ListTile(
+                              leading: const Icon(Icons.error_outline, color: Colors.red),
+                              title: Text('Row ${r.rowNumber}'),
+                              subtitle: Text(r.errors!.join('\n')),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ),
+                ),
+              ),
+            ],
+            const SizedBox(height: 24),
+            Center(
+              child: ElevatedButton.icon(
+                onPressed: validCount > 0 ? _importData : null,
+                icon: const Icon(Icons.file_upload),
+                label: Text('Import $validCount Records'),
+                 style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                  textStyle: Theme.of(context).textTheme.titleMedium,
+                  backgroundColor: Colors.green,
+                  foregroundColor: Colors.white,
+                ),
+              ),
+            )
+          ],
+        ),
+      ),
     );
   }
 }

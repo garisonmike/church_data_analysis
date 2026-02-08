@@ -3,7 +3,7 @@ export 'app_settings_screen.dart';
 export 'attendance_charts_screen.dart';
 export 'church_settings_screen.dart';
 export 'correlation_charts_screen.dart';
-export 'csv_import_screen.dart';
+export 'import_screen.dart';
 export 'custom_graph_builder_screen.dart';
 export 'dashboard_layout_editor_screen.dart';
 export 'dashboard_screen.dart';
