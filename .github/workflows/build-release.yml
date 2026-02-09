@@ -3,7 +3,7 @@ name: Build Release
 on:
   push:
     tags:
-      - 'v*'   # Runs when you push a tag like v1.0.0
+      - 'v*'
 
 jobs:
 
@@ -15,7 +15,7 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'
+          channel: stable
 
       - run: flutter pub get
       - run: flutter build apk --release
@@ -26,7 +26,6 @@ jobs:
           name: android-apk
           path: build/app/outputs/flutter-apk/app-release.apk
 
-
   build-windows:
     runs-on: windows-latest
 
@@ -35,9 +34,10 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'
+          channel: stable
 
       - run: flutter pub get
+      - run: flutter config --enable-windows-desktop
       - run: flutter build windows --release
 
       - name: Upload Windows Build
