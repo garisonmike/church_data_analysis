@@ -13,13 +13,11 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.7'   # <-- Explicit version
-          cache: true
+          channel: stable
 
-      - run: flutter doctor -v
+      - run: flutter --version
       - run: flutter pub get
       - run: flutter build apk --release
 
@@ -29,21 +27,17 @@ jobs:
           name: android-apk
           path: build/app/outputs/flutter-apk/app-release.apk
 
-
   build-windows:
     runs-on: windows-latest
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.35.7'   # <-- Explicit version
-          cache: true
+          channel: stable
 
-      - run: flutter config --enable-windows-desktop
-      - run: flutter doctor -v
+      - run: flutter --version
       - run: flutter pub get
       - run: flutter build windows --release
 
