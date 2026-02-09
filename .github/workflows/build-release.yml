@@ -5,35 +5,25 @@ on:
     tags:
       - 'v*'
 
-permissions:
-  contents: read
-
 jobs:
 
   build-android:
-    name: Build Android APK
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version: '3.22.2'   # <-- Explicit version
           cache: true
 
-      - name: Flutter Doctor
-        run: flutter doctor -v
+      - run: flutter doctor -v
+      - run: flutter pub get
+      - run: flutter build apk --release
 
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build APK (Release)
-        run: flutter build apk --release
-
-      - name: Upload Android Artifact
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: android-apk
@@ -41,32 +31,23 @@ jobs:
 
 
   build-windows:
-    name: Build Windows App
     runs-on: windows-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          channel: stable
+          flutter-version: '3.22.2'   # <-- Explicit version
           cache: true
 
-      - name: Enable Windows Desktop
-        run: flutter config --enable-windows-desktop
+      - run: flutter config --enable-windows-desktop
+      - run: flutter doctor -v
+      - run: flutter pub get
+      - run: flutter build windows --release
 
-      - name: Flutter Doctor
-        run: flutter doctor -v
-
-      - name: Install dependencies
-        run: flutter pub get
-
-      - name: Build Windows Release
-        run: flutter build windows --release
-
-      - name: Upload Windows Artifact
+      - name: Upload Windows Build
         uses: actions/upload-artifact@v4
         with:
           name: windows-build
