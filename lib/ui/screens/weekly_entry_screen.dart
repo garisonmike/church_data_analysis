@@ -95,7 +95,6 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
       // Editing existing record, load historical data
       await _loadHistoricalRecords(widget.existingRecord!.churchId, db);
     }
-
   }
 
   Future<void> _loadHistoricalRecords(int churchId, AppDatabase db) async {
@@ -225,6 +224,30 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
     return null;
   }
 
+  String? _validateOptionalDecimal(String? value) {
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+
+    final number = double.tryParse(value);
+    if (number == null) {
+      return 'Please enter a valid amount';
+    }
+
+    if (number < 0) {
+      return 'Amount must be positive';
+    }
+
+    return null;
+  }
+
+  double _parseOptionalDecimal(String value) {
+    if (value.isEmpty) {
+      return 0.0;
+    }
+    return double.tryParse(value) ?? 0.0;
+  }
+
   Future<void> _saveRecord() async {
     // Clear previous error
     setState(() {
@@ -251,6 +274,22 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
     try {
       final database = ref.read(databaseProvider);
       final repository = WeeklyRecordRepository(database);
+
+      final emergencyCollection = _parseOptionalDecimal(
+        _emergencyCollectionController.text,
+      );
+      final plannedCollection = _parseOptionalDecimal(
+        _plannedCollectionController.text,
+      );
+
+      if (emergencyCollection > 0 && plannedCollection > 0) {
+        setState(() {
+          _errorMessage =
+              'Planned and Emergency collections cannot both be entered for the same week.';
+          _isLoading = false;
+        });
+        return;
+      }
 
       // Check for duplicate week (only if creating new or date changed)
       if (widget.existingRecord == null ||
@@ -292,8 +331,8 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
         sundayHomeChurch: int.parse(_sundayHomeChurchController.text),
         tithe: double.parse(_titheController.text),
         offerings: double.parse(_offeringsController.text),
-        emergencyCollection: double.parse(_emergencyCollectionController.text),
-        plannedCollection: double.parse(_plannedCollectionController.text),
+        emergencyCollection: emergencyCollection,
+        plannedCollection: plannedCollection,
         createdAt: widget.existingRecord?.createdAt ?? now,
         updatedAt: now,
       );
@@ -321,7 +360,7 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error saving record: ${e.toString()}';
+        _errorMessage = 'Unable to save record. Please try again.';
         _isLoading = false;
       });
     }
@@ -443,12 +482,14 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
                       controller: _emergencyCollectionController,
                       label: 'Emergency Collection',
                       icon: Icons.warning_amber,
+                      validator: _validateOptionalDecimal,
                     ),
                     const SizedBox(height: 8),
                     _buildDecimalField(
                       controller: _plannedCollectionController,
                       label: 'Planned Collection',
                       icon: Icons.event_note,
+                      validator: _validateOptionalDecimal,
                     ),
                     const SizedBox(height: 16),
 
@@ -563,6 +604,7 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
     required TextEditingController controller,
     required String label,
     required IconData icon,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
@@ -575,7 +617,7 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
       inputFormatters: [
         FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
       ],
-      validator: _validatePositiveDecimal,
+      validator: validator ?? _validatePositiveDecimal,
     );
   }
 }
