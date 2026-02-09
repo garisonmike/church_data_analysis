@@ -728,4 +728,3 @@ Acceptance Criteria:
 * [ ] Manual sanity check on desktop
 * [ ] No regression from Phase S
 
-> Only after this phase may a beta or release build be cut.
