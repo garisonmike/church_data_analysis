@@ -132,6 +132,7 @@ const bool _kDemoMode = false;
 
 Change this flag to `true` during development/testing to explore the app with pre-populated data.
 
+
 ## Legacy Reference
 
 The `data.py` file contains the original Python CLI prototype and serves as a reference for business logic and analytics calculations.
