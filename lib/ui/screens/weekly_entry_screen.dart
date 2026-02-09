@@ -96,7 +96,6 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
       await _loadHistoricalRecords(widget.existingRecord!.churchId, db);
     }
 
-    await db.close();
   }
 
   Future<void> _loadHistoricalRecords(int churchId, AppDatabase db) async {
