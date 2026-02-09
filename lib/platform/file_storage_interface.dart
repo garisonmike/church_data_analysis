@@ -38,4 +38,7 @@ abstract class FileStorage {
 
   /// Read content from a picked file
   Future<String> readFileAsString(PlatformFileResult file);
+
+  /// Read binary content from a picked file
+  Future<Uint8List> readFileAsBytes(PlatformFileResult file);
 }

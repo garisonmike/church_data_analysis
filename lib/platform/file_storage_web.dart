@@ -89,4 +89,12 @@ class FileStorageImpl implements FileStorage {
     }
     return utf8.decode(file.bytes!);
   }
+
+  @override
+  Future<Uint8List> readFileAsBytes(PlatformFileResult file) async {
+    throw UnsupportedError(
+      'Binary file reads are not supported on web. '
+      'Use readFileAsString or handle in-memory bytes instead.',
+    );
+  }
 }

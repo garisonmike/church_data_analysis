@@ -47,6 +47,15 @@ class _FakeBytesFileStorage implements FileStorage {
     }
     return utf8.decode(bytes);
   }
+
+  @override
+  Future<Uint8List> readFileAsBytes(PlatformFileResult file) async {
+    final bytes = file.bytes;
+    if (bytes == null) {
+      throw StateError('Expected in-memory bytes');
+    }
+    return bytes;
+  }
 }
 
 void main() {

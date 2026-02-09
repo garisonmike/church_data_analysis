@@ -109,4 +109,12 @@ class FileStorageImpl implements FileStorage {
     }
     return File(file.path!).readAsString();
   }
+
+  @override
+  Future<Uint8List> readFileAsBytes(PlatformFileResult file) async {
+    if (file.path == null) {
+      throw Exception('File path is null on mobile');
+    }
+    return File(file.path!).readAsBytes();
+  }
 }
