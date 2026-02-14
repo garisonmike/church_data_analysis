@@ -226,6 +226,23 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
     return null;
   }
 
+  String? _validateOptionalDecimal(String? value) {
+    if (value == null || value.isEmpty) {
+      return null;
+    }
+
+    final number = double.tryParse(value);
+    if (number == null) {
+      return 'Please enter a valid amount';
+    }
+
+    if (number < 0) {
+      return 'Amount must be positive';
+    }
+
+    return null;
+  }
+
   Future<void> _saveRecord() async {
     // Clear previous error
     setState(() {
@@ -388,126 +405,12 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
                               ),
                             ),
 
-<<<<<<< Updated upstream
-                    // Date picker
-                    Card(
-                      child: ListTile(
-                        title: const Text('Week Start Date'),
-                        subtitle: Text(
-                          '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}',
-                        ),
-                        trailing: const Icon(Icons.calendar_today),
-                        onTap: () => _selectDate(context),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Attendance Section
-                    Text(
-                      'Attendance',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildIntegerField(
-                      controller: _menController,
-                      label: 'Men',
-                      icon: Icons.person,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildIntegerField(
-                      controller: _womenController,
-                      label: 'Women',
-                      icon: Icons.person_outline,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildIntegerField(
-                      controller: _youthController,
-                      label: 'Youth',
-                      icon: Icons.group,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildIntegerField(
-                      controller: _childrenController,
-                      label: 'Children',
-                      icon: Icons.child_care,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildIntegerField(
-                      controller: _sundayHomeChurchController,
-                      label: 'Sunday Home Church',
-                      icon: Icons.home,
-                    ),
-                    const SizedBox(height: 24),
-
-                    // Financial Section
-                    Text(
-                      'Financial Data',
-                      style: Theme.of(context).textTheme.titleLarge,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildDecimalField(
-                      controller: _titheController,
-                      label: 'Tithe',
-                      icon: Icons.attach_money,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildDecimalField(
-                      controller: _offeringsController,
-                      label: 'Offerings',
-                      icon: Icons.volunteer_activism,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildDecimalField(
-                      controller: _emergencyCollectionController,
-                      label: 'Emergency Collection',
-                      icon: Icons.warning_amber,
-                    ),
-                    const SizedBox(height: 8),
-                    _buildDecimalField(
-                      controller: _plannedCollectionController,
-                      label: 'Planned Collection',
-                      icon: Icons.event_note,
-                    ),
-                    const SizedBox(height: 16),
-
-                    // Check for outliers button
-                    OutlinedButton.icon(
-                      onPressed: _checkForOutliers,
-                      icon: const Icon(Icons.analytics),
-                      label: const Text('Check for Unusual Values'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.all(12),
-                      ),
-                    ),
-
-                    // Outlier warnings display
-                    if (_outlierWarnings.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      ..._outlierWarnings.map(
-                        (warning) => Container(
-                          padding: const EdgeInsets.all(12),
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.orange.shade100,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.orange),
-                          ),
-                          child: Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Icon(
-                                warning.type == OutlierType.high
-                                    ? Icons.trending_up
-                                    : Icons.trending_down,
-                                color: Colors.orange.shade800,
-=======
                           // Date picker
                           Card(
                             child: ListTile(
                               title: const Text('Week Start Date'),
                               subtitle: Text(
                                 '${_selectedDate.year}-${_selectedDate.month.toString().padLeft(2, '0')}-${_selectedDate.day.toString().padLeft(2, '0')}',
->>>>>>> Stashed changes
                               ),
                               trailing: const Icon(Icons.calendar_today),
                               onTap: () => _selectDate(context),
@@ -705,6 +608,7 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
     required TextEditingController controller,
     required String label,
     required IconData icon,
+    String? Function(String?)? validator,
   }) {
     return TextFormField(
       controller: controller,
@@ -717,7 +621,7 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
       inputFormatters: [
         FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
       ],
-      validator: _validatePositiveDecimal,
+      validator: validator ?? _validatePositiveDecimal,
     );
   }
 }
