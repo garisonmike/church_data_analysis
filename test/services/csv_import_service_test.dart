@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:church_analytics/platform/file_storage_interface.dart';
-import 'package:church_analytics/services/csv_import_service.dart';
+import 'package:church_analytics/services/import_service.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 class _FakeBytesFileStorage implements FileStorage {
@@ -47,20 +47,29 @@ class _FakeBytesFileStorage implements FileStorage {
     }
     return utf8.decode(bytes);
   }
+
+  @override
+  Future<Uint8List> readFileAsBytes(PlatformFileResult file) async {
+    final bytes = file.bytes;
+    if (bytes == null) {
+      throw StateError('Expected in-memory bytes');
+    }
+    return bytes;
+  }
 }
 
 void main() {
-  group('CsvImportService', () {
-    late CsvImportService service;
+  group('ImportService', () {
+    late ImportService service;
 
     setUp(() {
-      service = CsvImportService();
+      service = ImportService();
     });
 
-    group('parseCsvFile (web bytes)', () {
+    group('parseFile (web bytes)', () {
       test('parses CSV from memory bytes without file paths', () async {
         final bytesStorage = _FakeBytesFileStorage();
-        final bytesService = CsvImportService(fileStorage: bytesStorage);
+        final bytesService = ImportService(fileStorage: bytesStorage);
 
         const csv =
             'weekStartDate,men,women\n'
@@ -73,7 +82,7 @@ void main() {
           bytes: Uint8List.fromList(utf8.encode(csv)),
         );
 
-        final result = await bytesService.parseCsvFile(file);
+        final result = await bytesService.parseFile(file);
 
         expect(result.success, true);
         expect(result.headers, ['weekStartDate', 'men', 'women']);

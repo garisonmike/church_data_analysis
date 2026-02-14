@@ -89,4 +89,12 @@ class FileStorageImpl implements FileStorage {
     }
     return utf8.decode(file.bytes!);
   }
+
+  @override
+  Future<Uint8List> readFileAsBytes(PlatformFileResult file) async {
+    if (file.bytes == null) {
+      throw Exception('File bytes are null on web');
+    }
+    return file.bytes!;
+  }
 }

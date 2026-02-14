@@ -49,6 +49,11 @@ class _FakeFileStorage implements FileStorage {
   Future<String> readFileAsString(PlatformFileResult file) async {
     throw UnimplementedError();
   }
+
+  @override
+  Future<Uint8List> readFileAsBytes(PlatformFileResult file) async {
+    throw UnimplementedError();
+  }
 }
 
 void main() {

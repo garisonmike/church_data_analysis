@@ -108,7 +108,11 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
 
     // Check that all required fields are mapped
     final unmappedFields = _requiredFields
-        .where((field) => !_columnMapping.containsKey(field) || _columnMapping[field] == null)
+        .where(
+          (field) =>
+              !_columnMapping.containsKey(field) ||
+              _columnMapping[field] == null,
+        )
         .toList();
 
     if (unmappedFields.isNotEmpty) {
@@ -316,7 +320,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
               const SizedBox(height: 16),
               Text(
                 _errorMessage!,
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: Colors.red),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(color: Colors.red),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -339,23 +345,13 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
           const SizedBox(height: 24),
           _buildColumnMappingStep(),
           const SizedBox(height: 24),
-           _buildActionsStep(),
+          _buildActionsStep(),
         ],
         if (_validationResults != null) ...[
           const SizedBox(height: 24),
           _buildPreviewStep(),
-        ]
+        ],
       ],
-    );
-  }
-
-  Widget _buildSectionHeader(String title) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16.0),
-      child: Text(
-        title,
-        style: Theme.of(context).textTheme.headlineSmall,
-      ),
     );
   }
 
@@ -378,7 +374,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             ),
             const SizedBox(height: 16),
             if (_selectedFile != null) ...[
-              Text('Selected: ${_selectedFile!.name} (${_rows?.length ?? 0} rows)'),
+              Text(
+                'Selected: ${_selectedFile!.name} (${_rows?.length ?? 0} rows)',
+              ),
               const SizedBox(height: 16),
               Center(
                 child: ElevatedButton.icon(
@@ -390,7 +388,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             ] else ...[
               const Text('Select a CSV or XLSX file to import weekly records.'),
               const SizedBox(height: 16),
-               Center(
+              Center(
                 child: ElevatedButton.icon(
                   onPressed: _pickFile,
                   icon: const Icon(Icons.folder_open),
@@ -419,7 +417,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-             ListTile(
+            ListTile(
               contentPadding: EdgeInsets.zero,
               leading: CircleAvatar(
                 child: Text('2', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -428,16 +426,22 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                 'Map Columns',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
-               subtitle: const Text('Match file columns to database fields.'),
+              subtitle: const Text('Match file columns to database fields.'),
             ),
             const SizedBox(height: 16),
-            Text('Required fields', style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'Required fields',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: 8),
             ..._requiredFields.map(
               (field) => _buildMappingDropdown(field, isOptional: false),
             ),
             const SizedBox(height: 16),
-            Text('Optional fields', style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'Optional fields',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
             const SizedBox(height: 8),
             ..._optionalFields.map(
               (field) => _buildMappingDropdown(field, isOptional: true),
@@ -451,7 +455,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: DataTable(
-                columns: _headers!.map((h) => DataColumn(label: Text(h))).toList(),
+                columns: _headers!
+                    .map((h) => DataColumn(label: Text(h)))
+                    .toList(),
                 rows: _rows!.take(3).map((row) {
                   return DataRow(
                     cells: row
@@ -466,22 +472,22 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       ),
     );
   }
-  
+
   Widget _buildActionsStep() {
-     return Padding(
-       padding: const EdgeInsets.symmetric(vertical: 16.0),
-       child: Center(
-         child: ElevatedButton.icon(
-            onPressed: _validateData,
-            icon: const Icon(Icons.check_circle_outline),
-            label: const Text('Validate Data'),
-            style: ElevatedButton.styleFrom(
-              padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              textStyle: Theme.of(context).textTheme.titleMedium,
-            ),
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
+      child: Center(
+        child: ElevatedButton.icon(
+          onPressed: _validateData,
+          icon: const Icon(Icons.check_circle_outline),
+          label: const Text('Validate Data'),
+          style: ElevatedButton.styleFrom(
+            padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+            textStyle: Theme.of(context).textTheme.titleMedium,
           ),
-       ),
-     );
+        ),
+      ),
+    );
   }
 
   Widget _buildMappingDropdown(String field, {required bool isOptional}) {
@@ -521,7 +527,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
           Expanded(
             flex: 3,
             child: DropdownButtonFormField<int>(
-              value: _columnMapping[field],
+              initialValue: _columnMapping[field],
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 contentPadding: EdgeInsets.symmetric(
@@ -536,15 +542,15 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                   child: Text('-- Not mapped --'),
                 ),
                 ..._headers!.asMap().entries.map((entry) {
-                  final isMapped = mappedIndices.contains(entry.key) && entry.key != currentValue;
+                  final isMapped =
+                      mappedIndices.contains(entry.key) &&
+                      entry.key != currentValue;
                   return DropdownMenuItem(
                     value: entry.key,
                     enabled: !isMapped,
                     child: Text(
                       isMapped ? '${entry.value} (mapped)' : entry.value,
-                      style: TextStyle(
-                        color: isMapped ? Colors.grey : null,
-                      ),
+                      style: TextStyle(color: isMapped ? Colors.grey : null),
                     ),
                   );
                 }),
@@ -579,7 +585,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-             ListTile(
+            ListTile(
               contentPadding: EdgeInsets.zero,
               leading: CircleAvatar(
                 child: Text('3', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -591,7 +597,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             ),
             const SizedBox(height: 16),
             Card(
-              color: Theme.of(context).colorScheme.secondaryContainer.withOpacity(0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.secondaryContainer.withOpacity(0.5),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
@@ -599,13 +607,19 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                   children: [
                     Column(
                       children: [
-                        Text('✓', style: TextStyle(color: Colors.green, fontSize: 24)),
+                        Text(
+                          '✓',
+                          style: TextStyle(color: Colors.green, fontSize: 24),
+                        ),
                         Text('$validCount Valid'),
                       ],
                     ),
-                     Column(
+                    Column(
                       children: [
-                        Text('✗', style: TextStyle(color: Colors.red, fontSize: 24)),
+                        Text(
+                          '✗',
+                          style: TextStyle(color: Colors.red, fontSize: 24),
+                        ),
                         Text('$errorCount Invalid'),
                       ],
                     ),
@@ -615,7 +629,10 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             ),
             if (errorCount > 0) ...[
               const SizedBox(height: 16),
-              Text('Errors Found:', style: Theme.of(context).textTheme.titleMedium),
+              Text(
+                'Errors Found:',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
               const SizedBox(height: 8),
               Container(
                 constraints: const BoxConstraints(maxHeight: 300),
@@ -629,7 +646,10 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                             elevation: 1,
                             color: Colors.red.shade50,
                             child: ListTile(
-                              leading: const Icon(Icons.error_outline, color: Colors.red),
+                              leading: const Icon(
+                                Icons.error_outline,
+                                color: Colors.red,
+                              ),
                               title: Text('Row ${r.rowNumber}'),
                               subtitle: Text(r.errors!.join('\n')),
                             ),
@@ -646,14 +666,17 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                 onPressed: validCount > 0 ? _importData : null,
                 icon: const Icon(Icons.file_upload),
                 label: Text('Import $validCount Records'),
-                 style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 16),
+                style: ElevatedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
                   textStyle: Theme.of(context).textTheme.titleMedium,
                   backgroundColor: Colors.green,
                   foregroundColor: Colors.white,
                 ),
               ),
-            )
+            ),
           ],
         ),
       ),
