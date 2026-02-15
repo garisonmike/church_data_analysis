@@ -268,13 +268,14 @@ class BackupService {
       String fileName;
       String? fullPath;
       if (customPath != null) {
-        final hasPath = customPath.contains('/');
-        fileName = hasPath ? customPath.split('/').last : customPath;
+        final normalized = customPath.replaceAll('\\', '/');
+        final hasPath = normalized.contains('/');
+        fileName = hasPath ? normalized.split('/').last : normalized;
         if (!fileName.endsWith('.json')) fileName += '.json';
         if (hasPath) {
-          fullPath = customPath.endsWith('.json')
-              ? customPath
-              : '$customPath.json';
+          fullPath = normalized.endsWith('.json')
+              ? normalized
+              : '$normalized.json';
         }
       } else {
         fileName = generateBackupFilename();

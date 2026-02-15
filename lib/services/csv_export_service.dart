@@ -178,14 +178,16 @@ class CsvExportService {
       String fileName;
       String? fullPath;
       if (customPath != null) {
+        // Normalize separators so Windows paths are handled correctly
+        final normalized = customPath.replaceAll('\\', '/');
         // If it looks like a path, take the filename
-        final hasPath = customPath.contains('/');
-        fileName = hasPath ? customPath.split('/').last : customPath;
+        final hasPath = normalized.contains('/');
+        fileName = hasPath ? normalized.split('/').last : normalized;
         if (!fileName.endsWith('.csv')) fileName += '.csv';
         if (hasPath) {
-          fullPath = customPath.endsWith('.csv')
-              ? customPath
-              : '$customPath.csv';
+          fullPath = normalized.endsWith('.csv')
+              ? normalized
+              : '$normalized.csv';
         }
       } else {
         fileName = generateExportFilename('weekly_records');

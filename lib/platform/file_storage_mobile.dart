@@ -7,6 +7,32 @@ import 'package:path_provider/path_provider.dart';
 import 'file_storage_interface.dart';
 
 class FileStorageImpl implements FileStorage {
+  File _sanitizeFileName(File file) {
+    final normalized = file.path.replaceAll('\\', '/');
+    final safeName = normalized.contains('/')
+        ? normalized.split('/').last
+        : normalized;
+    return File('${file.parent.path}/$safeName');
+  }
+
+  Future<File> _ensureUniqueFile(File file) async {
+    if (!await file.exists()) return file;
+
+    final originalPath = file.path;
+    final dotIndex = originalPath.lastIndexOf('.');
+    final base = dotIndex == -1
+        ? originalPath
+        : originalPath.substring(0, dotIndex);
+    final ext = dotIndex == -1 ? '' : originalPath.substring(dotIndex);
+
+    var counter = 1;
+    while (true) {
+      final candidate = File('${base}_$counter$ext');
+      if (!await candidate.exists()) return candidate;
+      counter++;
+    }
+  }
+
   Future<Directory> _getExportDirectory() async {
     try {
       Directory baseDir;
@@ -104,15 +130,18 @@ class FileStorageImpl implements FileStorage {
     String? fullPath,
   }) async {
     try {
+      final safeName = fileName.replaceAll('\\', '/');
       final file = fullPath != null
           ? File(fullPath)
-          : File('${(await _getExportDirectory()).path}/$fileName');
-      await file.parent.create(recursive: true);
-      await file.writeAsString(content);
+          : File('${(await _getExportDirectory()).path}/$safeName');
+      final sanitized = _sanitizeFileName(file);
+      await sanitized.parent.create(recursive: true);
+      final target = await _ensureUniqueFile(sanitized);
+      await target.writeAsString(content);
       if (kDebugMode) {
-        debugPrint('File saved to: ${file.path}');
+        debugPrint('File saved to: ${target.path}');
       }
-      return file.path;
+      return target.path;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Error saving file: $e');
@@ -128,15 +157,18 @@ class FileStorageImpl implements FileStorage {
     String? fullPath,
   }) async {
     try {
+      final safeName = fileName.replaceAll('\\', '/');
       final file = fullPath != null
           ? File(fullPath)
-          : File('${(await _getExportDirectory()).path}/$fileName');
-      await file.parent.create(recursive: true);
-      await file.writeAsBytes(bytes);
+          : File('${(await _getExportDirectory()).path}/$safeName');
+      final sanitized = _sanitizeFileName(file);
+      await sanitized.parent.create(recursive: true);
+      final target = await _ensureUniqueFile(sanitized);
+      await target.writeAsBytes(bytes);
       if (kDebugMode) {
-        debugPrint('File saved to: ${file.path}');
+        debugPrint('File saved to: ${target.path}');
       }
-      return file.path;
+      return target.path;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Error saving file: $e');
