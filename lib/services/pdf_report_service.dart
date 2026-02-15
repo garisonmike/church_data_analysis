@@ -34,7 +34,9 @@ class PdfReportService {
           : DateFormat('MMMM d, yyyy', locale);
       formattedDate = dateFormat.format(generatedDate);
     } catch (e) {
-      debugPrint('Warning: DateFormat failed, using fallback: $e');
+      if (kDebugMode) {
+        debugPrint('Warning: DateFormat failed, using fallback: $e');
+      }
       // Fallback to simple ISO format if locale initialization failed
       formattedDate =
           '${generatedDate.year}-${generatedDate.month.toString().padLeft(2, '0')}-${generatedDate.day.toString().padLeft(2, '0')}';
@@ -515,7 +517,9 @@ class PdfReportService {
 
       return path;
     } catch (e) {
-      debugPrint('Error saving PDF: $e');
+      if (kDebugMode) {
+        debugPrint('Error saving PDF: $e');
+      }
       return null;
     }
   }
@@ -536,7 +540,9 @@ class PdfReportService {
 
       return true;
     } catch (e) {
-      debugPrint('Error sharing PDF: $e');
+      if (kDebugMode) {
+        debugPrint('Error sharing PDF: $e');
+      }
       return false;
     }
   }
@@ -547,7 +553,9 @@ class PdfReportService {
       await Printing.layoutPdf(onLayout: (format) async => pdf.save());
       return true;
     } catch (e) {
-      debugPrint('Error printing PDF: $e');
+      if (kDebugMode) {
+        debugPrint('Error printing PDF: $e');
+      }
       return false;
     }
   }
@@ -574,7 +582,9 @@ class PdfReportService {
     try {
       timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
     } catch (e) {
-      debugPrint('Warning: DateFormat failed, using fallback: $e');
+      if (kDebugMode) {
+        debugPrint('Warning: DateFormat failed, using fallback: $e');
+      }
       // Fallback to manual formatting if locale fails
       final now = DateTime.now();
       timestamp =

@@ -1,8 +1,8 @@
-import 'dart:typed_data';
 import 'dart:ui' as ui;
 
 import 'package:church_analytics/platform/file_storage.dart';
 import 'package:church_analytics/platform/file_storage_interface.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:intl/intl.dart';
@@ -18,7 +18,9 @@ class ChartExportService {
           key.currentContext?.findRenderObject() as RenderRepaintBoundary?;
 
       if (boundary == null) {
-        debugPrint('Error: Could not find RenderRepaintBoundary');
+        if (kDebugMode) {
+          debugPrint('Error: Could not find RenderRepaintBoundary');
+        }
         return null;
       }
 
@@ -31,13 +33,17 @@ class ChartExportService {
       );
 
       if (byteData == null) {
-        debugPrint('Error: Could not convert image to byte data');
+        if (kDebugMode) {
+          debugPrint('Error: Could not convert image to byte data');
+        }
         return null;
       }
 
       return byteData.buffer.asUint8List();
     } catch (e) {
-      debugPrint('Error capturing widget: $e');
+      if (kDebugMode) {
+        debugPrint('Error capturing widget: $e');
+      }
       return null;
     }
   }
@@ -61,10 +67,14 @@ class ChartExportService {
         bytes: imageBytes,
       );
 
-      debugPrint('Chart saved successfully: $path');
+      if (kDebugMode) {
+        debugPrint('Chart saved successfully: $path');
+      }
       return path;
     } catch (e) {
-      debugPrint('Error saving PNG: $e');
+      if (kDebugMode) {
+        debugPrint('Error saving PNG: $e');
+      }
       return null;
     }
   }
@@ -96,7 +106,9 @@ class ChartExportService {
     try {
       timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
     } catch (e) {
-      debugPrint('Warning: DateFormat failed, using fallback: $e');
+      if (kDebugMode) {
+        debugPrint('Warning: DateFormat failed, using fallback: $e');
+      }
       // Fallback to manual formatting if locale fails
       final now = DateTime.now();
       timestamp =
@@ -138,7 +150,9 @@ class ChartExportService {
 
       return filePath;
     } catch (e) {
-      debugPrint('Error in export workflow: $e');
+      if (kDebugMode) {
+        debugPrint('Error in export workflow: $e');
+      }
       return null;
     }
   }

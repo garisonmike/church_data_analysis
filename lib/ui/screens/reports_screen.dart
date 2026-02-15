@@ -148,8 +148,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         _showStatus('PDF export failed. Please try again.', isError: true);
       }
     } catch (e, stack) {
-      debugPrint('PDF export error: $e');
-      debugPrint('Stack trace: $stack');
+      if (kDebugMode) {
+        debugPrint('PDF export error: $e');
+        debugPrint('Stack trace: $stack');
+      }
       _showStatus('Export failed. Please try again.', isError: true);
     } finally {
       setState(() => _isProcessing = false);
@@ -187,12 +189,16 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       if (result.success) {
         _showStatus('CSV exported successfully', isSuccess: true);
       } else {
-        debugPrint('CSV export error: ${result.error}');
+        if (kDebugMode) {
+          debugPrint('CSV export error: ${result.error}');
+        }
         _showStatus('Export failed. Please try again.', isError: true);
       }
     } catch (e, stack) {
-      debugPrint('CSV export error: $e');
-      debugPrint('Stack trace: $stack');
+      if (kDebugMode) {
+        debugPrint('CSV export error: $e');
+        debugPrint('Stack trace: $stack');
+      }
       _showStatus('Export failed. Please try again.', isError: true);
     } finally {
       setState(() => _isProcessing = false);
@@ -226,12 +232,16 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       if (result.success) {
         _showStatus('Backup created successfully', isSuccess: true);
       } else {
-        debugPrint('Backup error: ${result.error}');
+        if (kDebugMode) {
+          debugPrint('Backup error: ${result.error}');
+        }
         _showStatus('Backup failed. Please try again.', isError: true);
       }
     } catch (e, stack) {
-      debugPrint('Backup error: $e');
-      debugPrint('Stack trace: $stack');
+      if (kDebugMode) {
+        debugPrint('Backup error: $e');
+        debugPrint('Stack trace: $stack');
+      }
       _showStatus('Backup failed. Please try again.', isError: true);
     } finally {
       setState(() => _isProcessing = false);
@@ -247,13 +257,17 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         if (result.success) {
           _showStatus('Restore completed successfully', isSuccess: true);
         } else {
-          debugPrint('Restore error: ${result.error}');
+          if (kDebugMode) {
+            debugPrint('Restore error: ${result.error}');
+          }
           _showStatus('Restore failed. Please try again.', isError: true);
         }
       }
     } catch (e, stack) {
-      debugPrint('Restore error: $e');
-      debugPrint('Stack trace: $stack');
+      if (kDebugMode) {
+        debugPrint('Restore error: $e');
+        debugPrint('Stack trace: $stack');
+      }
       _showStatus('Restore failed. Please try again.', isError: true);
     } finally {
       setState(() => _isProcessing = false);

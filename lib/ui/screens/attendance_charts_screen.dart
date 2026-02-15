@@ -2,6 +2,7 @@ import 'package:church_analytics/models/models.dart' as models;
 import 'package:church_analytics/services/services.dart';
 import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -78,16 +79,22 @@ class _AttendanceChartsScreenState
             ),
           );
         } else {
-          debugPrint('Chart export verification failed for: $chartName');
+          if (kDebugMode) {
+            debugPrint('Chart export verification failed for: $chartName');
+          }
           throw Exception('Export verification failed');
         }
       } else {
-        debugPrint('Chart export returned null for: $chartName');
+        if (kDebugMode) {
+          debugPrint('Chart export returned null for: $chartName');
+        }
         throw Exception('Export failed');
       }
     } catch (e, stack) {
-      debugPrint('Chart export error for $chartName: $e');
-      debugPrint('Stack trace: $stack');
+      if (kDebugMode) {
+        debugPrint('Chart export error for $chartName: $e');
+        debugPrint('Stack trace: $stack');
+      }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

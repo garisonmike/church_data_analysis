@@ -270,6 +270,19 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
       final database = ref.read(databaseProvider);
       final repository = WeeklyRecordRepository(database);
 
+      // Validate emergency and planned collections
+      final emergency = double.tryParse(_emergencyCollectionController.text) ?? 0.0;
+      final planned = double.tryParse(_plannedCollectionController.text) ?? 0.0;
+      
+      if (emergency > 0 && planned > 0) {
+        setState(() {
+          _errorMessage =
+              'Cannot have both Emergency and Planned collections on the same week. Please enter only one.';
+          _isLoading = false;
+        });
+        return;
+      }
+
       // Check for duplicate week (only if creating new or date changed)
       if (widget.existingRecord == null ||
           widget.existingRecord!.weekStartDate != _selectedDate) {
@@ -297,21 +310,22 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
       final profileService = AdminProfileService(adminRepo, prefs);
       final currentAdminId = profileService.getCurrentProfileId();
 
+      // Safe parsing with validation (form validation ensures these are valid)
       final record = models.WeeklyRecord(
         id: widget.existingRecord?.id ?? 0, // 0 for new records
         churchId: _selectedChurchId!,
         createdByAdminId:
             widget.existingRecord?.createdByAdminId ?? currentAdminId,
         weekStartDate: _selectedDate,
-        men: int.parse(_menController.text),
-        women: int.parse(_womenController.text),
-        youth: int.parse(_youthController.text),
-        children: int.parse(_childrenController.text),
-        sundayHomeChurch: int.parse(_sundayHomeChurchController.text),
-        tithe: double.parse(_titheController.text),
-        offerings: double.parse(_offeringsController.text),
-        emergencyCollection: double.parse(_emergencyCollectionController.text),
-        plannedCollection: double.parse(_plannedCollectionController.text),
+        men: int.tryParse(_menController.text) ?? 0,
+        women: int.tryParse(_womenController.text) ?? 0,
+        youth: int.tryParse(_youthController.text) ?? 0,
+        children: int.tryParse(_childrenController.text) ?? 0,
+        sundayHomeChurch: int.tryParse(_sundayHomeChurchController.text) ?? 0,
+        tithe: double.tryParse(_titheController.text) ?? 0.0,
+        offerings: double.tryParse(_offeringsController.text) ?? 0.0,
+        emergencyCollection: double.tryParse(_emergencyCollectionController.text) ?? 0.0,
+        plannedCollection: double.tryParse(_plannedCollectionController.text) ?? 0.0,
         createdAt: widget.existingRecord?.createdAt ?? now,
         updatedAt: now,
       );

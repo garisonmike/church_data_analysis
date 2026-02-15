@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -28,7 +29,9 @@ void main() async {
   try {
     await initializeDateFormatting();
   } catch (e) {
-    debugPrint('Warning: Failed to initialize date formatting: $e');
+    if (kDebugMode) {
+      debugPrint('Warning: Failed to initialize date formatting: $e');
+    }
     // Continue anyway - DateFormat will use fallback
   }
 

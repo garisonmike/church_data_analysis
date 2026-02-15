@@ -61,7 +61,9 @@ class FileStorageImpl implements FileStorage {
       );
       return result;
     } catch (e) {
-      debugPrint('Error picking save location: $e');
+      if (kDebugMode) {
+        debugPrint('Error picking save location: $e');
+      }
       return null;
     }
   }
@@ -79,7 +81,9 @@ class FileStorageImpl implements FileStorage {
       await file.writeAsString(content);
       return file.path;
     } catch (e) {
-      debugPrint('Error saving file: $e');
+      if (kDebugMode) {
+        debugPrint('Error saving file: $e');
+      }
       return null;
     }
   }
@@ -97,7 +101,9 @@ class FileStorageImpl implements FileStorage {
       await file.writeAsBytes(bytes);
       return file.path;
     } catch (e) {
-      debugPrint('Error saving file: $e');
+      if (kDebugMode) {
+        debugPrint('Error saving file: $e');
+      }
       return null;
     }
   }
