@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'services/settings_service.dart';
@@ -10,11 +11,11 @@ import 'ui/screens/attendance_charts_screen.dart';
 import 'ui/screens/church_selection_screen.dart';
 import 'ui/screens/church_settings_screen.dart';
 import 'ui/screens/correlation_charts_screen.dart';
-import 'ui/screens/import_screen.dart';
 import 'ui/screens/custom_graph_builder_screen.dart';
 import 'ui/screens/dashboard_screen.dart';
 import 'ui/screens/financial_charts_screen.dart';
 import 'ui/screens/graph_center_screen.dart';
+import 'ui/screens/import_screen.dart';
 import 'ui/screens/not_found_screen.dart';
 import 'ui/screens/profile_selection_screen.dart';
 import 'ui/screens/startup_gate_screen.dart';
@@ -22,6 +23,15 @@ import 'ui/screens/weekly_entry_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Initialize date formatting to prevent LocaleDataException in PDF exports
+  try {
+    await initializeDateFormatting();
+  } catch (e) {
+    debugPrint('Warning: Failed to initialize date formatting: $e');
+    // Continue anyway - DateFormat will use fallback
+  }
+
   final sharedPreferences = await SharedPreferences.getInstance();
 
   runApp(

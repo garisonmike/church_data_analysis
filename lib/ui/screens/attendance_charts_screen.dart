@@ -78,16 +78,20 @@ class _AttendanceChartsScreenState
             ),
           );
         } else {
+          debugPrint('Chart export verification failed for: $chartName');
           throw Exception('Export verification failed');
         }
       } else {
-        throw Exception('Failed to export chart');
+        debugPrint('Chart export returned null for: $chartName');
+        throw Exception('Export failed');
       }
-    } catch (e) {
+    } catch (e, stack) {
+      debugPrint('Chart export error for $chartName: $e');
+      debugPrint('Stack trace: $stack');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error exporting chart: ${e.toString()}'),
+        const SnackBar(
+          content: Text('Export failed. Please try again.'),
           backgroundColor: Colors.red,
         ),
       );

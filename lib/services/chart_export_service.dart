@@ -91,8 +91,18 @@ class ChartExportService {
         .replaceAll(RegExp(r'\s+'), '_')
         .trim();
 
-    // Generate timestamp
-    final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+    // Generate timestamp with safe date formatting
+    String timestamp;
+    try {
+      timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+    } catch (e) {
+      debugPrint('Warning: DateFormat failed, using fallback: $e');
+      // Fallback to manual formatting if locale fails
+      final now = DateTime.now();
+      timestamp =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_'
+          '${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+    }
 
     return '${cleanChurchName}_${cleanChartType}_$timestamp';
   }

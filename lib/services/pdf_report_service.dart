@@ -26,9 +26,19 @@ class PdfReportService {
     required DateTime generatedDate,
     String? locale,
   }) {
-    final dateFormat = locale == null
-        ? DateFormat('MMMM d, yyyy')
-        : DateFormat('MMMM d, yyyy', locale);
+    // Safe date formatting with fallback to prevent LocaleDataException
+    String formattedDate;
+    try {
+      final dateFormat = locale == null
+          ? DateFormat('MMMM d, yyyy')
+          : DateFormat('MMMM d, yyyy', locale);
+      formattedDate = dateFormat.format(generatedDate);
+    } catch (e) {
+      debugPrint('Warning: DateFormat failed, using fallback: $e');
+      // Fallback to simple ISO format if locale initialization failed
+      formattedDate =
+          '${generatedDate.year}-${generatedDate.month.toString().padLeft(2, '0')}-${generatedDate.day.toString().padLeft(2, '0')}';
+    }
 
     return pw.Container(
       padding: const pw.EdgeInsets.only(bottom: 20),
@@ -57,7 +67,7 @@ class PdfReportService {
                 style: pw.TextStyle(fontSize: 16, color: PdfColors.grey700),
               ),
               pw.Text(
-                'Generated: ${dateFormat.format(generatedDate)}',
+                'Generated: $formattedDate',
                 style: pw.TextStyle(fontSize: 12, color: PdfColors.grey600),
               ),
             ],
@@ -559,7 +569,18 @@ class PdfReportService {
         .replaceAll(RegExp(r'\s+'), '_')
         .trim();
 
-    final timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+    // Generate timestamp with safe date formatting
+    String timestamp;
+    try {
+      timestamp = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+    } catch (e) {
+      debugPrint('Warning: DateFormat failed, using fallback: $e');
+      // Fallback to manual formatting if locale fails
+      final now = DateTime.now();
+      timestamp =
+          '${now.year}${now.month.toString().padLeft(2, '0')}${now.day.toString().padLeft(2, '0')}_'
+          '${now.hour.toString().padLeft(2, '0')}${now.minute.toString().padLeft(2, '0')}${now.second.toString().padLeft(2, '0')}';
+    }
 
     return '${cleanChurchName}_${cleanReportType}_$timestamp';
   }

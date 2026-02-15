@@ -76,11 +76,22 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     return [];
   }
 
-  void _showStatus(String message) {
+  void _showStatus(
+    String message, {
+    bool isSuccess = false,
+    bool isError = false,
+  }) {
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: isSuccess
+            ? Colors.green
+            : isError
+            ? Colors.red
+            : null,
+      ),
+    );
   }
 
   Future<void> _exportPdf() async {
@@ -131,11 +142,15 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         customPath: customPath,
       );
 
-      _showStatus(
-        savedPath != null ? 'PDF exported: $savedPath' : 'PDF export failed',
-      );
-    } catch (e) {
-      _showStatus('Error exporting PDF: $e');
+      if (savedPath != null) {
+        _showStatus('PDF exported successfully', isSuccess: true);
+      } else {
+        _showStatus('PDF export failed. Please try again.', isError: true);
+      }
+    } catch (e, stack) {
+      debugPrint('PDF export error: $e');
+      debugPrint('Stack trace: $stack');
+      _showStatus('Export failed. Please try again.', isError: true);
     } finally {
       setState(() => _isProcessing = false);
     }
@@ -170,12 +185,15 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         currencyCode: settings.currency.code,
       );
       if (result.success) {
-        _showStatus('CSV Exported to ${result.filePath}');
+        _showStatus('CSV exported successfully', isSuccess: true);
       } else {
-        _showStatus('CSV Export Failed: ${result.error}');
+        debugPrint('CSV export error: ${result.error}');
+        _showStatus('Export failed. Please try again.', isError: true);
       }
-    } catch (e) {
-      _showStatus('Error exporting CSV: $e');
+    } catch (e, stack) {
+      debugPrint('CSV export error: $e');
+      debugPrint('Stack trace: $stack');
+      _showStatus('Export failed. Please try again.', isError: true);
     } finally {
       setState(() => _isProcessing = false);
     }
@@ -206,12 +224,15 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       );
 
       if (result.success) {
-        _showStatus('Backup created: ${result.filePath}');
+        _showStatus('Backup created successfully', isSuccess: true);
       } else {
-        _showStatus('Backup failed: ${result.error}');
+        debugPrint('Backup error: ${result.error}');
+        _showStatus('Backup failed. Please try again.', isError: true);
       }
-    } catch (e) {
-      _showStatus('Error creating backup: $e');
+    } catch (e, stack) {
+      debugPrint('Backup error: $e');
+      debugPrint('Stack trace: $stack');
+      _showStatus('Backup failed. Please try again.', isError: true);
     } finally {
       setState(() => _isProcessing = false);
     }
@@ -224,13 +245,16 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       if (file != null) {
         final result = await _backupService.restoreFromBackup(file);
         if (result.success) {
-          _showStatus('Restored ${result.recordsRestored} records');
+          _showStatus('Restore completed successfully', isSuccess: true);
         } else {
-          _showStatus('Restore failed: ${result.error}');
+          debugPrint('Restore error: ${result.error}');
+          _showStatus('Restore failed. Please try again.', isError: true);
         }
       }
-    } catch (e) {
-      _showStatus('Error restoring backup: $e');
+    } catch (e, stack) {
+      debugPrint('Restore error: $e');
+      debugPrint('Stack trace: $stack');
+      _showStatus('Restore failed. Please try again.', isError: true);
     } finally {
       setState(() => _isProcessing = false);
     }
