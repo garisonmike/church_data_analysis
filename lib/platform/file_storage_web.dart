@@ -2,9 +2,9 @@
 
 import 'dart:convert';
 import 'dart:html' as html;
-import 'dart:typed_data';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart';
 
 import 'file_storage_interface.dart';
 
@@ -32,6 +32,9 @@ class FileStorageImpl implements FileStorage {
     required String suggestedName,
     required List<String> allowedExtensions,
   }) async {
+    if (kDebugMode) {
+      debugPrint('Web save location suggested: $suggestedName');
+    }
     return suggestedName;
   }
 
@@ -79,6 +82,9 @@ class FileStorageImpl implements FileStorage {
       ..setAttribute("download", effectiveName)
       ..click();
     html.Url.revokeObjectUrl(url);
+    if (kDebugMode) {
+      debugPrint('Web download triggered for: $effectiveName');
+    }
     return "Download started";
   }
 

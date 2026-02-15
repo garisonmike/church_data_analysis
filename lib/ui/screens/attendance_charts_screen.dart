@@ -69,7 +69,7 @@ class _AttendanceChartsScreenState
         if (isValid) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Chart exported successfully!'),
+              content: Text('Saved to: $filePath'),
               backgroundColor: Colors.green,
               action: SnackBarAction(
                 label: 'OK',

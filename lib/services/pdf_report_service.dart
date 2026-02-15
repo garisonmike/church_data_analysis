@@ -505,6 +505,10 @@ class PdfReportService {
           ? customPath
           : '$customPath.pdf';
 
+      if (kDebugMode) {
+        debugPrint('PDF save requested. Custom path: $customPath');
+      }
+
       // Generate PDF bytes
       final bytes = await pdf.save();
 
@@ -514,6 +518,10 @@ class PdfReportService {
         bytes: bytes,
         fullPath: fullPath,
       );
+
+      if (kDebugMode) {
+        debugPrint('PDF saved to: $path');
+      }
 
       return path;
     } catch (e) {

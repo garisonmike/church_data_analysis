@@ -9,10 +9,27 @@ import 'file_storage_interface.dart';
 class FileStorageImpl implements FileStorage {
   Future<Directory> _getExportDirectory() async {
     try {
-      final appDir = await getApplicationDocumentsDirectory();
-      final exportDir = Directory('${appDir.path}/exports');
+      Directory baseDir;
+      if (Platform.isAndroid) {
+        final downloadDirs = await getExternalStorageDirectories(
+          type: StorageDirectory.downloads,
+        );
+        baseDir = (downloadDirs != null && downloadDirs.isNotEmpty)
+            ? downloadDirs.first
+            : await getApplicationDocumentsDirectory();
+      } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+        baseDir = await getDownloadsDirectory() ??
+            await getApplicationDocumentsDirectory();
+      } else {
+        baseDir = await getApplicationDocumentsDirectory();
+      }
+
+      final exportDir = Directory('${baseDir.path}/ChurchAnalytics');
       if (!await exportDir.exists()) {
         await exportDir.create(recursive: true);
+      }
+      if (kDebugMode) {
+        debugPrint('Export directory: ${exportDir.path}');
       }
       return exportDir;
     } catch (e) {
@@ -21,6 +38,9 @@ class FileStorageImpl implements FileStorage {
       final exportDir = Directory('${Directory.systemTemp.path}/exports');
       if (!await exportDir.exists()) {
         await exportDir.create(recursive: true);
+      }
+      if (kDebugMode) {
+        debugPrint('Export directory fallback: ${exportDir.path}');
       }
       return exportDir;
     }
@@ -59,12 +79,21 @@ class FileStorageImpl implements FileStorage {
         allowedExtensions: allowedExtensions,
         type: FileType.custom,
       );
+      if (result == null || result.trim().isEmpty) {
+        if (kDebugMode) {
+          debugPrint('Save location dialog cancelled');
+        }
+        return null;
+      }
+      if (kDebugMode) {
+        debugPrint('Selected save location: $result');
+      }
       return result;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Error picking save location: $e');
       }
-      return null;
+      rethrow;
     }
   }
 
@@ -78,7 +107,11 @@ class FileStorageImpl implements FileStorage {
       final file = fullPath != null
           ? File(fullPath)
           : File('${(await _getExportDirectory()).path}/$fileName');
+      await file.parent.create(recursive: true);
       await file.writeAsString(content);
+      if (kDebugMode) {
+        debugPrint('File saved to: ${file.path}');
+      }
       return file.path;
     } catch (e) {
       if (kDebugMode) {
@@ -98,7 +131,11 @@ class FileStorageImpl implements FileStorage {
       final file = fullPath != null
           ? File(fullPath)
           : File('${(await _getExportDirectory()).path}/$fileName');
+      await file.parent.create(recursive: true);
       await file.writeAsBytes(bytes);
+      if (kDebugMode) {
+        debugPrint('File saved to: ${file.path}');
+      }
       return file.path;
     } catch (e) {
       if (kDebugMode) {

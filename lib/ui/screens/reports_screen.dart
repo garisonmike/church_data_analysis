@@ -143,7 +143,13 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       );
 
       if (savedPath != null) {
-        _showStatus('PDF exported successfully', isSuccess: true);
+        if (mounted) {
+          setState(() => _lastExportPath = savedPath);
+        }
+        _showStatus(
+          'PDF exported successfully. Saved to: $savedPath',
+          isSuccess: true,
+        );
       } else {
         _showStatus('PDF export failed. Please try again.', isError: true);
       }
@@ -187,7 +193,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         currencyCode: settings.currency.code,
       );
       if (result.success) {
-        _showStatus('CSV exported successfully', isSuccess: true);
+        final savedPath = result.filePath;
+        if (savedPath != null && mounted) {
+          setState(() => _lastExportPath = savedPath);
+        }
+        _showStatus(
+          'CSV exported successfully. Saved to: ${savedPath ?? 'Unknown'}',
+          isSuccess: true,
+        );
       } else {
         if (kDebugMode) {
           debugPrint('CSV export error: ${result.error}');
@@ -230,7 +243,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       );
 
       if (result.success) {
-        _showStatus('Backup created successfully', isSuccess: true);
+        final savedPath = result.filePath;
+        if (savedPath != null && mounted) {
+          setState(() => _lastExportPath = savedPath);
+        }
+        _showStatus(
+          'Backup created successfully. Saved to: ${savedPath ?? 'Unknown'}',
+          isSuccess: true,
+        );
       } else {
         if (kDebugMode) {
           debugPrint('Backup error: ${result.error}');
@@ -576,11 +596,14 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       allowedExtensions: allowedExtensions,
     );
 
-    if (pickedPath != null && mounted) {
+    if (pickedPath != null && pickedPath.trim().isNotEmpty && mounted) {
       setState(() => _lastExportPath = pickedPath);
+      if (kDebugMode) {
+        debugPrint('Export location selected: $pickedPath');
+      }
     }
 
-    return pickedPath;
+    return pickedPath?.trim().isEmpty ?? true ? null : pickedPath;
   }
 
   @override

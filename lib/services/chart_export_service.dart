@@ -62,6 +62,10 @@ class ChartExportService {
           ? fileName
           : '$fileName.png';
 
+      if (kDebugMode) {
+        debugPrint('Chart save requested. File name: $fullFileName');
+      }
+
       final path = await storage.saveFileBytes(
         fileName: fullFileName,
         bytes: imageBytes,

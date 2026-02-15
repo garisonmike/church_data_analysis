@@ -196,8 +196,11 @@ class CsvExportService {
         content: csv,
         fullPath: fullPath,
       );
+      if (savedPath == null) {
+        return CsvExportResult.error('Failed to save CSV file');
+      }
 
-      return CsvExportResult.success(savedPath ?? fileName, records.length);
+      return CsvExportResult.success(savedPath, records.length);
     } catch (e) {
       return CsvExportResult.error('Failed to export weekly records: $e');
     }

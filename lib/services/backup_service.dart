@@ -290,7 +290,11 @@ class BackupService {
         fullPath: fullPath,
       );
 
-      return BackupResult.success(savedPath ?? fileName, metadata);
+      if (savedPath == null) {
+        return BackupResult.error('Failed to save backup file');
+      }
+
+      return BackupResult.success(savedPath, metadata);
     } catch (e) {
       return BackupResult.error('Failed to create backup: $e');
     }
