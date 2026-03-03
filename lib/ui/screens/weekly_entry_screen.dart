@@ -95,8 +95,6 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
       // Editing existing record, load historical data
       await _loadHistoricalRecords(widget.existingRecord!.churchId, db);
     }
-
-    await db.close();
   }
 
   Future<void> _loadHistoricalRecords(int churchId, AppDatabase db) async {
@@ -243,6 +241,13 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
     return null;
   }
 
+  double _parseOptionalDecimal(String value) {
+    if (value.isEmpty) {
+      return 0.0;
+    }
+    return double.tryParse(value) ?? 0.0;
+  }
+
   Future<void> _saveRecord() async {
     // Clear previous error
     setState(() {
@@ -270,14 +275,17 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
       final database = ref.read(databaseProvider);
       final repository = WeeklyRecordRepository(database);
 
-      // Validate emergency and planned collections
-      final emergency = double.tryParse(_emergencyCollectionController.text) ?? 0.0;
-      final planned = double.tryParse(_plannedCollectionController.text) ?? 0.0;
-      
-      if (emergency > 0 && planned > 0) {
+      final emergencyCollection = _parseOptionalDecimal(
+        _emergencyCollectionController.text,
+      );
+      final plannedCollection = _parseOptionalDecimal(
+        _plannedCollectionController.text,
+      );
+
+      if (emergencyCollection > 0 && plannedCollection > 0) {
         setState(() {
           _errorMessage =
-              'Cannot have both Emergency and Planned collections on the same week. Please enter only one.';
+              'Planned and Emergency collections cannot both be entered for the same week.';
           _isLoading = false;
         });
         return;
@@ -317,15 +325,15 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
         createdByAdminId:
             widget.existingRecord?.createdByAdminId ?? currentAdminId,
         weekStartDate: _selectedDate,
-        men: int.tryParse(_menController.text) ?? 0,
-        women: int.tryParse(_womenController.text) ?? 0,
-        youth: int.tryParse(_youthController.text) ?? 0,
-        children: int.tryParse(_childrenController.text) ?? 0,
-        sundayHomeChurch: int.tryParse(_sundayHomeChurchController.text) ?? 0,
-        tithe: double.tryParse(_titheController.text) ?? 0.0,
-        offerings: double.tryParse(_offeringsController.text) ?? 0.0,
-        emergencyCollection: double.tryParse(_emergencyCollectionController.text) ?? 0.0,
-        plannedCollection: double.tryParse(_plannedCollectionController.text) ?? 0.0,
+        men: int.parse(_menController.text),
+        women: int.parse(_womenController.text),
+        youth: int.parse(_youthController.text),
+        children: int.parse(_childrenController.text),
+        sundayHomeChurch: int.parse(_sundayHomeChurchController.text),
+        tithe: double.parse(_titheController.text),
+        offerings: double.parse(_offeringsController.text),
+        emergencyCollection: emergencyCollection,
+        plannedCollection: plannedCollection,
         createdAt: widget.existingRecord?.createdAt ?? now,
         updatedAt: now,
       );
@@ -353,7 +361,7 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
       }
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error saving record: ${e.toString()}';
+        _errorMessage = 'Unable to save record. Please try again.';
         _isLoading = false;
       });
     }
