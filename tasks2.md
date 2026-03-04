@@ -229,7 +229,7 @@ Low — targeted to keyboard/scroll padding only.
 - tasks2.md checkbox marked complete
 ---
 
-- [ ] Task 5
+- [x] Task 5
 ---
 ## [P2] Standardize dialog height constraints and scroll behavior across import/church/profile/reports dialogs
 

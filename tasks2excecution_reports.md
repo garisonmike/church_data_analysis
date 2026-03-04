@@ -29,6 +29,38 @@ Observations, regression risks, and implementation details worth tracking across
 
 ---
 
+## Task 5 — [P2] Standardize dialog height constraints and scroll behavior
+
+**Files:**
+- `lib/ui/screens/import_screen.dart`
+- `lib/ui/screens/church_selection_screen.dart`
+- `lib/ui/screens/profile_selection_screen.dart`
+- `lib/ui/screens/reports_screen.dart`
+
+**Status:** Complete
+
+### What changed
+All 6 targeted dialogs received two changes:
+1. `insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)` added to each `AlertDialog`.
+2. `content:` wrapped with `LayoutBuilder` → `ConstrainedBox(maxHeight: constraints.maxHeight * 0.8, maxWidth: 560)` → `SingleChildScrollView`.
+
+Additionally, the **Import Complete** results dialog replaced the unbounded spread `...errors.map((e) => Text(...))` inside `Column` with `ListView.builder(shrinkWrap: true, physics: NeverScrollableScrollPhysics())`. This prevents the unbounded list from fighting the outer `SingleChildScrollView`.
+
+For the two **reports_screen.dart** dialogs (`Customize PDF Report`, `Customize CSV Export`), the existing `StatefulBuilder` → `Column` content was moved to be the child of the new `SingleChildScrollView`, preserving all toggle/switch state logic.
+
+### Regression risk: Medium
+- All dialog action callbacks (`Navigator.pop`, form submission) are unchanged — no navigation regression.
+- `StatefulBuilder` in reports dialogs still rebuilds its `Column` on switch toggles; the added wrappers are stateless and do not interfere.
+- `_hasCsvContent(options)` in the CSV dialog `ElevatedButton.onPressed` was already evaluated at `AlertDialog` build time (outside `StatefulBuilder`), not reactively — this pre-existing behavior is unchanged.
+- `ConstrainedBox` maxWidth of 560 may make dialogs narrower than the screen on very wide viewports. This is intentional for readability but worth confirming visually.
+
+### Notes
+- `LayoutBuilder` inside `AlertDialog.content` receives the dialog's internal available size constraints, not raw screen size. The 80% cap is applied relative to the dialog's allocated area, which itself is already inset by Material's default `insetPadding` (now overridden to `horizontal: 16, vertical: 12`). Effective maximum dialog height ≈ `screen height - 24px`; content height ≈ `(screen height - 24) * 0.8`.
+- The `ListView.builder` in the import results dialog requires `shrinkWrap: true` because it lives inside `SingleChildScrollView` (unbounded height context). `NeverScrollableScrollPhysics` delegates scrolling to the outer `SingleChildScrollView`.
+- `maxWidth: 560` is applied as a maximum, not a fixed width. On narrow screens (<560px), the dialog will use the full available width minus `insetPadding`.
+
+---
+
 ## Task 4 — [P2] Make weekly_entry_screen.dart keyboard-inset aware and remove static bottom spacer
 
 **File:** `lib/ui/screens/weekly_entry_screen.dart`

@@ -425,42 +425,55 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Customize PDF Report'),
-        content: StatefulBuilder(
-          builder: (context, setState) {
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SwitchListTile(
-                  title: const Text('Include graphs'),
-                  value: options.includeGraphs,
-                  onChanged: (value) => setState(
-                    () => options = options.copyWith(includeGraphs: value),
-                  ),
-                ),
-                SwitchListTile(
-                  title: const Text('Include KPI metrics'),
-                  value: options.includeKpi,
-                  onChanged: (value) => setState(
-                    () => options = options.copyWith(includeKpi: value),
-                  ),
-                ),
-                SwitchListTile(
-                  title: const Text('Include records table'),
-                  value: options.includeTable,
-                  onChanged: (value) => setState(
-                    () => options = options.copyWith(includeTable: value),
-                  ),
-                ),
-                SwitchListTile(
-                  title: const Text('Include trend summary'),
-                  value: options.includeTrends,
-                  onChanged: (value) => setState(
-                    () => options = options.copyWith(includeTrends: value),
-                  ),
-                ),
-              ],
-            );
-          },
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        content: LayoutBuilder(
+          builder: (context, constraints) => ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: constraints.maxHeight * 0.8,
+              maxWidth: 560,
+            ),
+            child: SingleChildScrollView(
+              child: StatefulBuilder(
+                builder: (context, setState) {
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SwitchListTile(
+                        title: const Text('Include graphs'),
+                        value: options.includeGraphs,
+                        onChanged: (value) => setState(
+                          () =>
+                              options = options.copyWith(includeGraphs: value),
+                        ),
+                      ),
+                      SwitchListTile(
+                        title: const Text('Include KPI metrics'),
+                        value: options.includeKpi,
+                        onChanged: (value) => setState(
+                          () => options = options.copyWith(includeKpi: value),
+                        ),
+                      ),
+                      SwitchListTile(
+                        title: const Text('Include records table'),
+                        value: options.includeTable,
+                        onChanged: (value) => setState(
+                          () => options = options.copyWith(includeTable: value),
+                        ),
+                      ),
+                      SwitchListTile(
+                        title: const Text('Include trend summary'),
+                        value: options.includeTrends,
+                        onChanged: (value) => setState(
+                          () =>
+                              options = options.copyWith(includeTrends: value),
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ),
         ),
         actions: [
           TextButton(
@@ -492,78 +505,89 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Customize CSV Export'),
-        content: StatefulBuilder(
-          builder: (context, setState) {
-            final hasContent = _hasCsvContent(options);
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SwitchListTile(
-                  title: const Text('Include attendance columns'),
-                  value: options.includeAttendance,
-                  onChanged: (value) => setState(
-                    () => options = CsvExportOptions(
-                      includeAttendance: value,
-                      includeFinancial: options.includeFinancial,
-                      includeTotals: options.includeTotals,
-                      includeMetadata: options.includeMetadata,
-                    ),
-                  ),
-                ),
-                SwitchListTile(
-                  title: const Text('Include financial columns'),
-                  value: options.includeFinancial,
-                  onChanged: (value) => setState(
-                    () => options = CsvExportOptions(
-                      includeAttendance: options.includeAttendance,
-                      includeFinancial: value,
-                      includeTotals: options.includeTotals,
-                      includeMetadata: options.includeMetadata,
-                    ),
-                  ),
-                ),
-                SwitchListTile(
-                  title: const Text('Include totals'),
-                  value: options.includeTotals,
-                  onChanged: (value) => setState(
-                    () => options = CsvExportOptions(
-                      includeAttendance: options.includeAttendance,
-                      includeFinancial: options.includeFinancial,
-                      includeTotals: value,
-                      includeMetadata: options.includeMetadata,
-                    ),
-                  ),
-                ),
-                SwitchListTile(
-                  title: const Text('Include metadata'),
-                  value: options.includeMetadata,
-                  onChanged: (value) => setState(
-                    () => options = CsvExportOptions(
-                      includeAttendance: options.includeAttendance,
-                      includeFinancial: options.includeFinancial,
-                      includeTotals: options.includeTotals,
-                      includeMetadata: value,
-                    ),
-                  ),
-                ),
-                if (!hasContent) ...[
-                  const SizedBox(height: 8),
-                  Row(
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        content: LayoutBuilder(
+          builder: (context, constraints) => ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: constraints.maxHeight * 0.8,
+              maxWidth: 560,
+            ),
+            child: SingleChildScrollView(
+              child: StatefulBuilder(
+                builder: (context, setState) {
+                  final hasContent = _hasCsvContent(options);
+                  return Column(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(Icons.warning, color: Colors.orange),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          'Select at least one column group',
-                          style: Theme.of(context).textTheme.bodySmall,
+                      SwitchListTile(
+                        title: const Text('Include attendance columns'),
+                        value: options.includeAttendance,
+                        onChanged: (value) => setState(
+                          () => options = CsvExportOptions(
+                            includeAttendance: value,
+                            includeFinancial: options.includeFinancial,
+                            includeTotals: options.includeTotals,
+                            includeMetadata: options.includeMetadata,
+                          ),
                         ),
                       ),
+                      SwitchListTile(
+                        title: const Text('Include financial columns'),
+                        value: options.includeFinancial,
+                        onChanged: (value) => setState(
+                          () => options = CsvExportOptions(
+                            includeAttendance: options.includeAttendance,
+                            includeFinancial: value,
+                            includeTotals: options.includeTotals,
+                            includeMetadata: options.includeMetadata,
+                          ),
+                        ),
+                      ),
+                      SwitchListTile(
+                        title: const Text('Include totals'),
+                        value: options.includeTotals,
+                        onChanged: (value) => setState(
+                          () => options = CsvExportOptions(
+                            includeAttendance: options.includeAttendance,
+                            includeFinancial: options.includeFinancial,
+                            includeTotals: value,
+                            includeMetadata: options.includeMetadata,
+                          ),
+                        ),
+                      ),
+                      SwitchListTile(
+                        title: const Text('Include metadata'),
+                        value: options.includeMetadata,
+                        onChanged: (value) => setState(
+                          () => options = CsvExportOptions(
+                            includeAttendance: options.includeAttendance,
+                            includeFinancial: options.includeFinancial,
+                            includeTotals: options.includeTotals,
+                            includeMetadata: value,
+                          ),
+                        ),
+                      ),
+                      if (!hasContent) ...[
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            const Icon(Icons.warning, color: Colors.orange),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'Select at least one column group',
+                                style: Theme.of(context).textTheme.bodySmall,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ],
-                  ),
-                ],
-              ],
-            );
-          },
+                  );
+                },
+              ),
+            ),
+          ),
         ),
         actions: [
           TextButton(

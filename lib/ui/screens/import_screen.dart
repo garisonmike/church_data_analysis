@@ -172,9 +172,20 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Confirm Import'),
-        content: Text(
-          'Import ${validRecords.length} record(s)?\n\n'
-          '${_validationResults!.where((r) => !r.success).length} record(s) will be skipped due to errors.',
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        content: LayoutBuilder(
+          builder: (context, constraints) => ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: constraints.maxHeight * 0.8,
+              maxWidth: 560,
+            ),
+            child: SingleChildScrollView(
+              child: Text(
+                'Import ${validRecords.length} record(s)?\n\n'
+                '${_validationResults!.where((r) => !r.success).length} record(s) will be skipped due to errors.',
+              ),
+            ),
+          ),
         ),
         actions: [
           TextButton(
@@ -232,24 +243,43 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
           context: context,
           builder: (context) => AlertDialog(
             title: const Text('Import Complete'),
-            content: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('✓ Successfully imported: $successCount'),
-                  if (skipCount > 0) Text('⚠ Skipped (duplicates): $skipCount'),
-                  if (errors.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Errors:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    ...errors.map(
-                      (e) => Text('• $e', style: const TextStyle(fontSize: 12)),
-                    ),
-                  ],
-                ],
+            insetPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 12,
+            ),
+            content: LayoutBuilder(
+              builder: (context, constraints) => ConstrainedBox(
+                constraints: BoxConstraints(
+                  maxHeight: constraints.maxHeight * 0.8,
+                  maxWidth: 560,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text('✓ Successfully imported: $successCount'),
+                      if (skipCount > 0)
+                        Text('⚠ Skipped (duplicates): $skipCount'),
+                      if (errors.isNotEmpty) ...[
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Errors:',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: errors.length,
+                          itemBuilder: (context, index) => Text(
+                            '• ${errors[index]}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
               ),
             ),
             actions: [
