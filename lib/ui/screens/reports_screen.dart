@@ -610,53 +610,73 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Reports & Backup')),
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              if (_isProcessing) const CircularProgressIndicator(),
-              const SizedBox(height: 20),
-              _buildExportLocationCard(),
-              const SizedBox(height: 12),
-              _buildReportBuilderCard(),
-              const SizedBox(height: 12),
-              _buildCsvOptionsCard(),
-              const SizedBox(height: 20),
-              ElevatedButton.icon(
-                onPressed: _isProcessing ? null : _exportPdf,
-                icon: const Icon(Icons.picture_as_pdf),
-                label: const Text('Export PDF Report'),
-              ),
-              const SizedBox(height: 10),
-              ElevatedButton.icon(
-                onPressed: _isProcessing ? null : _exportCsv,
-                icon: const Icon(Icons.table_chart),
-                label: const Text('Export CSV Data'),
-              ),
-              const SizedBox(height: 30),
-              const Divider(),
-              const SizedBox(height: 30),
-              ElevatedButton.icon(
-                onPressed: _isProcessing ? null : _createBackup,
-                icon: const Icon(Icons.save),
-                label: const Text('Create Backup'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.orange.shade100,
+      body: SafeArea(
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            final width = constraints.maxWidth;
+            final spacing = width < 480 ? 8.0 : (width < 840 ? 12.0 : 16.0);
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(16.0),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(minHeight: constraints.maxHeight),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  children: [
+                    if (_isProcessing) const CircularProgressIndicator(),
+                    SizedBox(height: spacing),
+                    _buildExportLocationCard(),
+                    SizedBox(height: spacing),
+                    _buildReportBuilderCard(),
+                    SizedBox(height: spacing),
+                    _buildCsvOptionsCard(),
+                    SizedBox(height: spacing),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: _isProcessing ? null : _exportPdf,
+                          icon: const Icon(Icons.picture_as_pdf),
+                          label: const Text('Export PDF Report'),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: _isProcessing ? null : _exportCsv,
+                          icon: const Icon(Icons.table_chart),
+                          label: const Text('Export CSV Data'),
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: spacing),
+                    const Divider(),
+                    SizedBox(height: spacing),
+                    Wrap(
+                      spacing: 12,
+                      runSpacing: 12,
+                      children: [
+                        ElevatedButton.icon(
+                          onPressed: _isProcessing ? null : _createBackup,
+                          icon: const Icon(Icons.save),
+                          label: const Text('Create Backup'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.orange.shade100,
+                          ),
+                        ),
+                        ElevatedButton.icon(
+                          onPressed: _isProcessing ? null : _restoreBackup,
+                          icon: const Icon(Icons.restore),
+                          label: const Text('Restore from Backup'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red.shade100,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 10),
-              ElevatedButton.icon(
-                onPressed: _isProcessing ? null : _restoreBackup,
-                icon: const Icon(Icons.restore),
-                label: const Text('Restore from Backup'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.red.shade100,
-                ),
-              ),
-            ],
-          ),
+            );
+          },
         ),
       ),
     );

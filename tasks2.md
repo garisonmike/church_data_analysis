@@ -1,5 +1,13 @@
 # UI Stabilization Master Task List
 
+## Agent Notes – Known Gaps / Guardrails
+- These notes are intentionally informational only (do not rewrite existing tasks/issues unless explicitly requested).
+- Known untracked UI gap from test report: `not_found_screen.dart` can overflow on tiny/short windows (low severity).
+- Known untracked UX gap from test report: import preview `DataTable` with high column counts degrades on web (low severity).
+- Accessibility follow-up not explicitly scoped in tasks: validate contrast for warning/success tinted containers in all themes.
+- Dependency guardrail: execute Task 1 before Task 3 (same screen/layout foundation), and complete dialog/form structural tasks before Task 12 keyboard-flow normalization.
+- Evidence guardrail for completion: attach breakpoint matrix checks + overflow-free debug console proof + platform screenshots/video for each completed task.
+
 - [ ] Phase 1 – Critical Stability
 - [ ] Phase 2 – Cross-Platform Layout Consistency
 - [ ] Phase 3 – Desktop Optimization
@@ -27,7 +35,7 @@
 
 ## Phase 1 – Critical Stability
 
-- [ ] Task 1
+- [x] Task 1
 ---
 ## [P1] Stabilize reports_screen.dart body scrolling and overflow across Android/Windows/Web
 
