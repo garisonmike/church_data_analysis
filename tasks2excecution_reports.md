@@ -29,6 +29,30 @@ Observations, regression risks, and implementation details worth tracking across
 
 ---
 
+## Task 3 — [P1] Implement >=840 responsive two-column reports layout for Web
+
+**File:** `lib/ui/screens/reports_screen.dart`
+**Status:** Complete
+
+### What changed
+- Introduced a `width >= 840` branch inside the existing `LayoutBuilder` (from Task 1) to switch card layout.
+- `>=840`: all three report cards (`_buildExportLocationCard`, `_buildReportBuilderCard`, `_buildCsvOptionsCard`) are wrapped in `Wrap(spacing: 12, runSpacing: 12)`, each inside `SizedBox(width: (width - 44) / 2)`.
+  - `44 = 32 (scroll view horizontal padding) + 12 (wrap gap)` — cards fill the content area exactly with no overflow.
+- `<840`: original single-column stacking preserved verbatim from Task 1.
+- Action button `Wrap` groups (export, backup) are unaffected and remain below the card section at all breakpoints.
+
+### Regression risk: Medium
+- `<840` branch is structurally identical to Task 1 — no regression risk at narrow/medium widths.
+- `>=840` branch is additive only; existing card builder methods are called unchanged.
+- With 3 cards in a two-column `Wrap`, the third card always occupies the first slot of the second row alone — expected `Wrap` behavior, but worth confirming visually against design intent.
+
+### Notes
+- Card width formula: `(constraints.maxWidth - 44) / 2`. At exactly `width = 840` each card is `398px`; at `1280` each is `618px`.
+- If a fourth card is added in future, it will pair naturally with the third card in the second row — no code change needed.
+- The `>=840` threshold is consistent with the Unified Breakpoint Strategy and matches the `spacing` variable breakpoint already present.
+
+---
+
 ## Task 2 — [P1] Add medium-breakpoint app bar overflow strategy in dashboard_screen.dart
 
 **File:** `lib/ui/screens/dashboard_screen.dart`

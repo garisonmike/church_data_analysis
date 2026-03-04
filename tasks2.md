@@ -135,7 +135,7 @@ Low — behavior is limited to action placement logic at medium widths.
 - tasks2.md checkbox marked complete
 ---
 
-- [ ] Task 3
+- [x] Task 3
 ---
 ## [P1] Implement >=840 responsive two-column reports layout for Web
 

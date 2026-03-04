@@ -625,11 +625,32 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   children: [
                     if (_isProcessing) const CircularProgressIndicator(),
                     SizedBox(height: spacing),
-                    _buildExportLocationCard(),
-                    SizedBox(height: spacing),
-                    _buildReportBuilderCard(),
-                    SizedBox(height: spacing),
-                    _buildCsvOptionsCard(),
+                    if (width >= 840) ...[
+                      Wrap(
+                        spacing: 12,
+                        runSpacing: 12,
+                        children: [
+                          SizedBox(
+                            width: (width - 44) / 2,
+                            child: _buildExportLocationCard(),
+                          ),
+                          SizedBox(
+                            width: (width - 44) / 2,
+                            child: _buildReportBuilderCard(),
+                          ),
+                          SizedBox(
+                            width: (width - 44) / 2,
+                            child: _buildCsvOptionsCard(),
+                          ),
+                        ],
+                      ),
+                    ] else ...[
+                      _buildExportLocationCard(),
+                      SizedBox(height: spacing),
+                      _buildReportBuilderCard(),
+                      SizedBox(height: spacing),
+                      _buildCsvOptionsCard(),
+                    ],
                     SizedBox(height: spacing),
                     Wrap(
                       spacing: 12,
