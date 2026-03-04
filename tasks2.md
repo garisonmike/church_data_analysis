@@ -280,7 +280,7 @@ Medium — touches multiple dialogs and interaction paths.
 - tasks2.md checkbox marked complete
 ---
 
-- [ ] Task 6
+- [x] Task 6
 ---
 ## [P2] Prevent AppBar action compression in attendance_charts_screen.dart using width breakpoints
 

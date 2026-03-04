@@ -107,6 +107,10 @@ class _AttendanceChartsScreenState
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+    final isNarrow = width < 480;
+    final isMedium = width >= 480 && width < 840;
+    final currentTimeRange = ref.watch(chartTimeRangeProvider);
     final recordsAsync = ref.watch(
       weeklyRecordsForChurchProvider(widget.churchId),
     );
@@ -116,18 +120,42 @@ class _AttendanceChartsScreenState
         title: const Text('Attendance Charts'),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          // Time range selector in app bar (constrained to prevent overflow)
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              child: TimeRangeSelector(compact: true),
+          if (isNarrow)
+            PopupMenuButton<ChartTimeRange>(
+              icon: const Icon(Icons.date_range),
+              tooltip: 'Select time range',
+              initialValue: currentTimeRange,
+              onSelected: (ChartTimeRange value) {
+                ref.read(chartTimeRangeProvider.notifier).state = value;
+              },
+              itemBuilder: (context) => ChartTimeRange.values
+                  .map(
+                    (range) => PopupMenuItem<ChartTimeRange>(
+                      value: range,
+                      child: Text(range.displayName),
+                    ),
+                  )
+                  .toList(),
+            )
+          else if (isMedium)
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 220),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: TimeRangeSelector(compact: true),
+              ),
+            )
+          else
+            ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 400),
+              child: const Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: TimeRangeSelector(compact: true),
+              ),
             ),
-          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: () {
-              // Refresh the provider
               ref.invalidate(weeklyRecordsForChurchProvider(widget.churchId));
             },
             tooltip: 'Refresh',

@@ -29,6 +29,35 @@ Observations, regression risks, and implementation details worth tracking across
 
 ---
 
+## Task 6 — [P2] Prevent AppBar action compression in attendance_charts_screen.dart
+
+**File:** `lib/ui/screens/attendance_charts_screen.dart`
+**Status:** Complete
+
+### What changed
+- Added to `build()` header:
+  - `width = MediaQuery.of(context).size.width`
+  - `isNarrow = width < 480`
+  - `isMedium = width >= 480 && width < 840`
+  - `currentTimeRange = ref.watch(chartTimeRangeProvider)` — needed for `PopupMenuButton.initialValue`
+- Replaced single `ConstrainedBox(maxWidth: 400)` + `TimeRangeSelector` action with three-tier branch:
+  - `isNarrow (<480)`: `PopupMenuButton<ChartTimeRange>` (date_range icon + all 5 range options) — writes directly to `chartTimeRangeProvider`
+  - `isMedium (480–839)`: `ConstrainedBox(maxWidth: 220)` + `TimeRangeSelector(compact: true)`
+  - `isWide (>=840)`: `ConstrainedBox(maxWidth: 400)` + `TimeRangeSelector(compact: true)` (original)
+- Refresh `IconButton` is unconditional in all branches.
+
+### Regression risk: Low
+- `>=840` path is identical to the original code — no wide-screen regression.
+- `480–839` path is structurally the same as the original but with a tighter `maxWidth: 220` cap; `TimeRangeSelector` behaviour is unchanged.
+- `<480` path replaces `TimeRangeSelector` with `PopupMenuButton` that writes to the same `chartTimeRangeProvider`. Functional equivalence is preserved.
+
+### Notes
+- `ref.watch(chartTimeRangeProvider)` added in `build()` so the app bar rebuilds when range changes — this makes `PopupMenuButton.initialValue` stay current. The same provider was already watched inside `TimeRangeSelector` at narrower scope; moving the watch up is safe.
+- `PopupMenuButton.initialValue` marks the currently selected range with a check indicator in the popup — provides visual selection feedback equivalent to the `FilterChip.selected` state in the compact selector.
+- `maxWidth: 220` at medium width was chosen to leave ~180px for the AppBar title and leading widget after accounting for the compact chip row and refresh button.
+
+---
+
 ## Task 5 — [P2] Standardize dialog height constraints and scroll behavior
 
 **Files:**
