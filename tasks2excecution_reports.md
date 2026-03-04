@@ -29,6 +29,34 @@ Observations, regression risks, and implementation details worth tracking across
 
 ---
 
+## Task 4 — [P2] Make weekly_entry_screen.dart keyboard-inset aware and remove static bottom spacer
+
+**File:** `lib/ui/screens/weekly_entry_screen.dart`
+**Status:** Complete
+
+### What changed
+- Added `import 'dart:math' show max;`.
+- In `build()`, added three variables after existing breakpoint variables:
+  - `keyboardInset = MediaQuery.viewInsetsOf(context).bottom`
+  - `bottomPadding = max(16.0, keyboardInset + 16.0)`
+  - `verticalPadding = 16.0 + bottomPadding`
+- `SingleChildScrollView` padding changed from `EdgeInsets.symmetric(horizontal, vertical: 16)` to `EdgeInsets.fromLTRB(horizontalPadding, 16, horizontalPadding, bottomPadding)`.
+- `ConstrainedBox` minHeight changed from `constraints.maxHeight - 32` to `constraints.maxHeight - verticalPadding` (stays correct when bottom padding grows with keyboard).
+- Removed `SizedBox(height: isDesktop ? 80.0 : 40.0)` (the fixed terminal spacer) from the bottom of the form column.
+- Added `scrollPadding: EdgeInsets.only(bottom: 24 + MediaQuery.viewInsetsOf(context).bottom)` to both `_buildIntegerField` and `_buildDecimalField` helpers.
+
+### Regression risk: Low
+- When keyboard is closed, `keyboardInset = 0`, so `bottomPadding = max(16, 16) = 16` and `verticalPadding = 32` — identical to the old hardcoded `- 32` and `vertical: 16.0`.
+- When keyboard is open, the scroll view gains extra bottom padding equal to keyboard height, preventing any field from being obscured.
+- Removing the `80/40` spacer is safe because its role is fully replaced by the dynamic `bottomPadding`.
+
+### Notes
+- `isDesktop` variable is still referenced (`horizontalPadding = isDesktop ? 32.0 : 16.0`) — no dead variable warning.
+- `scrollPadding` applies to all 9 `TextFormField` instances (5 integer + 4 decimal fields) through the two shared helpers. Any future fields added via these helpers will inherit the behavior automatically.
+- `resizeToAvoidBottomInset` defaults to `true` on `Scaffold`, so on Android the scaffold body already shrinks when keyboard appears. The `viewInsets`-driven bottom padding provides an additional safety margin and ensures the save button remains accessible even on devices or platforms where resize behavior differs.
+
+---
+
 ## Task 3 — [P1] Implement >=840 responsive two-column reports layout for Web
 
 **File:** `lib/ui/screens/reports_screen.dart`

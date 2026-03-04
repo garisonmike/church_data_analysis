@@ -1,3 +1,5 @@
+import 'dart:math' show max;
+
 import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/models/models.dart' as models;
 import 'package:church_analytics/repositories/repositories.dart';
@@ -373,6 +375,9 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
     final screenWidth = MediaQuery.of(context).size.width;
     final isDesktop = screenWidth >= 600;
     final horizontalPadding = isDesktop ? 32.0 : 16.0;
+    final keyboardInset = MediaQuery.viewInsetsOf(context).bottom;
+    final bottomPadding = max(16.0, keyboardInset + 16.0);
+    final verticalPadding = 16.0 + bottomPadding;
 
     return Scaffold(
       appBar: AppBar(
@@ -390,13 +395,15 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
                 return SingleChildScrollView(
                   // Ensure proper scroll behavior on all platforms
                   physics: const AlwaysScrollableScrollPhysics(),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: horizontalPadding,
-                    vertical: 16.0,
+                  padding: EdgeInsets.fromLTRB(
+                    horizontalPadding,
+                    16.0,
+                    horizontalPadding,
+                    bottomPadding,
                   ),
                   child: ConstrainedBox(
                     constraints: BoxConstraints(
-                      minHeight: constraints.maxHeight - 32,
+                      minHeight: constraints.maxHeight - verticalPadding,
                     ),
                     child: Form(
                       key: _formKey,
@@ -594,10 +601,6 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
                               minimumSize: const Size.fromHeight(48),
                             ),
                           ),
-
-                          // Critical: Bottom padding to ensure Save button is always reachable
-                          // Optimized for desktop Windows builds
-                          SizedBox(height: isDesktop ? 80.0 : 40.0),
                         ],
                       ),
                     ),
@@ -623,6 +626,9 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.digitsOnly],
       validator: _validatePositiveInteger,
+      scrollPadding: EdgeInsets.only(
+        bottom: 24 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
     );
   }
 
@@ -644,6 +650,9 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
         FilteringTextInputFormatter.allow(RegExp(r'^\d+\.?\d{0,2}')),
       ],
       validator: validator ?? _validatePositiveDecimal,
+      scrollPadding: EdgeInsets.only(
+        bottom: 24 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
     );
   }
 }

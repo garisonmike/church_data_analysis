@@ -183,7 +183,7 @@ Medium — multi-column layout branch added for web/desktop widths.
 
 ## Phase 2 – Cross-Platform Layout Consistency
 
-- [ ] Task 4
+- [x] Task 4
 ---
 ## [P2] Make weekly_entry_screen.dart keyboard-inset aware and remove static bottom spacer
 
