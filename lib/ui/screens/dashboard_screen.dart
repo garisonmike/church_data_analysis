@@ -116,7 +116,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isCompactLayout = MediaQuery.of(context).size.width < 600;
+    final width = MediaQuery.of(context).size.width;
+    final isNarrow = width < 600;
+    final isMedium = width >= 600 && width < 840;
+    final isWide = width >= 840;
 
     return Scaffold(
       appBar: AppBar(
@@ -126,7 +129,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
-          if (!isCompactLayout) ...[
+          if (isWide) ...[
             IconButton(
               icon: const Icon(Icons.dashboard_customize),
               onPressed: _openLayoutEditor,
@@ -146,7 +149,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             ),
           ],
           _buildSettingsMenu(),
-          if (isCompactLayout) _buildOverflowMenu(),
+          if (isNarrow || isMedium) _buildOverflowMenu(),
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _loadData,

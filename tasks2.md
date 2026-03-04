@@ -86,7 +86,7 @@ Medium — primary layout flow and action arrangement are being changed.
 - tasks2.md checkbox marked complete
 ---
 
-- [ ] Task 2
+- [x] Task 2
 ---
 ## [P1] Add medium-breakpoint app bar overflow strategy in dashboard_screen.dart
 
