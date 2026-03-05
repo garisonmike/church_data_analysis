@@ -562,7 +562,7 @@ Low — additive affordance and focus grouping.
 
 ## Phase 4 – Accessibility & Focus Improvements
 
-- [ ] Task 12
+- [x] Task 12
 ---
 ## [P4] Normalize keyboard focus traversal and submit actions in forms and dialogs
 

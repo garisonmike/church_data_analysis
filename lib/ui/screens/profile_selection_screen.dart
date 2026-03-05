@@ -95,36 +95,43 @@ class _ProfileSelectionScreenState
               maxWidth: 560,
             ),
             child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  TextField(
-                    controller: usernameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Username *',
-                      hintText: '3-50 characters',
-                      border: OutlineInputBorder(),
+              child: FocusTraversalGroup(
+                policy: OrderedTraversalPolicy(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: usernameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Username *',
+                        hintText: '3-50 characters',
+                        border: OutlineInputBorder(),
+                      ),
+                      autofocus: true,
+                      textInputAction: TextInputAction.next,
                     ),
-                    autofocus: true,
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: fullNameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Full Name *',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: fullNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Full Name *',
+                        border: OutlineInputBorder(),
+                      ),
+                      textInputAction: TextInputAction.next,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: emailController,
-                    decoration: const InputDecoration(
-                      labelText: 'Email',
-                      border: OutlineInputBorder(),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: emailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => Navigator.of(context).pop(true),
                     ),
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

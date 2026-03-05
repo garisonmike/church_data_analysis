@@ -311,3 +311,57 @@ All Wrap parameters: `spacing: 12, runSpacing: 8, alignment: WrapAlignment.cente
 
 ### Notes
 - `flutter analyze`: No issues found.
+---
+
+## Task 12 — [P4] Normalize keyboard focus traversal and submit actions in forms and dialogs
+
+**Files:**
+- `lib/ui/screens/weekly_entry_screen.dart`
+- `lib/ui/screens/import_screen.dart`
+- `lib/ui/screens/church_selection_screen.dart`
+- `lib/ui/screens/profile_selection_screen.dart`
+- `lib/ui/screens/reports_screen.dart`
+
+**Status:** Complete
+
+### What changed
+
+**`lib/ui/screens/weekly_entry_screen.dart`**
+- Wrapped `Form(key: _formKey, ...)` with `FocusTraversalGroup(policy: OrderedTraversalPolicy())` as the new root of the form widget tree.
+- Updated `_buildIntegerField` helper: added two optional params `TextInputAction textInputAction = TextInputAction.next` and `void Function(String)? onFieldSubmitted`; both forwarded to the `TextFormField`.
+- Updated `_buildDecimalField` helper: identical param additions and forwarding as `_buildIntegerField`.
+- Updated the `_plannedCollectionController` call site (field 9, the final field): passed `textInputAction: TextInputAction.done` and `onFieldSubmitted: (_) => _saveRecord()`. All 8 preceding fields default to `TextInputAction.next` with no call-site changes required.
+
+**`lib/ui/screens/import_screen.dart`**
+- In `_buildContent()`, wrapped the returned `ListView(padding: ..., children: [...])` with `FocusTraversalGroup(policy: OrderedTraversalPolicy())`. The form contains only `DropdownButtonFormField` widgets (no text input fields); the group pins tab order across all dropdown controls.
+
+**`lib/ui/screens/church_selection_screen.dart`**
+- In the Create Church dialog, wrapped the `SingleChildScrollView`'s `Column` child with `FocusTraversalGroup(policy: OrderedTraversalPolicy())`.
+- Added `textInputAction: TextInputAction.next` to fields 1–4: `nameController`, `addressController`, `emailController`, `phoneController`.
+- Field 5 (`currencyController`): `textInputAction: TextInputAction.done`, `onSubmitted: (_) => Navigator.of(context).pop(true)` — pressing Done submits the dialog.
+
+**`lib/ui/screens/profile_selection_screen.dart`**
+- In the Create Admin Profile dialog, wrapped the `SingleChildScrollView`'s `Column` child with `FocusTraversalGroup(policy: OrderedTraversalPolicy())`.
+- Added `textInputAction: TextInputAction.next` to fields 1–2: `usernameController`, `fullNameController`.
+- Field 3 (`emailController`): `textInputAction: TextInputAction.done`, `onSubmitted: (_) => Navigator.of(context).pop(true)` — pressing Done submits the dialog.
+
+**`lib/ui/screens/reports_screen.dart`**
+- In `_promptReportOptions()`: the `StatefulBuilder` builder function now returns `FocusTraversalGroup(policy: OrderedTraversalPolicy(), child: Column(...))` instead of bare `Column(...)`. The dialog contains four `SwitchListTile` widgets only; the group pins tab order through them.
+- In `_promptCsvOptions()`: identical `FocusTraversalGroup` wrap on the `StatefulBuilder`-returned `Column`. Contains four `SwitchListTile` widgets and a conditional warning `Row`; group pins tab order.
+
+### Self-audit vs Acceptance Criteria
+
+- **Tab/Shift+Tab navigation order is deterministic in all targeted forms/dialogs:** `OrderedTraversalPolicy` inside `FocusTraversalGroup` enforces document-order traversal at every form/dialog root, overriding any ambient traversal policy inherited from the scaffold or route. Applied to all five files. ✅
+- **Enter/Done on final field triggers intended primary action:** `weekly_entry_screen` field 9 calls `_saveRecord()` on submit. `church_selection_screen` field 5 and `profile_selection_screen` field 3 call `Navigator.of(context).pop(true)` on submit, confirming the respective dialogs. `import_screen` and `reports_screen` have no text input fields — criterion N/A for those files. ✅
+- **No focus traps occur at any width breakpoint:** `FocusTraversalGroup` is a policy boundary, not a trap — Tab always exits the group after the last focusable widget. None of the wrapped widgets intercept `Tab`/`Shift+Tab` themselves. ✅
+- **Keyboard-only completion path works in `0–479` through `1200+`:** The traversal group and `textInputAction` chain are layout-independent additions — they are not inside any breakpoint branch and apply uniformly at all widths. ✅
+
+### Regression risk: Low
+- `FocusTraversalGroup` is a pure focus-policy wrapper; it has no effect on rendering, widget sizing, or gesture handling.
+- `textInputAction` and `onFieldSubmitted` are additive properties on `TextField`/`TextFormField`; they do not alter validation logic, controller binding, or existing `onChanged` callbacks.
+- The `_buildIntegerField` and `_buildDecimalField` helpers use default values (`TextInputAction.next`, `onFieldSubmitted: null`) so all existing call sites that were not explicitly updated continue to behave identically.
+- `onSubmitted: (_) => Navigator.of(context).pop(true)` in the dialogs mirrors the existing `ElevatedButton` `onPressed` action — no new code path is introduced.
+
+### Notes
+- `flutter analyze`: 0 errors. 1 pre-existing `info` warning (`withOpacity` deprecated at `import_screen.dart:639`) — unrelated to this task, not introduced here.
+- `import_screen.dart` and `reports_screen.dart` have no text fields in the targeted widgets; the `FocusTraversalGroup` additions are still required by the spec to normalize traversal order through non-text focusable controls (dropdowns, switches).

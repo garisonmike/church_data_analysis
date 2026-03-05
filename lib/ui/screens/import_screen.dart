@@ -367,21 +367,24 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       );
     }
 
-    return ListView(
-      padding: const EdgeInsets.all(16.0),
-      children: [
-        _buildFilePickerStep(),
-        if (_headers != null && _rows != null) ...[
-          const SizedBox(height: 24),
-          _buildColumnMappingStep(),
-          const SizedBox(height: 24),
-          _buildActionsStep(),
+    return FocusTraversalGroup(
+      policy: OrderedTraversalPolicy(),
+      child: ListView(
+        padding: const EdgeInsets.all(16.0),
+        children: [
+          _buildFilePickerStep(),
+          if (_headers != null && _rows != null) ...[
+            const SizedBox(height: 24),
+            _buildColumnMappingStep(),
+            const SizedBox(height: 24),
+            _buildActionsStep(),
+          ],
+          if (_validationResults != null) ...[
+            const SizedBox(height: 24),
+            _buildPreviewStep(),
+          ],
         ],
-        if (_validationResults != null) ...[
-          const SizedBox(height: 24),
-          _buildPreviewStep(),
-        ],
-      ],
+      ),
     );
   }
 
