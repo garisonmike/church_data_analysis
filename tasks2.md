@@ -517,7 +517,7 @@ Low — localized responsive row/column switch.
 - tasks2.md checkbox marked complete
 ---
 
-- [ ] Task 11
+- [x] Task 11
 ---
 ## [P3] Improve desktop reorder affordance and focus traversal in dashboard_layout_editor_screen.dart
 

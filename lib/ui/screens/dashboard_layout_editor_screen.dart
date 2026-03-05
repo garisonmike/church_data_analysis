@@ -38,44 +38,56 @@ class DashboardLayoutEditorScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             Expanded(
-              child: ReorderableListView.builder(
-                itemCount: config.order.length,
-                onReorder: (oldIndex, newIndex) {
-                  final updated = List<DashboardSection>.from(config.order);
-                  if (newIndex > oldIndex) {
-                    newIndex -= 1;
-                  }
-                  final section = updated.removeAt(oldIndex);
-                  updated.insert(newIndex, section);
-                  ref
-                      .read(dashboardConfigProvider.notifier)
-                      .setSectionOrder(updated);
-                },
-                itemBuilder: (context, index) {
-                  final section = config.order[index];
-                  final isVisible = config.isVisible(section);
-                  return ListTile(
-                    key: ValueKey(section.name),
-                    leading: Icon(_iconForSection(section)),
-                    title: Text(_labelForSection(section)),
-                    subtitle: Text(
-                      isVisible ? 'Visible' : 'Hidden',
-                      style: TextStyle(
-                        color: isVisible
-                            ? Theme.of(context).colorScheme.primary
-                            : Theme.of(context).colorScheme.outline,
+              child: FocusTraversalGroup(
+                policy: OrderedTraversalPolicy(),
+                child: ReorderableListView.builder(
+                  itemCount: config.order.length,
+                  onReorder: (oldIndex, newIndex) {
+                    final updated = List<DashboardSection>.from(config.order);
+                    if (newIndex > oldIndex) {
+                      newIndex -= 1;
+                    }
+                    final section = updated.removeAt(oldIndex);
+                    updated.insert(newIndex, section);
+                    ref
+                        .read(dashboardConfigProvider.notifier)
+                        .setSectionOrder(updated);
+                  },
+                  itemBuilder: (context, index) {
+                    final section = config.order[index];
+                    final isVisible = config.isVisible(section);
+                    return ListTile(
+                      key: ValueKey(section.name),
+                      leading: Icon(_iconForSection(section)),
+                      title: Text(_labelForSection(section)),
+                      subtitle: Text(
+                        isVisible ? 'Visible' : 'Hidden',
+                        style: TextStyle(
+                          color: isVisible
+                              ? Theme.of(context).colorScheme.primary
+                              : Theme.of(context).colorScheme.outline,
+                        ),
                       ),
-                    ),
-                    trailing: Switch(
-                      value: isVisible,
-                      onChanged: (value) {
-                        ref
-                            .read(dashboardConfigProvider.notifier)
-                            .setSectionVisibility(section, value);
-                      },
-                    ),
-                  );
-                },
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Switch(
+                            value: isVisible,
+                            onChanged: (value) {
+                              ref
+                                  .read(dashboardConfigProvider.notifier)
+                                  .setSectionVisibility(section, value);
+                            },
+                          ),
+                          ReorderableDragStartListener(
+                            index: index,
+                            child: const Icon(Icons.drag_handle),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ),
             ),
           ],

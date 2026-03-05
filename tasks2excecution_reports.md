@@ -286,3 +286,28 @@ All Wrap parameters: `spacing: 12, runSpacing: 8, alignment: WrapAlignment.cente
 
 ### Notes
 - `flutter analyze`: 1 pre-existing info (withOpacity deprecated at line 650, unrelated to this task). No errors or warnings introduced.
+
+---
+
+## Task 11 -- [P3] Improve desktop reorder affordance and focus traversal in dashboard_layout_editor_screen.dart
+
+**File:** `lib/ui/screens/dashboard_layout_editor_screen.dart`
+**Status:** Complete
+
+### What changed
+- **Drag handle added**: `trailing: Switch(...)` replaced with `trailing: Row(mainAxisSize: MainAxisSize.min, children: [Switch(...), ReorderableDragStartListener(index: index, child: Icon(Icons.drag_handle))])`. The Switch retains its full functionality; the drag handle icon is placed immediately to its right and is the explicit trigger for reorder drag gestures.
+- **FocusTraversalGroup added**: `ReorderableListView.builder(...)` wrapped in `FocusTraversalGroup(policy: OrderedTraversalPolicy())`. This stabilizes keyboard Tab/Shift+Tab traversal order through the list controls.
+
+### Self-audit vs Acceptance Criteria
+- Drag handle visible and functional: `ReorderableDragStartListener(index: index)` provides a stable drag target per row. ✅
+- Keyboard traversal predictable: `FocusTraversalGroup(policy: OrderedTraversalPolicy())` enforces ordered traversal through list items. ✅
+- No trailing overflow: `Row(mainAxisSize: MainAxisSize.min)` sizes to its children -- Switch + handle icon fit within standard ListTile trailing bounds. ✅
+- Reorder and visibility toggles continue to work: `onReorder` and `Switch.onChanged` logic are untouched. ✅
+
+### Regression risk: Low
+- `ReorderableDragStartListener` is additive -- it does not change the existing drag behavior of `ReorderableListView` (which allows dragging from anywhere on the tile by default), it only adds an explicit handle affordance.
+- `FocusTraversalGroup` is a pure focus policy wrapper -- it does not affect rendering or gesture handling.
+- `Row(mainAxisSize: MainAxisSize.min)` is safe in ListTile trailing; Flutter constrains trailing width automatically.
+
+### Notes
+- `flutter analyze`: No issues found.
