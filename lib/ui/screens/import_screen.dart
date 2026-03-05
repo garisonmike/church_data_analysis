@@ -524,79 +524,83 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
     final mappedIndices = _columnMapping.values.toList();
     final currentValue = _columnMapping[field];
 
+    final labelRow = Row(
+      children: [
+        Expanded(
+          child: Text(
+            _fieldLabels[field]!,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+        if (isOptional)
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+            decoration: BoxDecoration(
+              color: Theme.of(context).colorScheme.surfaceContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(
+              'Optional',
+              style: TextStyle(
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+      ],
+    );
+
+    final dropdown = DropdownButtonFormField<int>(
+      initialValue: _columnMapping[field],
+      decoration: const InputDecoration(
+        border: OutlineInputBorder(),
+        contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      ),
+      hint: const Text('Select column'),
+      items: [
+        const DropdownMenuItem(value: null, child: Text('-- Not mapped --')),
+        ..._headers!.asMap().entries.map((entry) {
+          final isMapped =
+              mappedIndices.contains(entry.key) && entry.key != currentValue;
+          return DropdownMenuItem(
+            value: entry.key,
+            enabled: !isMapped,
+            child: Text(
+              isMapped ? '${entry.value} (mapped)' : entry.value,
+              style: TextStyle(color: isMapped ? Colors.grey : null),
+            ),
+          );
+        }),
+      ],
+      onChanged: (value) {
+        setState(() {
+          if (value == null) {
+            _columnMapping.remove(field);
+          } else {
+            _columnMapping[field] = value;
+          }
+        });
+      },
+    );
+
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
-      child: Row(
-        children: [
-          Expanded(
-            flex: 2,
-            child: Row(
-              children: [
-                Expanded(child: Text(_fieldLabels[field]!)),
-                if (isOptional)
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Theme.of(context).colorScheme.surfaceContainer,
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      'Optional',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-          ),
-          Expanded(
-            flex: 3,
-            child: DropdownButtonFormField<int>(
-              initialValue: _columnMapping[field],
-              decoration: const InputDecoration(
-                border: OutlineInputBorder(),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
-                ),
-              ),
-              hint: const Text('Select column'),
-              items: [
-                const DropdownMenuItem(
-                  value: null,
-                  child: Text('-- Not mapped --'),
-                ),
-                ..._headers!.asMap().entries.map((entry) {
-                  final isMapped =
-                      mappedIndices.contains(entry.key) &&
-                      entry.key != currentValue;
-                  return DropdownMenuItem(
-                    value: entry.key,
-                    enabled: !isMapped,
-                    child: Text(
-                      isMapped ? '${entry.value} (mapped)' : entry.value,
-                      style: TextStyle(color: isMapped ? Colors.grey : null),
-                    ),
-                  );
-                }),
-              ],
-              onChanged: (value) {
-                setState(() {
-                  if (value == null) {
-                    _columnMapping.remove(field);
-                  } else {
-                    _columnMapping[field] = value;
-                  }
-                });
-              },
-            ),
-          ),
-        ],
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 840) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [labelRow, const SizedBox(height: 8), dropdown],
+            );
+          }
+          return Row(
+            children: [
+              Expanded(flex: 2, child: labelRow),
+              Expanded(flex: 3, child: dropdown),
+            ],
+          );
+        },
       ),
     );
   }

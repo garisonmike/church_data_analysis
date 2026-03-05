@@ -472,7 +472,7 @@ Low — sizing math and text truncation only.
 - tasks2.md checkbox marked complete
 ---
 
-- [ ] Task 10
+- [x] Task 10
 ---
 ## [P3] Rework import_screen.dart mapping rows for high-DPI and narrow desktop widths
 

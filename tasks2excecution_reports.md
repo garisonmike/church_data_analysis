@@ -257,3 +257,32 @@ All Wrap parameters: `spacing: 12, runSpacing: 8, alignment: WrapAlignment.cente
 ### Notes
 - `flutter analyze`: No issues found.
 - The chart description field already had `maxLines: 2, overflow: TextOverflow.ellipsis` from before this task -- confirmed and left intact.
+
+---
+
+## Task 10 -- [P3] Rework import_screen.dart mapping rows for high-DPI and narrow desktop widths
+
+**File:** `lib/ui/screens/import_screen.dart`
+**Status:** Complete
+
+### What changed
+- `_buildMappingDropdown` restructured around a `LayoutBuilder`:
+  - `constraints.maxWidth < 840`: `Column(crossAxisAlignment: stretch)` — `labelRow`, `SizedBox(height: 8)`, `dropdown` stacked vertically; dropdown fills full width via stretch.
+  - `constraints.maxWidth >= 840`: original `Row(Expanded(flex:2) labelRow, Expanded(flex:3) dropdown)` — no change to wide layout.
+- `labelRow` and `dropdown` extracted as local variables to avoid duplication between the two branches.
+- Label `Text` (`_fieldLabels[field]!`) gained `maxLines: 2, overflow: TextOverflow.ellipsis` (was unconstrained).
+- All other logic (mapping state reads/writes, dropdown items, "Optional" badge, disabled items) is unchanged.
+
+### Self-audit vs Acceptance Criteria
+- No horizontal clipping at 600-839: Column stacks vertically, no Row flex compression at medium widths. ✅
+- No horizontal scroll at 150% DPI: Column + stretch means dropdown never overflows horizontally. ✅
+- Wide layout preserved at >=840: Row(flex 2/3) path is identical to original. ✅
+- No overflow warnings: label bounded by maxLines:2 + ellipsis. ✅
+
+### Regression risk: Low
+- The >=840 path is structurally identical to the original Row -- no behavioral change at wide widths.
+- `labelRow`/`dropdown` are local variables built inline each call; no state is shared or captured.
+- The pre-existing `withOpacity` deprecation warning at line 650 is unrelated to this task and was not introduced by these changes.
+
+### Notes
+- `flutter analyze`: 1 pre-existing info (withOpacity deprecated at line 650, unrelated to this task). No errors or warnings introduced.
