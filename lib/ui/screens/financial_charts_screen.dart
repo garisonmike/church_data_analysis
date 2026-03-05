@@ -174,8 +174,15 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 300,
+            ResponsiveChartContainer(
+              minHeight: MediaQuery.sizeOf(context).width < 480
+                  ? 200.0
+                  : MediaQuery.sizeOf(context).width < 840
+                  ? 220.0
+                  : 260.0,
+              maxHeight: 420,
+              aspectRatio: 16 / 10,
+              enableInteractive: false,
               child: LineChart(
                 LineChartData(
                   gridData: FlGridData(show: true, drawVerticalLine: false),
@@ -277,11 +284,12 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
               children: [
                 _buildLegendItem('Tithe', Colors.blue),
-                const SizedBox(width: 24),
                 _buildLegendItem('Offerings', Colors.green),
               ],
             ),
@@ -303,8 +311,15 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 300,
+            ResponsiveChartContainer(
+              minHeight: MediaQuery.sizeOf(context).width < 480
+                  ? 200.0
+                  : MediaQuery.sizeOf(context).width < 840
+                  ? 220.0
+                  : 260.0,
+              maxHeight: 420,
+              aspectRatio: 16 / 10,
+              enableInteractive: false,
               child: BarChart(
                 BarChartData(
                   alignment: BarChartAlignment.spaceAround,
@@ -470,8 +485,15 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 300,
+            ResponsiveChartContainer(
+              minHeight: MediaQuery.sizeOf(context).width < 480
+                  ? 200.0
+                  : MediaQuery.sizeOf(context).width < 840
+                  ? 220.0
+                  : 260.0,
+              maxHeight: 420,
+              aspectRatio: 16 / 10,
+              enableInteractive: false,
               child: PieChart(
                 PieChartData(
                   sections: [
@@ -584,8 +606,15 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
               style: Theme.of(context).textTheme.titleLarge,
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 300,
+            ResponsiveChartContainer(
+              minHeight: MediaQuery.sizeOf(context).width < 480
+                  ? 200.0
+                  : MediaQuery.sizeOf(context).width < 840
+                  ? 220.0
+                  : 260.0,
+              maxHeight: 420,
+              aspectRatio: 16 / 10,
+              enableInteractive: false,
               child: LineChart(
                 LineChartData(
                   gridData: FlGridData(show: true, drawVerticalLine: false),
@@ -712,11 +741,12 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
               children: [
                 _buildLegendItem('Total Income', Colors.green),
-                const SizedBox(width: 24),
                 _buildLegendItem('Total Attendance', Colors.blue),
               ],
             ),

@@ -39,12 +39,15 @@ Observations, regression risks, and implementation details worth tracking across
   - `width = MediaQuery.of(context).size.width`
   - `isNarrow = width < 480`
   - `isMedium = width >= 480 && width < 840`
-  - `currentTimeRange = ref.watch(chartTimeRangeProvider)` — needed for `PopupMenuButton.initialValue`
+  - `currentTimeRange = ref.watch(chartTimeRangeProvider)` — needed for `showMenu` `initialValue`
 - Replaced single `ConstrainedBox(maxWidth: 400)` + `TimeRangeSelector` action with three-tier branch:
-  - `isNarrow (<480)`: `PopupMenuButton<ChartTimeRange>` (date_range icon + all 5 range options) — writes directly to `chartTimeRangeProvider`
+  - `isNarrow (<480)`: `Builder` → `IconButton(Icons.date_range)` whose `onPressed` calls `showMenu<ChartTimeRange>()` anchored to the button's `RenderBox` position. On selection, writes directly to `chartTimeRangeProvider`.
   - `isMedium (480–839)`: `ConstrainedBox(maxWidth: 220)` + `TimeRangeSelector(compact: true)`
   - `isWide (>=840)`: `ConstrainedBox(maxWidth: 400)` + `TimeRangeSelector(compact: true)` (original)
 - Refresh `IconButton` is unconditional in all branches.
+
+### Review correction
+Initial implementation used `PopupMenuButton` with an `icon:` parameter instead of an `IconButton`. The spec explicitly requires an `IconButton` opening a popup menu. Corrected to use `Builder` → `IconButton` → `showMenu<ChartTimeRange>()` with the button's `RenderBox` position for proper anchoring.
 
 ### Regression risk: Low
 - `>=840` path is identical to the original code — no wide-screen regression.
@@ -166,3 +169,45 @@ For the two **reports_screen.dart** dialogs (`Customize PDF Report`, `Customize 
 - The three breakpoint variables (`isNarrow`, `isMedium`, `isWide`) are declared in `build()` but `isNarrow` is used only in the `if (isNarrow || isMedium)` expression. If future tasks add medium-specific body layout branching to this screen, the variables are already in place.
 - `_buildSettingsMenu()` (settings icon) always appears at all breakpoints, which is correct — settings should never be hidden.
 - At exactly `width == 600` and `width == 840`, boundary conditions resolve as: 600 → `isMedium`, 840 → `isWide`. Consistent with the Unified Breakpoint Strategy.
+
+---
+
+## Task 7 — [P2] Replace fixed 300px chart heights with responsive containers and wrapped legends
+
+**Files:**
+- `lib/ui/screens/financial_charts_screen.dart`
+- `lib/ui/screens/correlation_charts_screen.dart`
+- `lib/ui/screens/advanced_charts_screen.dart`
+
+**Status:** Complete
+
+### What changed
+
+**SizedBox(height: 300) replacements (11 total):**
+- `financial_charts_screen.dart`: 4 occurrences — Tithe vs Offerings (LineChart), Income Breakdown (BarChart), Income Distribution (PieChart), Total Income vs Attendance (LineChart).
+- `correlation_charts_screen.dart`: 3 occurrences — Attendance vs Income Dual-Axis (LineChart), Attendance vs Income Scatter Plot (ScatterChart), Groups vs Funds Correlation (LineChart).
+- `advanced_charts_screen.dart`: 4 occurrences — Attendance Forecast Projection (LineChart), Attendance with Moving Average Overlay (LineChart), Attendance vs Funds Heatmap (custom Column grid), Attendance with Outlier Detection (LineChart).
+
+All replaced with `ResponsiveChartContainer(minHeight: <breakpoint-driven>, maxHeight: 420, aspectRatio: 16/10, enableInteractive: false, child: <chart>)`. The `minHeight` is computed inline via `MediaQuery.sizeOf(context).width`:
+- `< 480` -> `200.0`
+- `480-839` -> `220.0`
+- `>= 840` -> `260.0`
+
+**Legend Row -> Wrap replacements (7 total):**
+- `financial_charts_screen.dart`: 2 Rows -> Wrap. (Income Breakdown and Income Distribution legends were already Wrap -- left unchanged.)
+- `correlation_charts_screen.dart`: 2 Rows -> Wrap.
+- `advanced_charts_screen.dart`: 3 Rows -> Wrap.
+
+All Wrap parameters: `spacing: 12, runSpacing: 8, alignment: WrapAlignment.center`. `SizedBox(width: 24)` spacers removed (handled by `Wrap.spacing`).
+
+**Not changed:**
+- `_buildHeatmapLegend()` Row in `advanced_charts_screen.dart` -- custom color-gradient key legend, not a `_buildLegendItem`-based legend. Not in scope.
+
+### Regression risk: Medium
+- `ResponsiveChartContainer` clamps height and applies a 0.85 scale factor below 600px width.
+- Heatmap grid (`_buildHeatmapGrid`) uses `Expanded` children -- previously constrained by `SizedBox(height: 300)`, now by `ResponsiveChartContainer`'s internal sizing. Functionally equivalent.
+
+### Notes
+- `flutter analyze` on all 3 files: No issues found.
+- `ResponsiveChartContainer` already available via `widgets.dart` -- no import changes required.
+- `aspectRatio: 16/10` (1.6) chosen per spec.

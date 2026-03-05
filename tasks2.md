@@ -327,7 +327,7 @@ Low — change is isolated to app bar action rendering.
 - tasks2.md checkbox marked complete
 ---
 
-- [ ] Task 7
+- [x] Task 7
 ---
 ## [P2] Replace fixed 300px chart heights with responsive containers and wrapped legends
 

@@ -121,21 +121,45 @@ class _AttendanceChartsScreenState
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         actions: [
           if (isNarrow)
-            PopupMenuButton<ChartTimeRange>(
-              icon: const Icon(Icons.date_range),
-              tooltip: 'Select time range',
-              initialValue: currentTimeRange,
-              onSelected: (ChartTimeRange value) {
-                ref.read(chartTimeRangeProvider.notifier).state = value;
-              },
-              itemBuilder: (context) => ChartTimeRange.values
-                  .map(
-                    (range) => PopupMenuItem<ChartTimeRange>(
-                      value: range,
-                      child: Text(range.displayName),
+            Builder(
+              builder: (context) => IconButton(
+                icon: const Icon(Icons.date_range),
+                tooltip: 'Select time range',
+                onPressed: () async {
+                  final RenderBox button =
+                      context.findRenderObject()! as RenderBox;
+                  final RenderBox overlay =
+                      Navigator.of(context).overlay!.context.findRenderObject()!
+                          as RenderBox;
+                  final RelativeRect position = RelativeRect.fromRect(
+                    Rect.fromPoints(
+                      button.localToGlobal(Offset.zero, ancestor: overlay),
+                      button.localToGlobal(
+                        button.size.bottomRight(Offset.zero),
+                        ancestor: overlay,
+                      ),
                     ),
-                  )
-                  .toList(),
+                    Offset.zero & overlay.size,
+                  );
+                  final ChartTimeRange? selected =
+                      await showMenu<ChartTimeRange>(
+                        context: context,
+                        position: position,
+                        initialValue: currentTimeRange,
+                        items: ChartTimeRange.values
+                            .map(
+                              (range) => PopupMenuItem<ChartTimeRange>(
+                                value: range,
+                                child: Text(range.displayName),
+                              ),
+                            )
+                            .toList(),
+                      );
+                  if (selected != null) {
+                    ref.read(chartTimeRangeProvider.notifier).state = selected;
+                  }
+                },
+              ),
             )
           else if (isMedium)
             ConstrainedBox(

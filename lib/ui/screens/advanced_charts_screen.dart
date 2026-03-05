@@ -186,8 +186,15 @@ class _AdvancedChartsScreenState extends ConsumerState<AdvancedChartsScreen> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 300,
+            ResponsiveChartContainer(
+              minHeight: MediaQuery.sizeOf(context).width < 480
+                  ? 200.0
+                  : MediaQuery.sizeOf(context).width < 840
+                  ? 220.0
+                  : 260.0,
+              maxHeight: 420,
+              aspectRatio: 16 / 10,
+              enableInteractive: false,
               child: LineChart(
                 LineChartData(
                   gridData: FlGridData(show: true, drawVerticalLine: false),
@@ -309,11 +316,12 @@ class _AdvancedChartsScreenState extends ConsumerState<AdvancedChartsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
               children: [
                 _buildLegendItem('Historical', Colors.blue),
-                const SizedBox(width: 24),
                 _buildLegendItem('Forecast', Colors.orange),
               ],
             ),
@@ -379,8 +387,15 @@ class _AdvancedChartsScreenState extends ConsumerState<AdvancedChartsScreen> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 300,
+            ResponsiveChartContainer(
+              minHeight: MediaQuery.sizeOf(context).width < 480
+                  ? 200.0
+                  : MediaQuery.sizeOf(context).width < 840
+                  ? 220.0
+                  : 260.0,
+              maxHeight: 420,
+              aspectRatio: 16 / 10,
+              enableInteractive: false,
               child: LineChart(
                 LineChartData(
                   gridData: FlGridData(show: true, drawVerticalLine: false),
@@ -486,14 +501,15 @@ class _AdvancedChartsScreenState extends ConsumerState<AdvancedChartsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
               children: [
                 _buildLegendItem(
                   'Weekly Attendance',
                   Colors.blue.withValues(alpha: 0.5),
                 ),
-                const SizedBox(width: 24),
                 _buildLegendItem('3-Week Moving Avg', Colors.red),
               ],
             ),
@@ -536,7 +552,17 @@ class _AdvancedChartsScreenState extends ConsumerState<AdvancedChartsScreen> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
-            SizedBox(height: 300, child: _buildHeatmapGrid(records)),
+            ResponsiveChartContainer(
+              minHeight: MediaQuery.sizeOf(context).width < 480
+                  ? 200.0
+                  : MediaQuery.sizeOf(context).width < 840
+                  ? 220.0
+                  : 260.0,
+              maxHeight: 420,
+              aspectRatio: 16 / 10,
+              enableInteractive: false,
+              child: _buildHeatmapGrid(records),
+            ),
             const SizedBox(height: 16),
             _buildHeatmapLegend(),
           ],
@@ -743,8 +769,15 @@ class _AdvancedChartsScreenState extends ConsumerState<AdvancedChartsScreen> {
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
-            SizedBox(
-              height: 300,
+            ResponsiveChartContainer(
+              minHeight: MediaQuery.sizeOf(context).width < 480
+                  ? 200.0
+                  : MediaQuery.sizeOf(context).width < 840
+                  ? 220.0
+                  : 260.0,
+              maxHeight: 420,
+              aspectRatio: 16 / 10,
+              enableInteractive: false,
               child: LineChart(
                 LineChartData(
                   gridData: FlGridData(show: true, drawVerticalLine: false),
@@ -875,11 +908,12 @@ class _AdvancedChartsScreenState extends ConsumerState<AdvancedChartsScreen> {
               ),
             ),
             const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              alignment: WrapAlignment.center,
               children: [
                 _buildLegendItem('Normal', Colors.blue),
-                const SizedBox(width: 24),
                 _buildLegendItem('Outlier', Colors.red),
               ],
             ),
