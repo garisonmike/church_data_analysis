@@ -111,9 +111,10 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
     }
   }
 
-  void _checkForOutliers() {
+  void _checkForOutliers([void Function(VoidCallback fn)? setStateFn]) {
+    final apply = setStateFn ?? setState;
     if (_historicalRecords.length < 4) {
-      setState(() {
+      apply(() {
         _outlierWarnings = [];
       });
       return;
@@ -158,7 +159,7 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
       warnings.add(incomeWarning);
     }
 
-    setState(() {
+    apply(() {
       _outlierWarnings = warnings;
     });
   }
@@ -452,10 +453,7 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
                             const SizedBox(height: 24),
 
                             // Attendance Section
-                            Text(
-                              'Attendance',
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
+                            const _SectionTitle('Attendance'),
                             const SizedBox(height: 8),
                             _buildIntegerField(
                               controller: _menController,
@@ -489,10 +487,7 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
                             const SizedBox(height: 24),
 
                             // Financial Section
-                            Text(
-                              'Financial Data',
-                              style: Theme.of(context).textTheme.titleLarge,
-                            ),
+                            const _SectionTitle('Financial Data'),
                             const SizedBox(height: 8),
                             _buildDecimalField(
                               controller: _titheController,
@@ -523,74 +518,100 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
                             ),
                             const SizedBox(height: 16),
 
-                            // Check for outliers button
-                            OutlinedButton.icon(
-                              onPressed: _checkForOutliers,
-                              icon: const Icon(Icons.analytics),
-                              label: const Text('Check for Unusual Values'),
-                              style: OutlinedButton.styleFrom(
-                                padding: const EdgeInsets.all(12),
-                              ),
-                            ),
-
-                            // Outlier warnings display
-                            if (_outlierWarnings.isNotEmpty) ...[
-                              const SizedBox(height: 16),
-                              ..._outlierWarnings.map(
-                                (warning) => Container(
-                                  padding: const EdgeInsets.all(12),
-                                  margin: const EdgeInsets.only(bottom: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.orange.shade100,
-                                    borderRadius: BorderRadius.circular(8),
-                                    border: Border.all(color: Colors.orange),
-                                  ),
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Icon(
-                                        warning.type == OutlierType.high
-                                            ? Icons.trending_up
-                                            : Icons.trending_down,
-                                        color: Colors.orange.shade800,
+                            // Outlier check section — isolated with StatefulBuilder
+                            // so outlier button presses only rebuild this subtree
+                            StatefulBuilder(
+                              builder: (context, localSetState) {
+                                return Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.stretch,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    OutlinedButton.icon(
+                                      onPressed: () =>
+                                          _checkForOutliers(localSetState),
+                                      icon: const Icon(Icons.analytics),
+                                      label: const Text(
+                                        'Check for Unusual Values',
                                       ),
-                                      const SizedBox(width: 8),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              'Warning: ${warning.fieldName}',
-                                              style: TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.orange.shade900,
-                                              ),
+                                      style: OutlinedButton.styleFrom(
+                                        padding: const EdgeInsets.all(12),
+                                      ),
+                                    ),
+                                    if (_outlierWarnings.isNotEmpty) ...[
+                                      const SizedBox(height: 16),
+                                      ..._outlierWarnings.map(
+                                        (warning) => Container(
+                                          padding: const EdgeInsets.all(12),
+                                          margin: const EdgeInsets.only(
+                                            bottom: 8,
+                                          ),
+                                          decoration: BoxDecoration(
+                                            color: Colors.orange.shade100,
+                                            borderRadius: BorderRadius.circular(
+                                              8,
                                             ),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              warning.message,
-                                              style: TextStyle(
+                                            border: Border.all(
+                                              color: Colors.orange,
+                                            ),
+                                          ),
+                                          child: Row(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Icon(
+                                                warning.type == OutlierType.high
+                                                    ? Icons.trending_up
+                                                    : Icons.trending_down,
                                                 color: Colors.orange.shade800,
                                               ),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(
-                                              'Expected range: ${warning.expectedRange}',
-                                              style: TextStyle(
-                                                fontSize: 12,
-                                                color: Colors.orange.shade700,
+                                              const SizedBox(width: 8),
+                                              Expanded(
+                                                child: Column(
+                                                  crossAxisAlignment:
+                                                      CrossAxisAlignment.start,
+                                                  children: [
+                                                    Text(
+                                                      'Warning: ${warning.fieldName}',
+                                                      style: TextStyle(
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: Colors
+                                                            .orange
+                                                            .shade900,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      warning.message,
+                                                      style: TextStyle(
+                                                        color: Colors
+                                                            .orange
+                                                            .shade800,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      'Expected range: ${warning.expectedRange}',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: Colors
+                                                            .orange
+                                                            .shade700,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
                                               ),
-                                            ),
-                                          ],
+                                            ],
+                                          ),
                                         ),
                                       ),
                                     ],
-                                  ),
-                                ),
-                              ),
-                            ],
+                                  ],
+                                );
+                              },
+                            ),
 
                             const SizedBox(height: 24),
 
@@ -671,4 +692,16 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
       onFieldSubmitted: onFieldSubmitted,
     );
   }
+}
+
+/// File-private const widget for titleLarge section headings in the
+/// weekly entry form.
+class _SectionTitle extends StatelessWidget {
+  final String text;
+
+  const _SectionTitle(this.text);
+
+  @override
+  Widget build(BuildContext context) =>
+      Text(text, style: Theme.of(context).textTheme.titleLarge);
 }

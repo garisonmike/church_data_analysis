@@ -397,7 +397,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
           children: [
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(
+              leading: const CircleAvatar(
                 child: Text('1', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
               title: Text(
@@ -452,7 +452,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
           children: [
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(
+              leading: const CircleAvatar(
                 child: Text('2', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
               title: Text(
@@ -462,19 +462,13 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
               subtitle: const Text('Match file columns to database fields.'),
             ),
             const SizedBox(height: 16),
-            Text(
-              'Required fields',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
+            const _SubsectionLabel('Required fields'),
             const SizedBox(height: 8),
             ..._requiredFields.map(
               (field) => _buildMappingDropdown(field, isOptional: false),
             ),
             const SizedBox(height: 16),
-            Text(
-              'Optional fields',
-              style: Theme.of(context).textTheme.titleSmall,
-            ),
+            const _SubsectionLabel('Optional fields'),
             const SizedBox(height: 8),
             ..._optionalFields.map(
               (field) => _buildMappingDropdown(field, isOptional: true),
@@ -624,7 +618,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
           children: [
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: CircleAvatar(
+              leading: const CircleAvatar(
                 child: Text('3', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
               title: Text(
@@ -636,7 +630,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             Card(
               color: Theme.of(
                 context,
-              ).colorScheme.secondaryContainer.withOpacity(0.5),
+              ).colorScheme.secondaryContainer.withValues(alpha: 0.5),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
@@ -719,4 +713,15 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       ),
     );
   }
+}
+
+/// File-private const widget for titleSmall section labels in import steps.
+class _SubsectionLabel extends StatelessWidget {
+  final String text;
+
+  const _SubsectionLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) =>
+      Text(text, style: Theme.of(context).textTheme.titleSmall);
 }

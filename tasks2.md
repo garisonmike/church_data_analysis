@@ -799,7 +799,7 @@ Low — internal guard/robustness update without API change.
 - tasks2.md checkbox marked complete
 ---
 
-- [ ] Task 17
+- [x] Task 17
 ---
 ## [P5] Reduce rebuild pressure in large forms using const extraction and local state isolation
 

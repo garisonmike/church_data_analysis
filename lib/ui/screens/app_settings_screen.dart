@@ -35,10 +35,7 @@ class AppSettingsScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Currency Settings',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+                  const _CardTitle('Currency Settings'),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<Currency>(
                     initialValue: settings.currency,
@@ -125,10 +122,7 @@ class AppSettingsScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Theme Settings',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+                  const _CardTitle('Theme Settings'),
                   const SizedBox(height: 16),
                   DropdownButtonFormField<AppThemeMode>(
                     initialValue: settings.themeMode,
@@ -216,10 +210,7 @@ class AppSettingsScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Regional Settings',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+                  const _CardTitle('Regional Settings'),
                   const SizedBox(height: 16),
                   TextFormField(
                     initialValue: settings.locale,
@@ -262,10 +253,7 @@ class AppSettingsScreen extends ConsumerWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    'Quick Presets',
-                    style: Theme.of(context).textTheme.titleLarge,
-                  ),
+                  const _CardTitle('Quick Presets'),
                   const SizedBox(height: 16),
                   Wrap(
                     spacing: 8.0,
@@ -415,4 +403,15 @@ class _PresetChip extends StatelessWidget {
       showCheckmark: true,
     );
   }
+}
+
+/// File-private const widget for titleLarge card section headings.
+class _CardTitle extends StatelessWidget {
+  final String text;
+
+  const _CardTitle(this.text);
+
+  @override
+  Widget build(BuildContext context) =>
+      Text(text, style: Theme.of(context).textTheme.titleLarge);
 }

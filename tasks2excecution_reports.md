@@ -615,3 +615,149 @@ Two sub-changes applied:
 - Regression risk: Low. Changes are purely defensive guards that add early-return paths. No logic inside the existing visibility computation was altered.
 - All other lazy-load behaviour (threshold, `_hasBeenVisible` latch, `setState` rebuild) is unchanged.
 
+---
+
+## Task 17 — Reduce rebuild pressure in large forms using const extraction and local state isolation
+
+**Files modified:**
+- `lib/ui/screens/import_screen.dart`
+- `lib/ui/screens/weekly_entry_screen.dart`
+- `lib/ui/screens/app_settings_screen.dart`
+
+### Changes made
+
+#### `import_screen.dart`
+
+**1. Step badge `CircleAvatar` widgets made `const`**
+
+Three step-number badges (steps 1, 2, 3) in `_buildFilePickerStep`, `_buildColumnMappingStep`, and `_buildPreviewStep` were not marked `const`. Their constructors are fully const-eligible (`CircleAvatar` → `Text` → `TextStyle`, all literals). Changed to `const`:
+
+```dart
+// Before
+leading: CircleAvatar(
+  child: Text('1', style: TextStyle(fontWeight: FontWeight.bold)),
+),
+
+// After
+leading: const CircleAvatar(
+  child: Text('1', style: TextStyle(fontWeight: FontWeight.bold)),
+),
+```
+Same pattern applied to badges `'2'` and `'3'`.
+
+**2. `_SubsectionLabel` file-private const widget extracted**
+
+`_buildColumnMappingStep` used `Text('Required fields', style: Theme.of(context).textTheme.titleSmall)` and `Text('Optional fields', ...)` as subsection labels. Because these use `Theme.of(context)`, the `Text` widget itself cannot be `const`, but extracting to a typed `StatelessWidget` with a `const` constructor allows the instantiation to be `const` — Flutter's element tree will compare the const-identical widget instances and skip element updates.
+
+```dart
+// Added at file bottom:
+class _SubsectionLabel extends StatelessWidget {
+  final String text;
+  const _SubsectionLabel(this.text);
+  @override
+  Widget build(BuildContext context) => Text(
+        text, style: Theme.of(context).textTheme.titleSmall);
+}
+
+// Usage:
+const _SubsectionLabel('Required fields'),
+const _SubsectionLabel('Optional fields'),
+```
+
+**3. Deprecated `withOpacity` fixed**
+
+Pre-existing analyzer issue resolved: `.withOpacity(0.5)` → `.withValues(alpha: 0.5)` on `secondaryContainer` color in `_buildPreviewStep`.
+
+---
+
+#### `weekly_entry_screen.dart`
+
+**1. `_SectionTitle` file-private const widget extracted**
+
+`'Attendance'` and `'Financial Data'` form section headings used `Text(title, style: Theme.of(context).textTheme.titleLarge)` inline in `build()`. Extracted to a `const`-constructible `_SectionTitle` widget:
+
+```dart
+class _SectionTitle extends StatelessWidget {
+  final String text;
+  const _SectionTitle(this.text);
+  @override
+  Widget build(BuildContext context) => Text(
+        text, style: Theme.of(context).textTheme.titleLarge);
+}
+
+// Usage:
+const _SectionTitle('Attendance'),
+const _SectionTitle('Financial Data'),
+```
+
+**2. Outlier check section isolated with `StatefulBuilder`**
+
+Previously, pressing "Check for Unusual Values" called `_checkForOutliers()` which triggered `setState()` on `_WeeklyEntryScreenState`, causing a full form rebuild (all `TextFormField`s, all rows). The outlier button and warnings display are self-contained — no other part of the form depends on `_outlierWarnings` changing.
+
+Isolation strategy:
+- `_checkForOutliers` given an optional `setStateFn` parameter:
+  ```dart
+  void _checkForOutliers([void Function(VoidCallback fn)? setStateFn]) {
+    final apply = setStateFn ?? setState;
+    // ... computation unchanged ...
+    apply(() { _outlierWarnings = warnings; });
+  }
+  ```
+- The check button + warnings display wrapped in `StatefulBuilder`:
+  ```dart
+  StatefulBuilder(
+    builder: (context, localSetState) {
+      return Column(
+        children: [
+          OutlinedButton.icon(
+            onPressed: () => _checkForOutliers(localSetState),
+            ...
+          ),
+          if (_outlierWarnings.isNotEmpty) ...[
+            // ... warnings display unchanged ...
+          ],
+        ],
+      );
+    },
+  ),
+  ```
+- Result: pressing the outlier button rebuilds only the `StatefulBuilder`'s subtree (button + warnings). The form fields, date card, save button, and all other sections are not rebuilt.
+
+---
+
+#### `app_settings_screen.dart`
+
+**`_CardTitle` file-private const widget extracted**
+
+Four card section headings (`'Currency Settings'`, `'Theme Settings'`, `'Regional Settings'`, `'Quick Presets'`) used inline `Text(title, style: Theme.of(context).textTheme.titleLarge)`. Extracted to `_CardTitle`:
+
+```dart
+class _CardTitle extends StatelessWidget {
+  final String text;
+  const _CardTitle(this.text);
+  @override
+  Widget build(BuildContext context) => Text(
+        text, style: Theme.of(context).textTheme.titleLarge);
+}
+
+// Usage:
+const _CardTitle('Currency Settings'),
+const _CardTitle('Theme Settings'),
+const _CardTitle('Regional Settings'),
+const _CardTitle('Quick Presets'),
+```
+
+### Acceptance criteria mapping
+
+- **Static sections are converted to `const` where valid and safe:** All 11 const-extractable sites converted — 3 `CircleAvatar` badges, 2 `_SubsectionLabel`, 2 `_SectionTitle`, 4 `_CardTitle`. ✅
+- **Localized state updates do not trigger unnecessary full-section rebuilds:** Outlier check button + warnings isolated in `StatefulBuilder`; `_checkForOutliers(localSetState)` rebuilds only that subtree. ✅
+- **Functional behavior and visual output remain unchanged across breakpoints:** All extracted widgets replicate exact original visual output. No layout, logic, or validation changes. ✅
+- **No new layout warnings or runtime issues introduced:** `flutter analyze` on all 3 files: No issues found. ✅
+
+### Notes
+- `flutter analyze lib/ui/screens/import_screen.dart lib/ui/screens/weekly_entry_screen.dart lib/ui/screens/app_settings_screen.dart`: No issues found.
+- Regression risk: Medium (spec) / Low in practice — changes are structural (const, StatefulBuilder wrapper); all existing widget content, data flow, and validation logic is preserved verbatim.
+- No state-management (Riverpod) rewrite performed; `StatefulBuilder` isolation is purely local.
+- `_checkForOutliers` backward-compatible: optional parameter defaults to outer `setState`, so any future external call site continues to work unchanged.
+- The deprecated `withOpacity` fix in `import_screen.dart` was a pre-existing analyzer issue in the file; resolved as part of touching the file to maintain clean analyzer output.
+
