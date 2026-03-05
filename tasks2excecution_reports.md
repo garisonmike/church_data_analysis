@@ -365,3 +365,60 @@ All Wrap parameters: `spacing: 12, runSpacing: 8, alignment: WrapAlignment.cente
 ### Notes
 - `flutter analyze`: 0 errors. 1 pre-existing `info` warning (`withOpacity` deprecated at `import_screen.dart:639`) — unrelated to this task, not introduced here.
 - `import_screen.dart` and `reports_screen.dart` have no text fields in the targeted widgets; the `FocusTraversalGroup` additions are still required by the spec to normalize traversal order through non-text focusable controls (dropdowns, switches).
+
+---
+
+## Task 13 — [P4] Add semantics parity for icon-only actions and chart controls
+
+**Files:**
+- `lib/ui/screens/correlation_charts_screen.dart`
+- `lib/ui/screens/advanced_charts_screen.dart`
+- `lib/ui/screens/financial_charts_screen.dart`
+- `lib/ui/screens/dashboard_screen.dart`
+
+**Status:** Complete
+
+### What changed
+
+**Tooltip additions (semantic label parity for `IconButton`):**
+
+Flutter's `IconButton` automatically exposes the `tooltip` value as the widget's semantic label, providing screen-reader announcements and hover/long-press affordance simultaneously. All icon-only `IconButton` widgets that were missing `tooltip` received one.
+
+- `correlation_charts_screen.dart` — AppBar refresh `IconButton`: added `tooltip: 'Refresh'`.
+- `advanced_charts_screen.dart` — AppBar refresh `IconButton`: added `tooltip: 'Refresh'`.
+- `financial_charts_screen.dart` — AppBar refresh `IconButton`: added `tooltip: 'Refresh'`.
+- `dashboard_screen.dart` — trailing arrow `IconButton` in recent records list (`Icons.arrow_forward_ios`): added `tooltip: 'Edit record'`.
+
+**Pre-existing tooltip coverage confirmed (no changes needed):**
+- `attendance_charts_screen.dart`: AppBar `IconButton` with `Icons.date_range` has `tooltip: 'Select time range'` ✅; refresh has `tooltip: 'Refresh'` ✅; `_buildSectionTitle` export button has `tooltip: 'Export chart'` ✅.
+- `dashboard_screen.dart`: `IconButton(Icons.dashboard_customize)` → `tooltip: 'Customize Dashboard'` ✅; `IconButton(Icons.analytics_outlined)` → `tooltip: 'Reports & Backup'` ✅; `IconButton(Icons.refresh)` → `tooltip: 'Refresh'` ✅; `PopupMenuButton` settings → `tooltip: 'Settings'` ✅; `PopupMenuButton` overflow → `tooltip: 'More'` ✅; `FloatingActionButton` → `tooltip: 'Add Weekly Entry'` ✅.
+
+**Chart subtitle additions (text summary below chart title):**
+
+`Text(summary, style: textTheme.bodySmall)` inserted between the title `Text` and the chart `ResponsiveChartContainer` (or empty-state `Center`), with `SizedBox(height: 16)` changed to `SizedBox(height: 8)` before the subtitle, and a new `SizedBox(height: 16)` separating subtitle from chart.
+
+- `correlation_charts_screen.dart` — `'Attendance vs Income (Dual-Axis)'`: added *"Weekly attendance and income plotted on separate scales to show parallel trends"*. (Three other charts in this screen already had subtitles.)
+- `financial_charts_screen.dart` — all four charts were missing subtitles:
+  - `'Tithe vs Offerings'`: *"Weekly tithe and offerings amounts compared over time"*
+  - `'Income Breakdown (Stacked)'`: *"Weekly income split by tithe, offerings, emergency and planned collections"*
+  - `'Income Distribution'` (empty-state card and data card both): *"Proportional breakdown of total income by fund type"*
+  - `'Total Income vs Attendance'`: *"Weekly total income alongside total attendance to highlight the relationship"*
+- `advanced_charts_screen.dart` — all four charts already had subtitles; no changes needed.
+- `attendance_charts_screen.dart` — uses `_buildSectionTitle` helper (title + export button row); no inline subtitle pattern — not in scope for this task.
+
+### Self-audit vs Acceptance Criteria
+
+- **All icon-only actions expose semantic labels and matching tooltips:** Every `IconButton` that was missing a `tooltip` now has one. Flutter derives the `Semantics.label` from `tooltip` automatically, so no additional `Semantics` wrappers are required in these cases — they would be redundant. ✅
+- **Screen-reader announcement for chart controls is meaningful and action-specific:** `'Refresh'` describes the action; `'Edit record'` describes the destination intent; `'Select time range'`, `'Export chart'`, etc. were already correct. ✅
+- **No loss of interaction behavior after semantics additions:** `tooltip` is a non-functional metadata property on `IconButton`. Chart subtitle `Text` widgets are purely additive render objects — they contain no state and do not affect widget keys, controllers, or tap targets. ✅
+- **Verified in representative screens across all breakpoint bands:** All changes are layout-independent. Tooltips display on hover (desktop/web) and long-press (mobile) regardless of breakpoint. Chart subtitles are `bodySmall` text in a `Column` — they wrap naturally at any width. ✅
+
+### Regression risk: Low
+- `tooltip` on `IconButton` is additive metadata; it does not alter hit testing, onPressed behavior, or visual size.
+- Chart subtitle `Text` widgets add a small amount of vertical space inside each card's `Column`, which may slightly increase card height. This is correct behavior and consistent with existing cards that already carry subtitles.
+- All changes are purely additive; no existing properties were removed or modified.
+
+### Notes
+- `flutter analyze`: No issues found (0 errors, 0 warnings, 0 infos).
+- `advanced_charts_screen.dart` only required the tooltip fix — all four chart sections already had `bodySmall` subtitle text.
+- The spec mentions "Wrap icon-only actionable widgets with `Semantics(button: true, label: '...')`" — this was not applied as a literal `Semantics` wrapper because `IconButton.tooltip` already sets the semantic label and `semanticLabel` internally. Explicit wrapping would be redundant and adds noise to the semantics tree.

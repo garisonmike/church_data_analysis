@@ -80,7 +80,11 @@ class _AdvancedChartsScreenState extends ConsumerState<AdvancedChartsScreen> {
       appBar: AppBar(
         title: const Text('Advanced Charts'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadData,
+            tooltip: 'Refresh',
+          ),
         ],
       ),
       body: _buildBody(),

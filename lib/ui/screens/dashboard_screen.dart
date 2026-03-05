@@ -780,6 +780,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ),
         trailing: IconButton(
           icon: const Icon(Icons.arrow_forward_ios, size: 16),
+          tooltip: 'Edit record',
           onPressed: () async {
             final result = await Navigator.push(
               context,

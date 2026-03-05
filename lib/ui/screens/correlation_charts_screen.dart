@@ -82,7 +82,11 @@ class _CorrelationChartsScreenState
       appBar: AppBar(
         title: const Text('Correlation Charts'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadData,
+            tooltip: 'Refresh',
+          ),
         ],
       ),
       body: _buildBody(),
@@ -180,6 +184,11 @@ class _CorrelationChartsScreenState
             Text(
               'Attendance vs Income (Dual-Axis)',
               style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Weekly attendance and income plotted on separate scales to show parallel trends',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
             ResponsiveChartContainer(

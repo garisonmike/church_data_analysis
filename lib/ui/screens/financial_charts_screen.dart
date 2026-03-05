@@ -81,7 +81,11 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
       appBar: AppBar(
         title: const Text('Financial Charts'),
         actions: [
-          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
+          IconButton(
+            icon: const Icon(Icons.refresh),
+            onPressed: _loadData,
+            tooltip: 'Refresh',
+          ),
         ],
       ),
       body: _buildBody(),
@@ -172,6 +176,11 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
             Text(
               'Tithe vs Offerings',
               style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Weekly tithe and offerings amounts compared over time',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
             ResponsiveChartContainer(
@@ -309,6 +318,11 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
             Text(
               'Income Breakdown (Stacked)',
               style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Weekly income split by tithe, offerings, emergency and planned collections',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
             ResponsiveChartContainer(
@@ -466,6 +480,11 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
                 'Income Distribution',
                 style: Theme.of(context).textTheme.titleLarge,
               ),
+              const SizedBox(height: 8),
+              Text(
+                'Proportional breakdown of total income by fund type',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
               const SizedBox(height: 16),
               const Center(child: Text('No income data available')),
             ],
@@ -483,6 +502,11 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
             Text(
               'Income Distribution',
               style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Proportional breakdown of total income by fund type',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
             ResponsiveChartContainer(
@@ -604,6 +628,11 @@ class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
             Text(
               'Total Income vs Attendance',
               style: Theme.of(context).textTheme.titleLarge,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Weekly total income alongside total attendance to highlight the relationship',
+              style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 16),
             ResponsiveChartContainer(

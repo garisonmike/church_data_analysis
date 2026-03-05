@@ -611,7 +611,7 @@ Low — interaction behavior is standardized without structural redesign.
 - tasks2.md checkbox marked complete
 ---
 
-- [ ] Task 13
+- [x] Task 13
 ---
 ## [P4] Add semantics parity for icon-only actions and chart controls
 
