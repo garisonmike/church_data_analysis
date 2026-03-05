@@ -659,7 +659,7 @@ Low — metadata/semantics additions only.
 - tasks2.md checkbox marked complete
 ---
 
-- [ ] Task 14
+- [x] Task 14
 ---
 ## [P4] Enforce minimum tap targets and text-scale resilience in dense action UIs
 

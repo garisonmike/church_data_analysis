@@ -134,6 +134,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               icon: const Icon(Icons.dashboard_customize),
               onPressed: _openLayoutEditor,
               tooltip: 'Customize Dashboard',
+              style: IconButton.styleFrom(
+                minimumSize: const Size(48, 48),
+                visualDensity: VisualDensity.standard,
+              ),
             ),
             ChurchSelectorWidget(onChurchChanged: _loadData),
             if (_profileService != null)
@@ -146,6 +150,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               icon: const Icon(Icons.analytics_outlined),
               onPressed: _openReports,
               tooltip: 'Reports & Backup',
+              style: IconButton.styleFrom(
+                minimumSize: const Size(48, 48),
+                visualDensity: VisualDensity.standard,
+              ),
             ),
           ],
           _buildSettingsMenu(),
@@ -154,6 +162,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             icon: const Icon(Icons.refresh),
             onPressed: _loadData,
             tooltip: 'Refresh',
+            style: IconButton.styleFrom(
+              minimumSize: const Size(48, 48),
+              visualDensity: VisualDensity.standard,
+            ),
           ),
         ],
       ),
@@ -781,6 +793,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         trailing: IconButton(
           icon: const Icon(Icons.arrow_forward_ios, size: 16),
           tooltip: 'Edit record',
+          style: IconButton.styleFrom(
+            minimumSize: const Size(48, 48),
+            visualDensity: VisualDensity.standard,
+          ),
           onPressed: () async {
             final result = await Navigator.push(
               context,

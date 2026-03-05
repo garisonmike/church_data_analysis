@@ -127,6 +127,7 @@ class TimeRangeSelector extends ConsumerWidget {
               selectedColor: theme.colorScheme.secondaryContainer,
               checkmarkColor: theme.colorScheme.onSecondaryContainer,
               backgroundColor: theme.colorScheme.surface,
+              materialTapTargetSize: MaterialTapTargetSize.padded,
               side: BorderSide(
                 color: isSelected
                     ? theme.colorScheme.secondary

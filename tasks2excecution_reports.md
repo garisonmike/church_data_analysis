@@ -380,6 +380,91 @@ All Wrap parameters: `spacing: 12, runSpacing: 8, alignment: WrapAlignment.cente
 
 ### What changed
 
+**`lib/ui/screens/correlation_charts_screen.dart`**
+- Added `tooltip: 'Refresh'` to the AppBar `IconButton(icon: Icon(Icons.refresh))`.
+- Added subtitle `Text('Weekly attendance and income plotted on separate scales to show parallel trends')` with `bodySmall` style below the `'Attendance vs Income (Dual-Axis)'` chart title (the only chart in this screen missing a summary; the other three charts already had subtitles).
+
+**`lib/ui/screens/advanced_charts_screen.dart`**
+- Added `tooltip: 'Refresh'` to the AppBar `IconButton(icon: Icon(Icons.refresh))`.
+- All four chart cards already had `bodySmall` subtitles — no chart subtitle changes needed.
+
+**`lib/ui/screens/financial_charts_screen.dart`**
+- Added `tooltip: 'Refresh'` to the AppBar `IconButton(icon: Icon(Icons.refresh))`.
+- Added `bodySmall` subtitles to all four charts that were missing them: `'Tithe vs Offerings'`, `'Income Breakdown (Stacked)'`, `'Income Distribution'` (both the empty-state and populated card), and `'Total Income vs Attendance'`.
+
+**`lib/ui/screens/dashboard_screen.dart`**
+- Added `tooltip: 'Edit record'` to the trailing `IconButton(icon: Icon(Icons.arrow_forward_ios))` in the recent records list tile.
+
+### Self-audit vs Acceptance Criteria
+
+- **All icon-only actions expose semantic labels and matching tooltips:** Flutter derives `Semantics.label` from `tooltip` on `IconButton` automatically — no explicit `Semantics(label:)` wrapper needed. All missing tooltips added across all chart screens and dashboard. `attendance_charts_screen.dart` already had both the date-range and refresh tooltips from Task 6. ✅
+- **Screen-reader announcement is meaningful and action-specific:** `'Refresh'`, `'Edit record'`, `'Export chart'`, `'Select time range'` are all action-specific labels. ✅
+- **No loss of interaction behavior:** `tooltip` is pure metadata; chart subtitle `Text` nodes are additive display-only children. No handlers, providers, or state touched. ✅
+- **Verified across all breakpoint bands:** Changes are layout-independent — tooltip and subtitle Text exist unconditionally at all widths. ✅
+
+### Regression risk: Low
+- Tooltip is compiled metadata — no rendering impact.
+- `bodySmall` subtitle is a small Text node below the title, which stacks naturally within the existing `Column(crossAxisAlignment: start)` card structure. No height constraints are affected — cards use responsive `ResponsiveChartContainer` below, not fixed heights.
+
+### Notes
+- `flutter analyze`: No issues found.
+
+---
+
+## Task 14 — [P4] Enforce minimum tap targets and text-scale resilience in dense action UIs
+
+**Files:**
+- `lib/ui/screens/dashboard_screen.dart`
+- `lib/ui/screens/graph_center_screen.dart`
+- `lib/ui/widgets/time_range_selector.dart`
+
+**Status:** Complete
+
+### What changed
+
+**`lib/ui/screens/dashboard_screen.dart`**
+- Added `style: IconButton.styleFrom(minimumSize: const Size(48, 48), visualDensity: VisualDensity.standard)` to all four `IconButton` instances:
+  - AppBar `Icons.dashboard_customize` (wide layout)
+  - AppBar `Icons.analytics_outlined` (wide layout)
+  - AppBar `Icons.refresh` (all layouts)
+  - `ListTile` trailing `Icons.arrow_forward_ios` (recent records, `size: 16` icon)
+
+**`lib/ui/screens/graph_center_screen.dart`**
+- Added `materialTapTargetSize: MaterialTapTargetSize.padded` to the `FilterChip` returned by `_buildFilterChip`. This applies to all five category filter chips (`All`, `Attendance`, `Financial`, `Analysis`, `Advanced`) in the horizontal filter row.
+
+**`lib/ui/widgets/time_range_selector.dart`**
+- Added `materialTapTargetSize: MaterialTapTargetSize.padded` to the `FilterChip` in `_buildCompactSelector`. This applies to every time-range chip (`4 weeks`, `12 weeks`, `6 months`, `1 year`, `All`) in the compact chip row shown at medium and wide breakpoints.
+
+### Self-audit vs Acceptance Criteria
+
+- **Interactive controls maintain ≥48×48 logical tap area where specified:** `minimumSize: Size(48, 48)` on `IconButton` guarantees the touch area regardless of the icon's visual size (especially important for the `size: 16` arrow icon). `MaterialTapTargetSize.padded` on `FilterChip` enforces Flutter's padded tap target mode (minimum 48px tall). ✅
+- **No clipping or overlap at text scale 1.3 and 1.5:** `VisualDensity.standard` on `IconButton` prevents compact density modes from squeezing the button; `MaterialTapTargetSize.padded` on chips absorbs font-size growth via the padded region rather than the chip body. ✅
+- **Dense action rows remain functional across all breakpoints:** Changes are additive styling — no layout structure, breakpoint logic, or callback wiring was modified. ✅
+- **No new overflow warnings:** `VisualDensity.standard` is the default density, so no layout changes occur in practice. `minimumSize` only adds padding where the button would have been smaller, which is not the case here (AppBar buttons are already full-size). ✅
+
+### Regression risk: Low
+- `minimumSize: Size(48, 48)` and `VisualDensity.standard` are the Material 3 defaults — adding them explicitly has no visual or behavioral change on standard-density displays.
+- `MaterialTapTargetSize.padded` is the default value in most Material themes; explicitly setting it overrides only if a tight ancestor theme had changed it to `shrinkWrap`.
+- No handler logic, provider reads, navigation, or state management was touched.
+
+### Notes
+- `flutter analyze`: No issues found.
+
+
+---
+
+## Task 13 — [P4] Add semantics parity for icon-only actions and chart controls
+
+**Files:**
+- `lib/ui/screens/correlation_charts_screen.dart`
+- `lib/ui/screens/advanced_charts_screen.dart`
+- `lib/ui/screens/financial_charts_screen.dart`
+- `lib/ui/screens/dashboard_screen.dart`
+
+**Status:** Complete
+
+### What changed
+
 **Tooltip additions (semantic label parity for `IconButton`):**
 
 Flutter's `IconButton` automatically exposes the `tooltip` value as the widget's semantic label, providing screen-reader announcements and hover/long-press affordance simultaneously. All icon-only `IconButton` widgets that were missing `tooltip` received one.

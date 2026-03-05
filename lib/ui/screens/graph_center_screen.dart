@@ -168,6 +168,7 @@ class _GraphCenterScreenState extends ConsumerState<GraphCenterScreen> {
       },
       selectedColor: Theme.of(context).colorScheme.primaryContainer,
       checkmarkColor: Theme.of(context).colorScheme.primary,
+      materialTapTargetSize: MaterialTapTargetSize.padded,
     );
   }
 
