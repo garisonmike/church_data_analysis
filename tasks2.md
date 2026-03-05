@@ -380,7 +380,7 @@ Medium — chart container behavior and layout are changing.
 
 ## Phase 3 – Desktop Optimization
 
-- [ ] Task 8
+- [x] Task 8
 ---
 ## [P3] Add responsive selector stacking in custom_graph_builder_screen.dart for medium widths
 

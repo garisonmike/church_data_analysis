@@ -197,24 +197,46 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
 
                 // Metric selectors row
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildMetricSelector(
-                        'X-Axis Metric',
-                        xAxisMetricProvider,
-                        ref,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: _buildMetricSelector(
-                        'Y-Axis Metric',
-                        yAxisMetricProvider,
-                        ref,
-                      ),
-                    ),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    if (constraints.maxWidth < 840) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _buildMetricSelector(
+                            'X-Axis Metric',
+                            xAxisMetricProvider,
+                            ref,
+                          ),
+                          const SizedBox(height: 12),
+                          _buildMetricSelector(
+                            'Y-Axis Metric',
+                            yAxisMetricProvider,
+                            ref,
+                          ),
+                        ],
+                      );
+                    }
+                    return Row(
+                      children: [
+                        Expanded(
+                          child: _buildMetricSelector(
+                            'X-Axis Metric',
+                            xAxisMetricProvider,
+                            ref,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: _buildMetricSelector(
+                            'Y-Axis Metric',
+                            yAxisMetricProvider,
+                            ref,
+                          ),
+                        ),
+                      ],
+                    );
+                  },
                 ),
                 const SizedBox(height: 16),
 

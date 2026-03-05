@@ -211,3 +211,24 @@ All Wrap parameters: `spacing: 12, runSpacing: 8, alignment: WrapAlignment.cente
 - `flutter analyze` on all 3 files: No issues found.
 - `ResponsiveChartContainer` already available via `widgets.dart` -- no import changes required.
 - `aspectRatio: 16/10` (1.6) chosen per spec.
+
+---
+
+## Task 8 -- [P3] Add responsive selector stacking in custom_graph_builder_screen.dart for medium widths
+
+**File:** `lib/ui/screens/custom_graph_builder_screen.dart`
+**Status:** Complete
+
+### What changed
+- Wrapped the metric selectors `Row` (lines ~200-217) in a `LayoutBuilder`.
+- `constraints.maxWidth < 840`: renders a `Column(crossAxisAlignment: stretch)` with `_buildMetricSelector('X-Axis Metric', ...)`, `SizedBox(height: 12)`, `_buildMetricSelector('Y-Axis Metric', ...)`.
+- `constraints.maxWidth >= 840`: renders the original `Row` with two `Expanded` children and `SizedBox(width: 16)` spacer.
+- Chart type selector and TimeRangeSelector above/below are unchanged.
+
+### Regression risk: Low
+- `>=840` path is structurally identical to the original -- no behavior or visual change at wide widths.
+- `<840` path stacks selectors vertically with `crossAxisAlignment: stretch` so both dropdowns fill available width, consistent with full-width Column layout.
+
+### Notes
+- `flutter analyze`: No issues found.
+- `LayoutBuilder` constraints reflect the Container's inner width (inside `padding: all(16)`), so at exactly 840px screen width the effective constraint is 808px -- correctly triggers the Column path. The switch to Row occurs when the container content area reaches 840px (screen ~872px), which is acceptable and consistent with the Unified Breakpoint Strategy.
