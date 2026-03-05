@@ -232,3 +232,28 @@ All Wrap parameters: `spacing: 12, runSpacing: 8, alignment: WrapAlignment.cente
 ### Notes
 - `flutter analyze`: No issues found.
 - `LayoutBuilder` constraints reflect the Container's inner width (inside `padding: all(16)`), so at exactly 840px screen width the effective constraint is 808px -- correctly triggers the Column path. The switch to Row occurs when the container content area reaches 840px (screen ~872px), which is acceptable and consistent with the Unified Breakpoint Strategy.
+
+---
+
+## Task 9 -- [P3] Make graph_center_screen.dart grid aspect ratios adaptive by breakpoint
+
+**File:** `lib/ui/screens/graph_center_screen.dart`
+**Status:** Complete
+
+### What changed
+- **`crossAxisCount` boundary corrected**: was `constraints.maxWidth > 600` (strictly greater), changed to `>= 600` so exactly 600px correctly yields 2 columns as specified.
+- **Breakpoint-driven `childAspectRatio`** (was static `1.5`):
+  - `< 600` -> `1.25`
+  - `600-839` -> `1.2`
+  - `>= 840` -> `1.35`
+- **Title `Text`**: added `maxLines: 2, overflow: TextOverflow.ellipsis` (was missing). Description already had these -- left unchanged.
+- `width` local variable extracted from `constraints.maxWidth` to avoid repeating the expression.
+
+### Regression risk: Low
+- `crossAxisCount` boundary fix is a 1px correction (`>600` to `>=600`); no visible change except at exactly 600px.
+- `childAspectRatio` values are all lower than the original 1.5, meaning cards are taller -- more vertical space for content, less likely to clip.
+- `maxLines: 2` on title is a safeguard; existing titles are all short single-line strings so no visual change under normal conditions.
+
+### Notes
+- `flutter analyze`: No issues found.
+- The chart description field already had `maxLines: 2, overflow: TextOverflow.ellipsis` from before this task -- confirmed and left intact.

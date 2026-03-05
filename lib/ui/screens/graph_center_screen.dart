@@ -192,7 +192,13 @@ class _GraphCenterScreenState extends ConsumerState<GraphCenterScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth > 600 ? 2 : 1;
+        final width = constraints.maxWidth;
+        final crossAxisCount = width >= 600 ? 2 : 1;
+        final childAspectRatio = width >= 840
+            ? 1.35
+            : width >= 600
+            ? 1.2
+            : 1.25;
 
         return GridView.builder(
           padding: const EdgeInsets.all(16),
@@ -200,7 +206,7 @@ class _GraphCenterScreenState extends ConsumerState<GraphCenterScreen> {
             crossAxisCount: crossAxisCount,
             crossAxisSpacing: 16,
             mainAxisSpacing: 16,
-            childAspectRatio: 1.5,
+            childAspectRatio: childAspectRatio,
           ),
           itemCount: filteredCharts.length,
           itemBuilder: (context, index) {
@@ -259,6 +265,8 @@ class _GraphCenterScreenState extends ConsumerState<GraphCenterScreen> {
                       fontWeight: FontWeight.bold,
                       color: chart.color,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 4),
                   Text(
