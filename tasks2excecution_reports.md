@@ -565,3 +565,53 @@ Flutter's `IconButton` automatically exposes the `tooltip` value as the widget's
 - No call sites were modified — all chart screens' explicit `enableInteractive: false` values remain intact and continue to work correctly with the new default.
 - `ResponsiveLazyChart` forwards `enableInteractive` to `ResponsiveChartContainer` unchanged; the default update in `ResponsiveLazyChart` aligns both classes consistently.
 
+---
+
+## Task 16 — `LazyLoadChart` visibility-check guard hardening
+
+**File modified:** `lib/ui/widgets/lazy_load_chart.dart`
+**Scope:** `_LazyLoadChartState` only — `_LazyChartState` already had equivalent guards and was not modified.
+
+### Changes made
+
+**Change 1 — `onNotification` early-return in `build()`**
+
+Before:
+```dart
+onNotification: (notification) {
+  if (!_hasBeenVisible) {
+    _checkVisibility();
+  }
+  return false;
+},
+```
+
+After:
+```dart
+onNotification: (notification) {
+  if (_hasBeenVisible) return false;
+  _checkVisibility();
+  return false;
+},
+```
+
+Rationale: once the chart has been made visible, it never needs to re-check visibility. The positive-guard early-return short-circuits before entering `_checkVisibility`, avoiding repeated `RenderObject` lookups on every scroll notification after the chart has loaded.
+
+**Change 2 — `_checkVisibility()` zero-size guard and scrollable-first ordering**
+
+Two sub-changes applied:
+1. **Zero-size guard** — `if (renderObject.size.isEmpty) return;` added immediately after the `RenderBox` cast guard. If the `RenderBox` has not been laid out yet, return immediately to prevent `RenderAbstractViewport` math on a widget with no geometry.
+2. **Scrollable check moved before viewport lookup** — `Scrollable.maybeOf(context)` (cheap `InheritedWidget` walk) now precedes `RenderAbstractViewport.maybeOf(renderObject)` (expensive upward render-tree traversal). The cheaper guard fails fast in non-scrollable contexts.
+
+### Acceptance criteria mapping
+
+- **`_LazyLoadChartState._checkVisibility()` must return immediately if the `RenderBox` has not been laid out (size is empty):** `if (renderObject.size.isEmpty) return;` added immediately after the `RenderBox` cast guard. ✅
+- **`Scrollable.maybeOf(context)` must be checked before `RenderAbstractViewport.of(renderObject)`:** `Scrollable.maybeOf` now precedes `RenderAbstractViewport.maybeOf` in `_checkVisibility`. ✅
+- **`onNotification` must short-circuit (return false early) if `_hasBeenVisible` is already `true`:** `if (_hasBeenVisible) return false;` is now the first statement in the notification handler. ✅
+- **`_LazyChartState` must not be modified:** `_LazyChartState` was read but not changed — it already had `!renderBox.hasSize` and `Scrollable.maybeOf`-before-viewport guards. ✅
+
+### Notes
+- `flutter analyze lib/ui/widgets/lazy_load_chart.dart`: No issues found.
+- Regression risk: Low. Changes are purely defensive guards that add early-return paths. No logic inside the existing visibility computation was altered.
+- All other lazy-load behaviour (threshold, `_hasBeenVisible` latch, `setState` rebuild) is unchanged.
+

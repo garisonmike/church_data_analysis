@@ -52,6 +52,15 @@ class _LazyLoadChartState extends State<LazyLoadChart> {
 
     final RenderObject? renderObject = _key.currentContext?.findRenderObject();
     if (renderObject == null || renderObject is! RenderBox) return;
+    if (renderObject.size.isEmpty) return;
+
+    // Check scrollable before doing expensive viewport math
+    final scrollableState = Scrollable.maybeOf(context);
+    if (scrollableState == null) {
+      // Not in a scrollable, assume visible
+      _setVisible(true);
+      return;
+    }
 
     final RenderAbstractViewport viewport = RenderAbstractViewport.of(
       renderObject,
@@ -72,13 +81,6 @@ class _LazyLoadChartState extends State<LazyLoadChart> {
     final widgetBottom = widgetTop + renderObject.size.height;
 
     // Get the current scroll position
-    final scrollableState = Scrollable.maybeOf(context);
-    if (scrollableState == null) {
-      // Not in a scrollable, assume visible
-      _setVisible(true);
-      return;
-    }
-
     final scrollPosition = scrollableState.position;
     final viewportTop = scrollPosition.pixels;
     final viewportBottom = viewportTop + viewportDimension;
@@ -106,9 +108,8 @@ class _LazyLoadChartState extends State<LazyLoadChart> {
   Widget build(BuildContext context) {
     return NotificationListener<ScrollNotification>(
       onNotification: (notification) {
-        if (!_hasBeenVisible) {
-          _checkVisibility();
-        }
+        if (_hasBeenVisible) return false;
+        _checkVisibility();
         return false;
       },
       child: SizedBox(

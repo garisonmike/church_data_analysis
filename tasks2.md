@@ -754,7 +754,7 @@ Medium — interaction model changes can affect user chart manipulation behavior
 - tasks2.md checkbox marked complete
 ---
 
-- [ ] Task 16
+- [x] Task 16
 ---
 ## [P5] Harden LazyLoadChart visibility checks for nested scroll safety
 
