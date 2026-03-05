@@ -708,7 +708,7 @@ Low — sizing/padding hardening on existing controls.
 
 ## Phase 5 – Performance & Rendering Safety
 
-- [ ] Task 15
+- [x] Task 15
 ---
 ## [P5] Constrain InteractiveViewer behavior for predictable web/desktop chart rendering
 

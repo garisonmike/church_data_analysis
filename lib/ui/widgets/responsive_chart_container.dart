@@ -26,7 +26,7 @@ class ResponsiveChartContainer extends StatelessWidget {
   /// Background decoration for the container
   final Decoration? decoration;
 
-  /// Whether to enable pan/zoom interactivity (default: true)
+  /// Whether to enable pan/zoom interactivity (default: false)
   final bool enableInteractive;
 
   const ResponsiveChartContainer({
@@ -38,7 +38,7 @@ class ResponsiveChartContainer extends StatelessWidget {
     this.useAvailableSpace = false,
     this.padding,
     this.decoration,
-    this.enableInteractive = true,
+    this.enableInteractive = false,
   });
 
   @override
@@ -71,10 +71,11 @@ class ResponsiveChartContainer extends StatelessWidget {
         // Wrap in InteractiveViewer if interactivity is enabled
         if (enableInteractive) {
           chartWidget = InteractiveViewer(
-            constrained: false,
+            constrained: true,
+            boundaryMargin: EdgeInsets.zero,
+            clipBehavior: Clip.hardEdge,
             minScale: 0.5,
             maxScale: 4.0,
-            boundaryMargin: const EdgeInsets.all(double.infinity),
             child: SizedBox(
               height: height,
               width: constraints.maxWidth,
@@ -122,7 +123,7 @@ class ResponsiveLazyChart extends StatelessWidget {
   /// Padding around the chart content
   final EdgeInsetsGeometry? padding;
 
-  /// Whether to enable pan/zoom interactivity (default: true)
+  /// Whether to enable pan/zoom interactivity (default: false)
   final bool enableInteractive;
 
   const ResponsiveLazyChart({
@@ -135,7 +136,7 @@ class ResponsiveLazyChart extends StatelessWidget {
     this.fadeInDuration = const Duration(milliseconds: 300),
     this.onVisibilityChanged,
     this.padding,
-    this.enableInteractive = true,
+    this.enableInteractive = false,
   });
 
   @override

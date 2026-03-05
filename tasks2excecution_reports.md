@@ -507,3 +507,61 @@ Flutter's `IconButton` automatically exposes the `tooltip` value as the widget's
 - `flutter analyze`: No issues found (0 errors, 0 warnings, 0 infos).
 - `advanced_charts_screen.dart` only required the tooltip fix — all four chart sections already had `bodySmall` subtitle text.
 - The spec mentions "Wrap icon-only actionable widgets with `Semantics(button: true, label: '...')`" — this was not applied as a literal `Semantics` wrapper because `IconButton.tooltip` already sets the semantic label and `semanticLabel` internally. Explicit wrapping would be redundant and adds noise to the semantics tree.
+
+---
+
+## Task 15 — [P5] Constrain InteractiveViewer behavior for predictable web/desktop chart rendering
+
+**File:** `lib/ui/widgets/responsive_chart_container.dart`
+
+**Status:** Complete
+
+### What changed
+
+**`lib/ui/widgets/responsive_chart_container.dart`** — both `ResponsiveChartContainer` and `ResponsiveLazyChart`:
+
+- Changed `enableInteractive` default from `true` → `false` in both classes. All 11 existing call sites already passed `enableInteractive: false` explicitly; the default change makes the safe static configuration the opt-out rather than the opt-in, so future new call sites that omit the parameter are automatically static.
+
+- Changed the `InteractiveViewer` construction inside `ResponsiveChartContainer.build` from:
+  ```dart
+  InteractiveViewer(
+    constrained: false,
+    minScale: 0.5,
+    maxScale: 4.0,
+    boundaryMargin: const EdgeInsets.all(double.infinity),
+    child: SizedBox(height: height, width: constraints.maxWidth, child: child),
+  )
+  ```
+  to:
+  ```dart
+  InteractiveViewer(
+    constrained: true,
+    boundaryMargin: EdgeInsets.zero,
+    clipBehavior: Clip.hardEdge,
+    minScale: 0.5,
+    maxScale: 4.0,
+    child: SizedBox(height: height, width: constraints.maxWidth, child: child),
+  )
+  ```
+
+  - `constrained: true` — viewer cannot exceed its layout bounds; eliminates the oversized paint/pan area on web/desktop narrow viewports.
+  - `boundaryMargin: EdgeInsets.zero` — child content is bounded to the viewer's frame; removes the `double.infinity` margin that allowed unbounded panning.
+  - `clipBehavior: Clip.hardEdge` — content outside the viewer's bounds is hard-clipped; prevents stray paint artifacts during scaled/panned states.
+
+### Self-audit vs Acceptance Criteria
+
+- **No oversized paint/pan behavior on web narrow viewports:** `constrained: true` + `boundaryMargin: EdgeInsets.zero` ensures the viewer occupies exactly its layout rect and cannot be panned beyond it. ✅
+- **Chart panning/zoom is bounded and predictable where enabled:** `Clip.hardEdge` clips paint to the viewer frame; `boundaryMargin: EdgeInsets.zero` keeps the child anchored to the boundary. ✅
+- **Default static chart screens run with interactivity disabled unless explicitly required:** `enableInteractive = false` is now the default in both classes. All 11 existing explicit `enableInteractive: false` call sites remain valid and match the new default. No call site passes `enableInteractive: true` — interactive mode is currently unused and must be explicitly opted into. ✅
+- **No regressions in chart visibility across breakpoint bands:** The `InteractiveViewer` path is only entered when `enableInteractive: true` — since all current call sites pass `false`, the viewer is never instantiated at runtime. The change has zero behavioural impact on current screens. ✅
+
+### Regression risk: Medium (spec) / Effectively Low (in practice)
+- The spec rates this Medium because the interaction model change can affect user chart manipulation behaviour. In practice, risk is low because no existing call site enables interactivity — the `InteractiveViewer` branch is unreachable at runtime under current usage.
+- If a future developer enables interactivity, the new bounded/clipped behaviour is safer and more predictable than the previous unbounded configuration.
+- `constrained: true` with `SizedBox(height: height, width: constraints.maxWidth)` as the child provides exact layout dimensions — the `InteractiveViewer` will have a well-defined layout box to work within.
+
+### Notes
+- `flutter analyze`: No issues found.
+- No call sites were modified — all chart screens' explicit `enableInteractive: false` values remain intact and continue to work correctly with the new default.
+- `ResponsiveLazyChart` forwards `enableInteractive` to `ResponsiveChartContainer` unchanged; the default update in `ResponsiveLazyChart` aligns both classes consistently.
+
