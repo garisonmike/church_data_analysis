@@ -1173,3 +1173,77 @@ No Dart/Flutter source files were modified; `flutter analyze` is not applicable.
 - Verify the image appears in `ghcr.io/garisonmike/church-analytics-web` after a version tag push.
 
 **Status: READY FOR REVIEW**
+
+---
+
+## UPDATE-011 — Failed install recovery guidance
+
+**Date:** 2026-03-06
+**Priority:** P2
+**Status:** READY FOR REVIEW
+
+### Summary
+Implemented the full failed-installer-launch recovery chain: `InstallerLaunchResult` value type, `InstallerLaunchService` abstract interface with a `NoOpInstallerLaunchService` stub, `logInstallerLaunch` method on `ActivityLogService`, `UpdateInstallFailureDialog` widget (manual instructions + GitHub Releases fallback), and wired the "Download Update" button in `AboutUpdatesCard` to call the service, show the dialog on failure, and log the outcome.
+
+### Files Modified / Created
+| File | Action |
+|------|--------|
+| `lib/services/installer_launch_result.dart` | Created — `InstallerLaunchResult` value type (success/failure) |
+| `lib/services/installer_launch_service.dart` | Created — abstract interface + `NoOpInstallerLaunchService` |
+| `lib/services/activity_log_service.dart` | Updated — added `logInstallerLaunch` to abstract class and `NoOpActivityLogService` |
+| `lib/ui/widgets/update_install_failure_dialog.dart` | Created — `UpdateInstallFailureDialog` with manual steps, GitHub link, Dismiss |
+| `lib/ui/widgets/about_updates_card.dart` | Updated — injected `launchService` + `activityLog`, added `_onInstall()`, wired "Download Update" button |
+| `test/services/installer_launch_service_test.dart` | Created — 7 unit tests for `InstallerLaunchResult` and `NoOpInstallerLaunchService` |
+| `test/ui/update_install_failure_dialog_test.dart` | Created — 12 widget/integration tests covering dialog content and card failure flow |
+
+### Implementation Notes
+
+#### InstallerLaunchResult
+Minimal value type with `success()` and `failure(error)` named constructors and `isError` convenience getter. Never throws.
+
+#### InstallerLaunchService
+Abstract class with a single `launch(String installerPath) → Future<InstallerLaunchResult>` method. `NoOpInstallerLaunchService` always returns failure with guidance text — this ensures the entire failure-recovery path is exercised end-to-end until UPDATE-007 provides real platform implementations. The service is designed to **never throw**; all errors are wrapped in `InstallerLaunchResult.failure`.
+
+#### ActivityLogService extension
+Added `logInstallerLaunch({ required bool success, String? platform, String? error })` to both the abstract class and `NoOpActivityLogService`. Consistent with the existing two-method pattern; STORAGE-004 will add the real persistence implementation.
+
+#### UpdateInstallFailureDialog
+- `barrierDismissible: false` (matches UPDATE-007 non-dismissable confirmation pattern).
+- Shows a fixed main message, an optional `errorDetail` secondary line (the service's raw failure reason), and a "To install manually:" instruction box with four steps.
+- "Dismiss" — pops the dialog with no further action.
+- "Open GitHub Releases" — calls `launchUrl(fallbackUrl, externalApplication)`, then pops. If the URL cannot be opened, a SnackBar is shown with the URL as text.
+- `UpdateInstallFailureDialog.show(context, errorDetail: ...)` — static helper for call sites.
+
+#### AboutUpdatesCard changes
+- `launchService` (`InstallerLaunchService`) and `activityLog` (`ActivityLogService`) injected via constructor with no-op defaults — **all 20 existing tests pass without any modification**.
+- `_onInstall([String installerPath = ''])` method calls `launchService.launch(path)`, logs to `activityLog.logInstallerLaunch`, and calls `UpdateInstallFailureDialog.show` if the result is a failure.
+- "Download Update" button `onPressed` changed from `() {}` to `_onInstall`.
+- When UPDATE-006 lands, only `_onInstall` needs to receive the real downloaded-file path.
+
+### Acceptance Criteria Verification
+| Criterion | Status |
+|-----------|--------|
+| Failure detected | ✅ `InstallerLaunchResult.isError` checked in `_onInstall` |
+| Manual install instructions shown | ✅ `UpdateInstallFailureDialog` with numbered steps |
+| GitHub link displayed | ✅ "Open GitHub Releases" `FilledButton.icon` in dialog |
+| Failure logged | ✅ `activityLog.logInstallerLaunch(success: false, error: ...)` called |
+
+### Test Results
+```
+19 new tests — all passed.
+20 existing about_updates_card_test.dart tests — all passed (no regression).
+```
+
+### Regression Risk
+Low — `AboutUpdatesCard` constructor defaults preserve existing behaviour. `ActivityLogService` gained a new method; `NoOpActivityLogService` stub satisfies it. No existing call sites broken.
+
+### Static Analysis Result
+`flutter analyze` run on all modified source files — no issues found.
+
+### Manual Verification Required
+- Run app in Android emulator, trigger update check, tap "Download Update", confirm `UpdateInstallFailureDialog` appears with manual steps and GitHub button.
+- Tap "Open GitHub Releases" and confirm the releases page opens in the browser.
+- Tap "Dismiss" and confirm the dialog closes.
+- Check Activity Log (once STORAGE-004 lands) to confirm the failure entry is persisted.
+
+**Status: READY FOR REVIEW**

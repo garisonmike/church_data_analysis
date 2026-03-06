@@ -1,6 +1,9 @@
 import 'package:church_analytics/models/update_error_messages.dart';
 import 'package:church_analytics/models/update_error_type.dart';
+import 'package:church_analytics/services/activity_log_service.dart';
+import 'package:church_analytics/services/installer_launch_service.dart';
 import 'package:church_analytics/services/update_service.dart';
+import 'package:church_analytics/ui/widgets/update_install_failure_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -46,10 +49,25 @@ enum _CheckState {
 /// delegates the remote check to [updateServiceProvider].
 ///
 /// ### Stub actions
-/// The "View Release Notes" and "Download Update" actions are present as stubs
-/// that will be wired up by UPDATE-005 and UPDATE-006 respectively.
+/// The "View Release Notes" action is a stub wired up by UPDATE-005.
+/// The "Download Update" button triggers the install flow and handles
+/// launcher failures via [UpdateInstallFailureDialog] (UPDATE-011).
 class AboutUpdatesCard extends ConsumerStatefulWidget {
-  const AboutUpdatesCard({super.key});
+  /// Installer launch service injected for testability.
+  ///
+  /// Defaults to [NoOpInstallerLaunchService], which always returns a failure
+  /// so the recovery path (UPDATE-011) is exercised until UPDATE-007 provides
+  /// real platform implementations.
+  final InstallerLaunchService launchService;
+
+  /// Activity-log service injected for testability.
+  final ActivityLogService activityLog;
+
+  const AboutUpdatesCard({
+    super.key,
+    this.launchService = const NoOpInstallerLaunchService(),
+    this.activityLog = const NoOpActivityLogService(),
+  });
 
   @override
   ConsumerState<AboutUpdatesCard> createState() => _AboutUpdatesCardState();
@@ -86,6 +104,32 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
   // -------------------------------------------------------------------------
   // Actions
   // -------------------------------------------------------------------------
+
+  // -------------------------------------------------------------------------
+  // Install flow (UPDATE-011 failure recovery)
+  // -------------------------------------------------------------------------
+
+  /// Initiates the installer launch with the downloaded installer path.
+  ///
+  /// Until UPDATE-006 provides the real download path, [installerPath] is
+  /// passed as an empty string, which will cause [NoOpInstallerLaunchService]
+  /// to return a failure immediately and show [UpdateInstallFailureDialog].
+  ///
+  /// When UPDATE-006 lands, the download result path will be passed here
+  /// instead.
+  Future<void> _onInstall([String installerPath = '']) async {
+    final result = await widget.launchService.launch(installerPath);
+
+    // Log the outcome regardless of success or failure.
+    widget.activityLog.logInstallerLaunch(
+      success: result.isSuccess,
+      error: result.error,
+    );
+
+    if (result.isError && mounted) {
+      await UpdateInstallFailureDialog.show(context, errorDetail: result.error);
+    }
+  }
 
   Future<void> _checkForUpdates() async {
     if (_state == _CheckState.checking) return;
@@ -274,10 +318,11 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
                   icon: const Icon(Icons.article_outlined, size: 16),
                   label: const Text('View Release Notes'),
                 ),
-                // Stub for UPDATE-006 — Download installer
+                // Wired to installer launch + failure recovery (UPDATE-011).
+                // UPDATE-006 will supply the real downloaded-file path.
                 FilledButton.icon(
                   key: const ValueKey('download_update_button'),
-                  onPressed: () {}, // wired up by UPDATE-006
+                  onPressed: _onInstall,
                   icon: const Icon(Icons.download, size: 16),
                   label: const Text('Download Update'),
                 ),

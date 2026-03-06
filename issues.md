@@ -869,10 +869,10 @@ Users may experience partial downloads or unexplained failures if storage is ins
 - Provide actionable error message.
 
 ### Acceptance Criteria
-- [ ] Installer size retrieved before download.
-- [ ] Free disk space calculated.
-- [ ] Download aborted if insufficient space.
-- [ ] User receives clear error message.
+- [x] Installer size retrieved before download.
+- [x] Free disk space calculated.
+- [x] Download aborted if insufficient space.
+- [x] User receives clear error message.
 
 ### Regression Risk
 Low
@@ -884,6 +884,8 @@ Low
 
 ### Suggested Labels
 `update-system`, `reliability`, `priority:P2`
+
+**Status: COMPLETE**
 
 ---
 
@@ -1009,13 +1011,13 @@ EXPOSE 80
 - Add a `build-web-docker` job to `.github/workflows/build-release.yml` that builds and pushes the image to `ghcr.io`.
 
 ### Acceptance Criteria
-- [ ] `docker build -t church-analytics-web .` completes without error.
-- [ ] `docker compose up --build` serves the app at `http://localhost:8080`.
-- [ ] SPA routing works (deep links reload correctly without 404).
-- [ ] `.dockerignore` excludes all non-essential files; image size is minimal.
-- [ ] CI workflow builds the Docker image on push to `main` and on version tags.
-- [ ] Image is pushed to `ghcr.io/garisonmike/church-analytics-web` on tagged releases.
-- [ ] `README.md` documents the Docker build and preview commands.
+- [x] `docker build -t church-analytics-web .` completes without error.
+- [x] `docker compose up --build` serves the app at `http://localhost:8080`.
+- [x] SPA routing works (deep links reload correctly without 404).
+- [x] `.dockerignore` excludes all non-essential files; image size is minimal.
+- [x] CI workflow builds the Docker image on push to `main` and on version tags.
+- [x] Image is pushed to `ghcr.io/garisonmike/church-analytics-web` on tagged releases.
+- [x] `README.md` documents the Docker build and preview commands.
 
 ### Regression Risk
 Low — Docker build is isolated; no changes to Flutter source or existing CI jobs.
@@ -1029,3 +1031,5 @@ Low — Docker build is isolated; no changes to Flutter source or existing CI jo
 
 ### Suggested Labels
 `enhancement`, `cross-platform`, `ci-cd`, `docker`, `priority:P2`
+
+**Status: COMPLETE**
