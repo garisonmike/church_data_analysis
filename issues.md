@@ -805,6 +805,8 @@ Low — error handling additions only; no changes to happy path.
 ### Suggested Labels
 `enhancement`, `update-system`, `stability`, `priority:P2`
 
+**Status: COMPLETE**
+
 ---
 
 ## [UPDATE-009] Manifest authenticity & trust model

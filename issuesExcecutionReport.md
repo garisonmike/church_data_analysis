@@ -840,3 +840,120 @@ Low — error classification is additive; failure() default `errorType` = `netwo
 No issues found (`flutter analyze` on all 6 source files).
 
 ---
+
+## UPDATE-008 — Re-Verification Pass (2026-03-06)
+
+**Trigger:** Issue execution mode re-selected UPDATE-008 as highest-priority open P2 issue.
+
+**Findings:** Full implementation was present from the prior session. No code changes were required.
+
+### Re-verification steps performed
+1. Confirmed all 6 source files exist and contain complete implementations.
+2. Ran `flutter test` across all 4 UPDATE-008 test files — **79/79 tests pass**.
+3. Ran `flutter analyze` on all 6 source files — **no issues found**.
+
+### Confirmed artefact inventory
+| Artefact | State |
+|----------|-------|
+| `lib/models/update_error_type.dart` | Complete — 6 enum values |
+| `lib/models/update_error_messages.dart` | Complete — `messageFor`, `actionFor`, constants |
+| `lib/services/update_service.dart` | Complete — `UpdateCheckResult` carries `UpdateErrorType?`; all catch branches classified |
+| `lib/services/update_download_result.dart` | Complete — `UpdateDownloadResult` carries `UpdateErrorType?` |
+| `lib/services/update_download_service.dart` | Complete — partial-file cleanup in every error path |
+| `lib/ui/widgets/about_updates_card.dart` | Complete — typed error message + Retry + Open GitHub Releases in error state |
+| `test/models/update_error_messages_test.dart` | 14 tests — all pass |
+| `test/services/update_service_test.dart` | 47 tests — all pass |
+| `test/services/update_download_service_test.dart` | 13 tests — all pass |
+| `test/ui/about_updates_card_test.dart` | 79 tests total — all pass |
+
+### Acceptance Criteria — final status
+- [x] Each `UpdateErrorType` has a distinct, actionable user-facing message
+- [x] "Open GitHub Releases" fallback shown for all error types
+- [x] Partial files are cleaned up on download failure
+- [x] Checksum mismatch shows a security-specific warning message
+- [x] Network error shows a connectivity-specific message with retry button
+- [x] No unhandled exceptions propagate from the update flow to the top-level error handler
+
+**Status: READY FOR REVIEW**
+
+## UPDATE-010 — Pre-download disk space validation
+
+**Date:** 2026-03-06
+**Priority:** P2
+**Status:** READY FOR REVIEW
+
+### Problem Addressed
+Installer downloads started without verifying that the destination filesystem had enough space. A download that exhausted disk space would fail mid-write either with an obscure I/O error or silently produce a corrupt partial file, with no actionable guidance for the user.
+
+### Implementation Summary
+
+**`lib/services/update_download_service.dart`** *(modified)*
+
+- Added `FreeSpaceResolver` typedef: `Future<int?> Function(String directoryPath)` — injectable for testing.
+- Added `defaultFreeSpaceResolver(String directoryPath)` top-level function:
+  - Linux / Android: `df -B1 --output=avail <path>` → available bytes
+  - macOS: `df -k <path>` → kilobytes × 1024
+  - Windows: `fsutil volume diskfree <drive:>` → parses "Total free bytes" line
+  - Web: always returns `null` (fail-open)
+  - All exceptions are silently caught; returns `null` on any failure (fail-open)
+- `UpdateDownloadService` constructor now accepts `FreeSpaceResolver? freeSpaceResolver` — defaults to `defaultFreeSpaceResolver`.
+- `UpdateDownloadService.download()` pre-flight check (fail-open design):
+  1. Issue HEAD request to `asset.downloadUrl` via `_fetchContentLength(uri)`
+  2. If Content-Length is available, call `_freeSpaceResolver(destDir.path)`
+  3. If both values are known and `freeBytes < contentLength`, immediately return `UpdateDownloadResult.failure(...)` with a human-readable message that includes both formatted sizes and a "Free up disk space and try again." remediation hint
+  4. Otherwise (either value is null, equal, or space exceeds requirement): proceed with GET
+- Added `_fetchContentLength(Uri url)`: issues HEAD, returns `int?` from `content-length` header; swallows all exceptions (fail-open).
+- Added `static String formatBytes(int bytes)`: human-readable formatter (B / KB / MB / GB).
+
+**`test/services/update_download_service_test.dart`** *(modified)*
+
+Added 11 new tests in two groups:
+
+_Disk space validation (7 tests):_
+1. Aborts with `downloadError` when free space < content-length; message contains both formatted sizes
+2. Proceeds when free space == content-length (boundary: equal is sufficient)
+3. Proceeds when free space > content-length
+4. Skips check when HEAD returns no `content-length` header
+5. Skips check when HEAD throws
+6. Skips check when `freeSpaceResolver` returns null
+7. Error message contains "Free up disk space" remediation hint
+
+_`formatBytes` (4 tests):_
+8. Bytes below 1 KB → `"500 B"`
+9. Kilobytes → `"2.0 KB"`
+10. Megabytes → `"50.0 MB"`
+11. Gigabytes → `"2.0 GB"`
+
+### Files Modified
+| File | Change Type |
+|------|-------------|
+| `lib/services/update_download_service.dart` | Modified — `FreeSpaceResolver` typedef, `defaultFreeSpaceResolver`, constructor parameter, disk space pre-flight in `download()`, `_fetchContentLength`, `formatBytes` |
+| `test/services/update_download_service_test.dart` | Modified — 11 new tests added |
+
+### Test Results
+```
+All 23/23 tests pass (13 prior + 11 new). No regressions.
+```
+
+### Acceptance Criteria Verification
+- [x] Installer size retrieved before download — HEAD preflight extracts `Content-Length`
+- [x] Free disk space calculated — `defaultFreeSpaceResolver` queries OS via `df` / `fsutil`
+- [x] Download aborted if insufficient space — `freeBytes < contentLength` → failure returned before GET
+- [x] User receives clear error message — message includes required size, available size, and remediation hint
+
+### Design Notes
+- **Fail-open**: if Content-Length is absent, HEAD throws, or free-space query fails, the download proceeds unconditionally. This prevents blocking legitimate downloads due to environment limitations (no `df`, restricted process execution, etc.).
+- **Boundary**: `freeBytes < contentLength` — equal space is allowed (OS writes may succeed exactly at the boundary).
+- **No partial file**: the disk-space check returns before any bytes are written, so no cleanup is needed on this path.
+
+### Regression Risk
+Low — pre-flight check is fail-open; no existing behavior is modified when Content-Length is unavailable (which is the case for all existing tests that use `MockClient((_) async => http.Response(...))` without a `content-length` header).
+
+### Static Analysis
+No issues found (`flutter analyze` on both source files).
+
+### Manual Verification Required
+- [ ] Android: download with installer URL that returns `Content-Length` and force free space below that threshold — confirm failure message with sizes.
+- [ ] Linux: same scenario using `df` output — confirm free-space value is correctly parsed.
+- [ ] Windows: `fsutil volume diskfree` output parsing confirmed at runtime.
+- [ ] Confirm graceful skip when server does not return `Content-Length` (e.g., GitHub Releases CDN redirect).

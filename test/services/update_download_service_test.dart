@@ -249,4 +249,250 @@ void main() {
       },
     );
   });
+
+  // -------------------------------------------------------------------------
+  // UpdateDownloadService — disk space validation (UPDATE-010)
+  // -------------------------------------------------------------------------
+
+  group('UpdateDownloadService — disk space validation', () {
+    test(
+      'aborts with downloadError when free space is less than content-length',
+      () async {
+        const installerSize = 50 * 1024 * 1024; // 50 MB
+        const freeSpace = 10 * 1024 * 1024; // 10 MB — insufficient
+
+        final service = UpdateDownloadService(
+          client: MockClient((request) async {
+            if (request.method == 'HEAD') {
+              return http.Response(
+                '',
+                200,
+                headers: {'content-length': '$installerSize'},
+              );
+            }
+            // GET must never be reached when space is insufficient.
+            throw StateError(
+              'GET should not be called when space is insufficient',
+            );
+          }),
+          freeSpaceResolver: (_) async => freeSpace,
+        );
+
+        final destDir = await Directory.systemTemp.createTemp('uds_test_');
+        try {
+          final result = await service.download(
+            manifest: makeManifest(),
+            destDir: destDir,
+          );
+          expect(result.isError, isTrue);
+          expect(result.errorType, UpdateErrorType.downloadError);
+          expect(result.error, isNotNull);
+          // Message must include both required and available sizes.
+          expect(result.error, contains('50.0 MB'));
+          expect(result.error, contains('10.0 MB'));
+          // No partial file should have been written.
+          expect(destDir.listSync(), isEmpty);
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'proceeds when free space equals content-length (boundary: equal is sufficient)',
+      () async {
+        const size = 20 * 1024 * 1024; // 20 MB — exactly equal
+
+        final service = UpdateDownloadService(
+          client: MockClient((request) async {
+            if (request.method == 'HEAD') {
+              return http.Response(
+                '',
+                200,
+                headers: {'content-length': '$size'},
+              );
+            }
+            return http.Response('data', 200);
+          }),
+          freeSpaceResolver: (_) async => size,
+        );
+
+        final destDir = await Directory.systemTemp.createTemp('uds_test_');
+        try {
+          final result = await service.download(
+            manifest: makeManifest(),
+            destDir: destDir,
+          );
+          expect(result.isSuccess, isTrue);
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test('proceeds when free space exceeds content-length', () async {
+      const installerSize = 10 * 1024 * 1024; // 10 MB
+      const freeSpace = 500 * 1024 * 1024; // 500 MB — plenty
+
+      final service = UpdateDownloadService(
+        client: MockClient((request) async {
+          if (request.method == 'HEAD') {
+            return http.Response(
+              '',
+              200,
+              headers: {'content-length': '$installerSize'},
+            );
+          }
+          return http.Response('data', 200);
+        }),
+        freeSpaceResolver: (_) async => freeSpace,
+      );
+
+      final destDir = await Directory.systemTemp.createTemp('uds_test_');
+      try {
+        final result = await service.download(
+          manifest: makeManifest(),
+          destDir: destDir,
+        );
+        expect(result.isSuccess, isTrue);
+      } finally {
+        await destDir.delete(recursive: true);
+      }
+    });
+
+    test(
+      'skips check and proceeds when HEAD returns no content-length header',
+      () async {
+        final service = UpdateDownloadService(
+          client: MockClient((request) async {
+            if (request.method == 'HEAD') {
+              return http.Response('', 200); // no content-length header
+            }
+            return http.Response('installer', 200);
+          }),
+          freeSpaceResolver: (_) async => 1024, // tiny — would fail if checked
+        );
+
+        final destDir = await Directory.systemTemp.createTemp('uds_test_');
+        try {
+          final result = await service.download(
+            manifest: makeManifest(),
+            destDir: destDir,
+          );
+          expect(result.isSuccess, isTrue);
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test('skips check and proceeds when HEAD request throws', () async {
+      final service = UpdateDownloadService(
+        client: MockClient((request) async {
+          if (request.method == 'HEAD') {
+            throw Exception('HEAD not supported');
+          }
+          return http.Response('installer', 200);
+        }),
+        freeSpaceResolver: (_) async => 1024, // tiny — would fail if checked
+      );
+
+      final destDir = await Directory.systemTemp.createTemp('uds_test_');
+      try {
+        final result = await service.download(
+          manifest: makeManifest(),
+          destDir: destDir,
+        );
+        expect(result.isSuccess, isTrue);
+      } finally {
+        await destDir.delete(recursive: true);
+      }
+    });
+
+    test(
+      'skips check and proceeds when freeSpaceResolver returns null',
+      () async {
+        final service = UpdateDownloadService(
+          client: MockClient((request) async {
+            if (request.method == 'HEAD') {
+              return http.Response(
+                '',
+                200,
+                headers: {'content-length': '${50 * 1024 * 1024}'},
+              );
+            }
+            return http.Response('installer', 200);
+          }),
+          freeSpaceResolver: (_) async => null, // unavailable
+        );
+
+        final destDir = await Directory.systemTemp.createTemp('uds_test_');
+        try {
+          final result = await service.download(
+            manifest: makeManifest(),
+            destDir: destDir,
+          );
+          expect(result.isSuccess, isTrue);
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'error message contains remediation hint to free up disk space',
+      () async {
+        final service = UpdateDownloadService(
+          client: MockClient((request) async {
+            if (request.method == 'HEAD') {
+              return http.Response(
+                '',
+                200,
+                headers: {'content-length': '${100 * 1024 * 1024}'},
+              );
+            }
+            throw StateError('GET must not be called');
+          }),
+          freeSpaceResolver: (_) async => 1024,
+        );
+
+        final destDir = await Directory.systemTemp.createTemp('uds_test_');
+        try {
+          final result = await service.download(
+            manifest: makeManifest(),
+            destDir: destDir,
+          );
+          expect(result.isError, isTrue);
+          expect(result.error!.toLowerCase(), contains('free up disk space'));
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // UpdateDownloadService.formatBytes
+  // -------------------------------------------------------------------------
+
+  group('UpdateDownloadService.formatBytes', () {
+    test('formats bytes below 1 KB', () {
+      expect(UpdateDownloadService.formatBytes(500), '500 B');
+    });
+
+    test('formats kilobytes', () {
+      expect(UpdateDownloadService.formatBytes(2048), '2.0 KB');
+    });
+
+    test('formats megabytes', () {
+      expect(UpdateDownloadService.formatBytes(50 * 1024 * 1024), '50.0 MB');
+    });
+
+    test('formats gigabytes', () {
+      expect(
+        UpdateDownloadService.formatBytes(2 * 1024 * 1024 * 1024),
+        '2.0 GB',
+      );
+    });
+  });
 }
