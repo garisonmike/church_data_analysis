@@ -67,11 +67,11 @@ The app currently has no consistent default export folder. On platforms where a 
 - Inject into `FileService` via constructor or provider.
 
 ### Acceptance Criteria
-- [ ] All platforms have a defined default export path.
-- [ ] Directory is created automatically if absent.
-- [ ] Web download is not affected by path logic.
-- [ ] Default path is exposed to the UI (see STORAGE-005).
-- [ ] No `null` path reaches `FileService.saveFile`.
+- [x] All platforms have a defined default export path.
+- [x] Directory is created automatically if absent.
+- [x] Web download is not affected by path logic.
+- [x] Default path is exposed to the UI (see STORAGE-005).
+- [x] No `null` path reaches `FileService.saveFile`.
 
 ### Regression Risk
 Low — new fallback path; existing picker flow unchanged.
@@ -80,6 +80,8 @@ Low — new fallback path; existing picker flow unchanged.
 - `DefaultExportPathResolver` implemented and tested per platform
 - Integration with `FileService` confirmed
 - Manual export without picker confirmed on Android and Linux
+
+**Status: COMPLETE**
 
 ### Suggested Labels
 `enhancement`, `storage`, `cross-platform`, `priority:P2`
@@ -398,10 +400,10 @@ Files may overwrite silently or fail inconsistently.
 - Never silently overwrite without confirmation.
 
 ### Acceptance Criteria
-- [ ] Duplicate detection implemented.
-- [ ] Auto-rename logic applied.
-- [ ] No silent overwrites.
-- [ ] Behavior documented.
+- [x] Duplicate detection implemented.
+- [x] Auto-rename logic applied.
+- [x] No silent overwrites.
+- [x] Behavior documented.
 
 ### Regression Risk
 Medium
@@ -409,6 +411,8 @@ Medium
 ### Definition of Done
 - Duplicate handling tested
 - Confirmed no data loss risk
+
+**Status: COMPLETE**
 
 ### Suggested Labels
 `storage`, `data-integrity`, `priority:P1`

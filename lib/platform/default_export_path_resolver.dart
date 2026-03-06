@@ -1,0 +1,146 @@
+import 'dart:io' show Directory, Platform;
+
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kIsWeb;
+import 'package:path_provider/path_provider.dart'
+    show
+        StorageDirectory,
+        getApplicationDocumentsDirectory,
+        getDownloadsDirectory,
+        getExternalStorageDirectories;
+
+// ---------------------------------------------------------------------------
+// Typedefs for injectable path_provider functions
+// ---------------------------------------------------------------------------
+
+/// Returns the platform downloads directory, or `null` when unavailable.
+///
+/// Matches the signature of [getDownloadsDirectory] from the
+/// `path_provider` package.
+typedef GetDownloadsDirFn = Future<Directory?> Function();
+
+/// Returns external-storage directories for the given [StorageDirectory] type.
+///
+/// Matches the signature of [getExternalStorageDirectories] from the
+/// `path_provider` package.
+typedef GetExternalStorageDirsFn =
+    Future<List<Directory>?> Function(StorageDirectory type);
+
+// ---------------------------------------------------------------------------
+// DefaultExportPathResolver
+// ---------------------------------------------------------------------------
+
+/// Resolves the platform-appropriate default export directory for the app.
+///
+/// ## Platform behaviour
+///
+/// | Platform | Resolved path |
+/// |----------|---------------|
+/// | Android  | `<external Downloads>/ChurchAnalytics/` |
+/// | Linux / Windows / macOS | `~/Downloads/ChurchAnalytics/` |
+/// | iOS      | `<app documents>/ChurchAnalytics/` |
+/// | Web      | `null` — blob download; no filesystem path exists |
+///
+/// The directory is **created automatically** if it does not already exist,
+/// before the path is returned.
+///
+/// ## Testability
+///
+/// Inject [getDownloads] and/or [getExternalDirs] to avoid real
+/// `path_provider` channel calls in unit tests:
+///
+/// ```dart
+/// final resolver = DefaultExportPathResolver(
+///   getDownloads: () async => Directory('/tmp/test_downloads'),
+/// );
+/// final dir = await resolver.resolve();
+/// expect(dir, '/tmp/test_downloads/ChurchAnalytics');
+/// ```
+class DefaultExportPathResolver {
+  /// The subfolder name appended to the platform downloads directory to
+  /// produce the final export directory path.
+  static const String appFolderName = 'ChurchAnalytics';
+
+  final GetDownloadsDirFn? _getDownloads;
+  final GetExternalStorageDirsFn? _getExternalDirs;
+
+  /// Creates a resolver with optional injectable path_provider overrides.
+  ///
+  /// When [getDownloads] is omitted the real [getDownloadsDirectory] from
+  /// `path_provider` is used on Linux/Windows/macOS.
+  /// When [getExternalDirs] is omitted the real
+  /// [getExternalStorageDirectories] from `path_provider` is used on
+  /// Android.
+  const DefaultExportPathResolver({
+    GetDownloadsDirFn? getDownloads,
+    GetExternalStorageDirsFn? getExternalDirs,
+  }) : _getDownloads = getDownloads,
+       _getExternalDirs = getExternalDirs;
+
+  // -------------------------------------------------------------------------
+  // Public API
+  // -------------------------------------------------------------------------
+
+  /// Returns the absolute path to the default export directory.
+  ///
+  /// Returns `null` on Web (blob download — no filesystem path concept).
+  ///
+  /// On all native platforms the directory is created if it does not already
+  /// exist.  On error (e.g. missing plugin channel in test environments) the
+  /// method falls back to `<system temp>/exports` and still returns a
+  /// non-null path.
+  Future<String?> resolve() async {
+    // Web uses an in-memory blob download — there is no filesystem path.
+    if (kIsWeb) return null;
+
+    try {
+      return await _resolveNative();
+    } catch (e) {
+      // Fallback for unit-test environments and desktop contexts that lack
+      // a registered path_provider plugin channel.
+      final fallback = Directory('${Directory.systemTemp.path}/exports');
+      if (!await fallback.exists()) {
+        await fallback.create(recursive: true);
+      }
+      if (kDebugMode) {
+        debugPrint(
+          '[DefaultExportPathResolver] path_provider unavailable — '
+          'falling back to: ${fallback.path}',
+        );
+      }
+      return fallback.path;
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Private helpers
+  // -------------------------------------------------------------------------
+
+  Future<String> _resolveNative() async {
+    final baseDir = await _resolveBaseDir();
+    final exportDir = Directory('${baseDir.path}/$appFolderName');
+    if (!await exportDir.exists()) {
+      await exportDir.create(recursive: true);
+    }
+    if (kDebugMode) {
+      debugPrint('[DefaultExportPathResolver] resolved: ${exportDir.path}');
+    }
+    return exportDir.path;
+  }
+
+  Future<Directory> _resolveBaseDir() async {
+    if (Platform.isAndroid) {
+      final fn = _getExternalDirs ?? getExternalStorageDirectories;
+      final dirs = await fn(StorageDirectory.downloads);
+      if (dirs != null && dirs.isNotEmpty) return dirs.first;
+      return getApplicationDocumentsDirectory();
+    }
+
+    if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
+      final fn = _getDownloads ?? getDownloadsDirectory;
+      return await fn() ?? await getApplicationDocumentsDirectory();
+    }
+
+    // iOS and any other native (Fuchsia, etc.) — use app documents directory.
+    return getApplicationDocumentsDirectory();
+  }
+}

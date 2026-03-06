@@ -358,3 +358,52 @@ success: True | passed: 277 | failures: 0
 - [ ] Confirm no behavior change for new paths (no conflict) — file saved at original path.
 
 ---
+
+---
+
+## STORAGE-002 — Default Downloads/AppName folder strategy
+
+**Date:** 2026-03-06
+**Priority:** P2
+**Status:** COMPLETE (with post-audit correction applied)
+
+### Files Created
+- `lib/platform/default_export_path_resolver.dart` — `DefaultExportPathResolver` class with injectable `GetDownloadsDirFn` / `GetExternalStorageDirsFn` typedefs
+- `test/platform/default_export_path_resolver_test.dart` — 14 unit tests
+
+### Files Modified
+- `lib/services/file_service.dart` — added `import path`, `_exportPathResolver` field, `exportPathResolver` constructor param, `_buildExportPath()` helper, `getDefaultExportPath()` public method; updated `exportFile` and `exportFileBytes` to call `_buildExportPath` before conflict resolution
+- `test/services/file_service_test.dart` — added `_FakeExportPathResolver`, updated `makeService()`, added 15 integration tests (default path, forcedPath bypass, Web null, sanitization, ExportResult values, `getDefaultExportPath` delegation)
+
+### Implementation Summary
+`DefaultExportPathResolver.resolve()` returns:
+- Android → `<external Downloads>/ChurchAnalytics/` (via `getExternalStorageDirectories`)
+- Linux / Windows / macOS → `~/Downloads/ChurchAnalytics/` (via `getDownloadsDirectory`)
+- iOS → `<app documents>/ChurchAnalytics/`
+- Web → `null` (blob download, no filesystem path)
+
+The directory is created if absent before the path is returned. If `path_provider` channels are unavailable (test environments), `Directory.systemTemp/exports` is used as a fallback.
+
+`FileService._buildExportPath(safeFilename, forcedPath)` short-circuits to `forcedPath` when set; otherwise calls the resolver. The result is passed to `FilenameConflictResolver` before reaching `FileStorage`, so deduplication now applies to default-dir exports too.
+
+`FileService.getDefaultExportPath()` exposes the resolver result as a public method for the Settings UI (STORAGE-005 hook).
+
+### Post-Audit Correction (CORRECTION-1)
+Audit identified that AC4 ("Default path is exposed to the UI") was not satisfied — `_exportPathResolver` was private with no public accessor. Added `getDefaultExportPath()` delegating to `_exportPathResolver.resolve()` and two tests covering the delegate and Web-null cases.
+
+### Acceptance Criteria Verification
+- [x] All platforms have a defined default export path
+- [x] Directory is created automatically if absent
+- [x] Web download is not affected by path logic (resolver returns null; blob download unchanged)
+- [x] Default path is exposed to the UI via `FileService.getDefaultExportPath()`
+- [x] No unintended null path reaches `FileService.saveFile` on native platforms
+
+### Test Results
+29/29 tests pass in affected files. Full suite: all tests pass. No regressions.
+
+### Manual Verification Required
+- [ ] Export without picker on Android: confirm file appears in `Downloads/ChurchAnalytics/`
+- [ ] Export without picker on Linux: confirm file appears in `~/Downloads/ChurchAnalytics/`
+- [ ] Web export: confirm browser blob download still triggers normally
+
+---

@@ -1,3 +1,4 @@
+import 'package:church_analytics/platform/default_export_path_resolver.dart';
 import 'package:church_analytics/platform/file_storage.dart';
 import 'package:church_analytics/platform/file_storage_interface.dart';
 import 'package:church_analytics/platform/filename_conflict_resolver.dart';
@@ -6,6 +7,7 @@ import 'package:church_analytics/platform/path_safety_guard.dart';
 import 'package:church_analytics/services/activity_log_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path/path.dart' as p;
 
 // ---------------------------------------------------------------------------
 // Result types
@@ -66,25 +68,27 @@ class ImportResult {
 ///
 /// ### Responsibilities
 /// - Delegates raw I/O to [FileStorage] (platform implementations).
+/// - Resolves the default export directory via [DefaultExportPathResolver]
+///   when no [forcedPath] is supplied to [exportFile] / [exportFileBytes].
+///   On Android the target is `<external Downloads>/ChurchAnalytics/`; on
+///   Linux/Windows/macOS it is `~/Downloads/ChurchAnalytics/`.  Web uses a
+///   blob download (no filesystem path — the resolver returns `null`).
 /// - Applies [PathSafetyGuard] to every export path for audit logging.
 ///   Enforcement (redirect to default) is provided at the UI layer by
 ///   `_pickExportPath` / `normalizeExportPath` in `reports_screen.dart`.
-///   Full auto-resolution enforcement will be added in STORAGE-002.
 /// - Calls [ActivityLogService] for every export and import operation.
 ///   The default implementation is a no-op stub until STORAGE-004 lands.
-/// - Resolves duplicate filenames via [FilenameConflictResolver] when a
-///   [forcedPath] is supplied to [exportFile] / [exportFileBytes].  When the
-///   target path already exists the write is redirected to `stem (1).ext`,
-///   `stem (2).ext`, etc., so that no existing file is silently overwritten.
-///   Default-directory exports (no [forcedPath]) are deduplicated by the
-///   platform layer (`_ensureUniqueFile` in `FileStorageImpl`).
+/// - Resolves duplicate filenames via [FilenameConflictResolver] so that no
+///   existing file is silently overwritten.  When the target path already
+///   exists the write is redirected to `stem (1).ext`, `stem (2).ext`, etc.
+///   This applies to both forced-path exports and default-directory exports
+///   (native platforms only — Web does not have per-file conflict detection).
 ///
 /// ### Path safety note
 /// When a [forcedPath] is supplied to [exportFile] / [exportFileBytes],
 /// [PathSafetyGuard] is called for audit purposes.  The path is **not**
 /// silently redirected at this layer (the caller has already validated it
-/// via `_pickExportPath`).  Future STORAGE-002 work will enforce
-/// redirection when the path is auto-resolved (null [forcedPath]).
+/// via `_pickExportPath`).
 ///
 /// ### Riverpod
 /// Use [fileServiceProvider] to obtain the singleton instance via Riverpod.
@@ -94,14 +98,18 @@ class FileService {
   final FileStorage _fileStorage;
   final ActivityLogService _activityLog;
   final FilenameConflictResolver _conflictResolver;
+  final DefaultExportPathResolver _exportPathResolver;
 
   FileService({
     FileStorage? fileStorage,
     ActivityLogService? activityLog,
     FilenameConflictResolver? conflictResolver,
+    DefaultExportPathResolver? exportPathResolver,
   }) : _fileStorage = fileStorage ?? getFileStorage(),
        _activityLog = activityLog ?? const NoOpActivityLogService(),
-       _conflictResolver = conflictResolver ?? const FilenameConflictResolver();
+       _conflictResolver = conflictResolver ?? const FilenameConflictResolver(),
+       _exportPathResolver =
+           exportPathResolver ?? const DefaultExportPathResolver();
 
   // -------------------------------------------------------------------------
   // Export
@@ -116,8 +124,13 @@ class FileService {
   /// When [forcedPath] is provided and that path already exists on disk,
   /// [FilenameConflictResolver] automatically redirects the write to the first
   /// free path (`stem (1).ext`, `stem (2).ext`, …) so no existing file is
-  /// silently overwritten.  Omit [forcedPath] to let the platform choose the
-  /// default export directory (`Downloads/ChurchAnalytics/`).
+  /// silently overwritten.
+  ///
+  /// When [forcedPath] is omitted on native platforms, [DefaultExportPathResolver]
+  /// supplies the default export directory (`Downloads/ChurchAnalytics/`) and
+  /// the full destination path is built before writing so [FilenameConflictResolver]
+  /// can also deduplicate within the default directory.  On Web the platform
+  /// triggers a browser blob download and no filesystem path is used.
   Future<ExportResult> exportFile({
     required String filename,
     required String content,
@@ -125,7 +138,8 @@ class FileService {
   }) async {
     try {
       final safeFilename = _sanitizeFilename(filename);
-      final resolvedPath = await _resolveConflict(forcedPath);
+      final effectivePath = await _buildExportPath(safeFilename, forcedPath);
+      final resolvedPath = await _resolveConflict(effectivePath);
       _auditPath(safeFilename, resolvedPath);
 
       final savedPath = await _fileStorage.saveFile(
@@ -169,10 +183,12 @@ class FileService {
   ///
   /// The filename is sanitized via [FilenameSanitizer] before being passed to
   /// the platform layer (see [exportFile] for details).  Duplicate-path
-  /// resolution applies in the same way as [exportFile].
+  /// resolution and default-directory resolution apply in the same way as
+  /// [exportFile].
   ///
   /// Provide [forcedPath] to write to a specific absolute path;
-  /// omit it to let the platform choose the default export directory.
+  /// omit it to let [DefaultExportPathResolver] supply the default export
+  /// directory (`Downloads/ChurchAnalytics/`) on native platforms.
   Future<ExportResult> exportFileBytes({
     required String filename,
     required Uint8List bytes,
@@ -180,7 +196,8 @@ class FileService {
   }) async {
     try {
       final safeFilename = _sanitizeFilename(filename);
-      final resolvedPath = await _resolveConflict(forcedPath);
+      final effectivePath = await _buildExportPath(safeFilename, forcedPath);
+      final resolvedPath = await _resolveConflict(effectivePath);
       _auditPath(safeFilename, resolvedPath);
 
       final savedPath = await _fileStorage.saveFileBytes(
@@ -292,6 +309,15 @@ class FileService {
   Future<Uint8List> readFileAsBytes(PlatformFileResult file) =>
       _fileStorage.readFileAsBytes(file);
 
+  /// Returns the absolute path to the platform default export directory.
+  ///
+  /// Delegates to [DefaultExportPathResolver.resolve].
+  /// Returns `null` on Web (blob download — no filesystem path).
+  ///
+  /// Used by the Settings UI (STORAGE-005) to display the current
+  /// default export location to the user.
+  Future<String?> getDefaultExportPath() => _exportPathResolver.resolve();
+
   // -------------------------------------------------------------------------
   // Private helpers
   // -------------------------------------------------------------------------
@@ -308,9 +334,28 @@ class FileService {
     return safe;
   }
 
+  /// Builds the full export path for a given [safeFilename].
+  ///
+  /// When [forcedPath] is non-null it is returned as-is (the caller chose an
+  /// explicit destination).
+  ///
+  /// When [forcedPath] is `null` the method asks [DefaultExportPathResolver]
+  /// for the default export directory and joins it with [safeFilename].  On
+  /// Web the resolver returns `null`, so this method also returns `null` and
+  /// the platform layer's blob-download logic takes over.
+  Future<String?> _buildExportPath(
+    String safeFilename,
+    String? forcedPath,
+  ) async {
+    if (forcedPath != null) return forcedPath;
+    final dir = await _exportPathResolver.resolve();
+    if (dir == null) return null; // Web: blob download, no path.
+    return p.join(dir, safeFilename);
+  }
+
   /// Resolves a non-conflicting path via [FilenameConflictResolver].
   ///
-  /// Returns [path] unchanged when it is `null` (default-directory export).
+  /// Returns [path] unchanged when it is `null` (Web blob-download export).
   /// When [path] already exists on disk the resolver returns the first free
   /// candidate (`stem (1).ext`, `stem (2).ext`, …) so no existing file is
   /// silently overwritten.
