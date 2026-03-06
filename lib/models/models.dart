@@ -5,4 +5,6 @@ export 'church.dart';
 export 'dashboard_config.dart';
 export 'derived_metrics.dart';
 export 'export_history.dart';
+export 'update_security_exception.dart';
+export 'update_url_validator.dart';
 export 'weekly_record.dart';

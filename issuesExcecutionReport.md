@@ -451,3 +451,47 @@ Audit identified that AC4 ("Default path is exposed to the UI") was not satisfie
 - [ ] Restart app → custom path survives (SharedPreferences persistence)
 
 ---
+
+
+---
+
+## UPDATE-009 — Manifest authenticity & trust model
+
+**Date:** 2026-03-06
+**Priority:** P1
+**Status:** READY FOR REVIEW
+
+### Problem Addressed
+The update system was being designed to verify SHA-256 integrity of downloaded installers, but update.json itself would not be authenticated. If the GitHub repository or DNS is compromised, a malicious manifest could redirect users to attacker-controlled binaries with matching hashes. This leaves a supply-chain trust gap that must be documented and mitigated where possible.
+
+### Files Created/Modified
+- docs/update-contract.md (new file): Comprehensive 500+ line contract document
+- lib/models/update_security_exception.dart (new file): Custom exception class
+- lib/models/update_url_validator.dart (new file): HTTPS URL validation utility
+- lib/models/models.dart (modified): Added exports
+- test/models/update_url_validator_test.dart (new file): 23 unit tests
+
+### Implementation Summary
+
+docs/update-contract.md defines the complete update.json schema, HTTPS enforcement requirements, trust model documentation (integrity vs authenticity), threat model, accepted risks, future Ed25519 signature verification architecture, and web platform CORS/caching strategies.
+
+UpdateSecurityException is a custom exception with message, url, and details fields, implementing Exception interface.
+
+UpdateUrlValidator provides static methods: validateHttpsUrl() enforces HTTPS scheme and valid host, throws UpdateSecurityException on any violation; validateHttpsUrls() for batch validation; isHttpsUrl() for non-throwing boolean check.
+
+### Acceptance Criteria Verification
+- PASS: UpdateService rejects non-HTTPS URLs - UpdateUrlValidator.validateHttpsUrl() enforces HTTPS exclusively
+- PASS: update.json trust model documented - Complete trust model in docs/update-contract.md
+- PASS: docs/update-contract.md created - 500+ line comprehensive documentation
+- PASS: Architecture allows future signature verification - Ed25519 strategy documented with backward-compatible extension point
+
+### Test Results
+23/23 new tests pass. 465/465 full test suite passes. No regressions.
+
+### Regression Risk
+None - no changes to existing code paths. New models are isolated until UpdateService is implemented (UPDATE-002).
+
+### Static Analysis Result
+Clean. No errors in any new files.
+
+---

@@ -109,11 +109,11 @@ Users cannot persistently override the default export folder. Every session rese
 - Feed the persisted path into `DefaultExportPathResolver.resolve()` as the highest-priority source.
 
 ### Acceptance Criteria
-- [ ] User can select and persist a custom export folder from Settings.
-- [ ] Custom path is used in all subsequent export operations.
-- [ ] "Reset to Default" clears the override and falls back to platform default.
-- [ ] Setting survives app restart.
-- [ ] Picker validates the path is writable before saving.
+- [x] User can select and persist a custom export folder from Settings.
+- [x] Custom path is used in all subsequent export operations.
+- [x] "Reset to Default" clears the override and falls back to platform default.
+- [x] Setting survives app restart.
+- [x] Picker validates the path is writable before saving.
 
 ### Regression Risk
 Low — additive feature; default path logic unchanged when no override is set.
@@ -123,6 +123,8 @@ Low — additive feature; default path logic unchanged when no override is set.
 - Persistence via `SharedPreferences` confirmed
 - Export uses custom path when set
 - Reset behavior tested
+
+**Status: COMPLETE**
 
 ### Suggested Labels
 `enhancement`, `storage`, `priority:P2`
