@@ -1,5 +1,6 @@
 import 'package:church_analytics/platform/file_storage.dart';
 import 'package:church_analytics/platform/file_storage_interface.dart';
+import 'package:church_analytics/platform/filename_sanitizer.dart';
 import 'package:church_analytics/platform/path_safety_guard.dart';
 import 'package:church_analytics/services/activity_log_service.dart';
 import 'package:flutter/foundation.dart';
@@ -96,6 +97,10 @@ class FileService {
 
   /// Saves [content] (UTF-8 text) to a file named [filename].
   ///
+  /// The filename is sanitized via [FilenameSanitizer] before being passed to
+  /// the platform layer — invalid characters are stripped, Windows reserved
+  /// names are prefixed, and the length is capped automatically.
+  ///
   /// Provide [forcedPath] to write to a specific absolute path;
   /// omit it to let the platform choose the default export directory
   /// (`Downloads/ChurchAnalytics/`).
@@ -105,36 +110,38 @@ class FileService {
     String? forcedPath,
   }) async {
     try {
-      _auditPath(filename, forcedPath);
+      final safeFilename = _sanitizeFilename(filename);
+      _auditPath(safeFilename, forcedPath);
 
       final savedPath = await _fileStorage.saveFile(
-        fileName: filename,
+        fileName: safeFilename,
         content: content,
         fullPath: forcedPath,
       );
 
       if (savedPath == null) {
         _activityLog.logExport(
-          filename: filename,
+          filename: safeFilename,
           path: forcedPath,
           success: false,
           error: 'Platform returned null — file may not have been saved.',
         );
         return ExportResult.failure(
-          'Failed to save "$filename". The platform did not confirm a write location.',
+          'Failed to save "$safeFilename". The platform did not confirm a write location.',
         );
       }
 
       _activityLog.logExport(
-        filename: filename,
+        filename: safeFilename,
         path: savedPath,
         success: true,
       );
       return ExportResult.success(savedPath);
     } catch (e) {
-      final msg = 'Export of "$filename" failed: $e';
+      final safeFilename = _sanitizeFilename(filename);
+      final msg = 'Export of "$safeFilename" failed: $e';
       _activityLog.logExport(
-        filename: filename,
+        filename: safeFilename,
         path: forcedPath,
         success: false,
         error: msg,
@@ -145,6 +152,9 @@ class FileService {
 
   /// Saves raw [bytes] to a file named [filename].
   ///
+  /// The filename is sanitized via [FilenameSanitizer] before being passed to
+  /// the platform layer (see [exportFile] for details).
+  ///
   /// Provide [forcedPath] to write to a specific absolute path;
   /// omit it to let the platform choose the default export directory.
   Future<ExportResult> exportFileBytes({
@@ -153,36 +163,38 @@ class FileService {
     String? forcedPath,
   }) async {
     try {
-      _auditPath(filename, forcedPath);
+      final safeFilename = _sanitizeFilename(filename);
+      _auditPath(safeFilename, forcedPath);
 
       final savedPath = await _fileStorage.saveFileBytes(
-        fileName: filename,
+        fileName: safeFilename,
         bytes: bytes,
         fullPath: forcedPath,
       );
 
       if (savedPath == null) {
         _activityLog.logExport(
-          filename: filename,
+          filename: safeFilename,
           path: forcedPath,
           success: false,
           error: 'Platform returned null — file may not have been saved.',
         );
         return ExportResult.failure(
-          'Failed to save "$filename". The platform did not confirm a write location.',
+          'Failed to save "$safeFilename". The platform did not confirm a write location.',
         );
       }
 
       _activityLog.logExport(
-        filename: filename,
+        filename: safeFilename,
         path: savedPath,
         success: true,
       );
       return ExportResult.success(savedPath);
     } catch (e) {
-      final msg = 'Export of "$filename" (bytes) failed: $e';
+      final safeFilename = _sanitizeFilename(filename);
+      final msg = 'Export of "$safeFilename" (bytes) failed: $e';
       _activityLog.logExport(
-        filename: filename,
+        filename: safeFilename,
         path: forcedPath,
         success: false,
         error: msg,
@@ -266,6 +278,18 @@ class FileService {
   // -------------------------------------------------------------------------
   // Private helpers
   // -------------------------------------------------------------------------
+
+  /// Returns a sanitized copy of [filename] using [FilenameSanitizer].
+  ///
+  /// Emits a [debugPrint] warning when the name was modified so that
+  /// callers can detect malformed inputs during development.
+  String _sanitizeFilename(String filename) {
+    final safe = FilenameSanitizer.sanitize(filename);
+    if (safe != filename && kDebugMode) {
+      debugPrint('[FileService] Filename sanitized: "$filename" → "$safe"');
+    }
+    return safe;
+  }
 
   /// Runs [PathSafetyGuard] against [path] for audit purposes.
   ///

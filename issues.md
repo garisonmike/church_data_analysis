@@ -323,12 +323,12 @@ File save and read operations are scattered across multiple screens and services
 - Migrate all existing direct file operation call sites to use `FileService`.
 
 ### Acceptance Criteria
-- [ ] `FileService` is the only class that calls `FileStorageImpl` directly.
-- [ ] All export call sites in screens are migrated to `FileService`.
-- [ ] All import call sites in screens are migrated to `FileService`.
-- [ ] Activity logging fires automatically for every operation.
-- [ ] Path safety guard fires automatically for every export.
-- [ ] No duplicated file I/O logic remains in screen or repository classes.
+- [x] `FileService` is the only class that calls `FileStorageImpl` directly.
+- [x] All export call sites in screens are migrated to `FileService`.
+- [x] All import call sites in screens are migrated to `FileService`.
+- [x] Activity logging fires automatically for every operation.
+- [x] Path safety guard fires automatically for every export.
+- [x] No duplicated file I/O logic remains in screen or repository classes.
 
 ### Regression Risk
 High — broad refactor touching all file I/O paths. Full regression test required.
@@ -338,9 +338,11 @@ High — broad refactor touching all file I/O paths. Full regression test requir
 - All call sites migrated
 - Existing import and export workflows tested end-to-end on all platforms
 - Activity log entries confirmed for each operation
-- [ ] All export formats (PDF, CSV, image) tested
-- [ ] Import workflow tested end-to-end
-- [ ] No regression in error handling
+- [x] All export formats (PDF, CSV, image) tested
+- [x] Import workflow tested end-to-end
+- [x] No regression in error handling
+
+**Status: COMPLETE**
 
 ### Suggested Labels
 `refactor`, `storage`, `cross-platform`, `priority:P1`

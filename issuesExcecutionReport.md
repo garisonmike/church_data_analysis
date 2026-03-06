@@ -232,3 +232,68 @@ flutter test test/services/ test/platform/ test/ui/
 - [ ] Confirm no `getFileStorage()` calls remain in production code.
 
 ---
+
+## STORAGE-009 — Filename sanitization & normalization
+
+**Priority:** P1  
+**Status:** Implementation complete; all automated tests passing (260/260)
+
+---
+
+### Files Modified / Created
+
+| File | Action |
+|------|--------|
+| `lib/platform/filename_sanitizer.dart` | **CREATED** — `FilenameSanitizer` static utility with `sanitize()` and `splitExtension()` |
+| `lib/services/file_service.dart` | **UPDATED** — added `filename_sanitizer.dart` import; both `exportFile` and `exportFileBytes` now call `_sanitizeFilename()` before passing the name to the platform layer; added private `_sanitizeFilename()` helper with debug-mode change notification |
+| `test/platform/filename_sanitizer_test.dart` | **CREATED** — 36 unit tests covering all 4 AC groups plus edge cases |
+
+---
+
+### Implementation Summary
+
+`FilenameSanitizer.sanitize()` applies the following transforms in order:
+
+1. Normalise whitespace (`\s+` → single space) so that tabs and newlines become underscores rather than disappearing.
+2. Strip non-whitespace control characters (`\x00–\x08`, `\x0E–\x1F`, `\x7F`) from the stem.
+3. Strip Windows-invalid characters (`< > : " / \ | ? *`) from the stem.
+4. Collapse remaining space runs, trim leading/trailing whitespace.
+5. Replace spaces with underscores.
+6. Prefix with `_` when the stem matches a Windows reserved name (CON, PRN, AUX, NUL, COM1–COM9, LPT1–LPT9).
+7. Cap stem to 200 characters (configurable via `maxStemLen` parameter).
+8. Fall back to `'export'` if the stem is empty after all transforms.
+
+The extension (everything from the last dot) is sanitized separately (invalid chars stripped) and reattached.
+
+Integration: `FileService._sanitizeFilename()` wraps `FilenameSanitizer.sanitize()` and emits a `debugPrint` when the name is modified, enabling detection of malformed inputs during development.
+
+---
+
+### Acceptance Criteria Verification
+
+| AC | Result |
+|----|--------|
+| Invalid characters removed | ✅ `< > : " / \ | ? *`, control chars, and NUL stripped |
+| Reserved names blocked or auto-modified | ✅ Prefixed with `_` (e.g. `CON.csv` → `_CON.csv`) |
+| Whitespace normalized | ✅ Tabs/newlines → underscore; multiple spaces collapsed |
+| Filename length capped safely | ✅ Stem capped at 200 chars; extension preserved |
+
+---
+
+### Test Results
+
+```
+flutter test test/services/ test/platform/ test/ui/
+260 tests passed (success: true)
+```
+
+---
+
+### Manual QA Checklist
+
+- [ ] Export a CSV with a filename containing spaces: confirm spaces become underscores.
+- [ ] Attempt to export with a reserved filename (e.g. `CON.csv`) on Windows: confirm `_CON.csv` is used.
+- [ ] Export a file with a very long name (>200 chars): confirm it is truncated correctly.
+- [ ] Export PDF, CSV, chart PNG: confirm extensions are preserved after sanitization.
+
+---
