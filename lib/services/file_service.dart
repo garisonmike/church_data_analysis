@@ -11,6 +11,31 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 
 // ---------------------------------------------------------------------------
+// Error classification
+// ---------------------------------------------------------------------------
+
+/// Classifies the category of a failed export or import operation.
+///
+/// Used by [ExportResult] and [ImportResult] to render user-friendly error
+/// messages and suggested remediations in the UI.
+enum ExportErrorType {
+  /// The platform denied access to the target path.
+  permissionDenied,
+
+  /// The supplied path is syntactically or semantically invalid.
+  invalidPath,
+
+  /// Insufficient free space on the target storage device.
+  storageFull,
+
+  /// The platform layer returned `null` without explanation.
+  platformError,
+
+  /// Any other failure not covered by the above categories.
+  unknown,
+}
+
+// ---------------------------------------------------------------------------
 // Result types
 // ---------------------------------------------------------------------------
 
@@ -19,21 +44,102 @@ class ExportResult {
   /// Whether the export succeeded.
   final bool success;
 
-  /// Absolute path to the written file; `null` on failure.
+  /// Absolute path to the written file; `null` on failure or Web blob export.
   final String? filePath;
+
+  /// Filename-only component of [filePath] (e.g. `"data.csv"`).
+  /// `null` on failure.
+  final String? filename;
 
   /// Human-readable error description; `null` on success.
   final String? error;
 
-  const ExportResult._({required this.success, this.filePath, this.error});
+  /// Categorized error type for UI rendering; `null` on success.
+  final ExportErrorType? errorType;
+
+  /// Raw exception detail string for debugging; `null` on success.
+  final String? errorDetail;
+
+  const ExportResult._({
+    required this.success,
+    this.filePath,
+    this.filename,
+    this.error,
+    this.errorType,
+    this.errorDetail,
+  });
 
   /// Creates a successful result with the saved [filePath].
-  factory ExportResult.success(String filePath) =>
-      ExportResult._(success: true, filePath: filePath);
+  factory ExportResult.success(String filePath) {
+    // Extract just the filename from the full path.
+    final name = filePath.contains('/')
+        ? filePath.split('/').last
+        : filePath.contains(r'\')
+        ? filePath.split(r'\').last
+        : filePath;
+    return ExportResult._(
+      success: true,
+      filePath: filePath,
+      filename: name.isEmpty ? filePath : name,
+    );
+  }
 
   /// Creates a failure result with a descriptive [error] message.
-  factory ExportResult.failure(String error) =>
-      ExportResult._(success: false, error: error);
+  ///
+  /// [errorType] is auto-classified from [error] if not supplied.
+  /// Pass [errorDetail] to carry the raw exception string for debugging.
+  factory ExportResult.failure(
+    String error, {
+    ExportErrorType? errorType,
+    String? errorDetail,
+  }) => ExportResult._(
+    success: false,
+    error: error,
+    errorType: errorType ?? _classifyError(error),
+    errorDetail: errorDetail,
+  );
+
+  /// A brief, user-facing remediation hint based on [errorType].
+  String get remediation {
+    switch (errorType) {
+      case ExportErrorType.permissionDenied:
+        return 'Check your storage permissions in Settings.';
+      case ExportErrorType.invalidPath:
+        return 'Try selecting a different save location.';
+      case ExportErrorType.storageFull:
+        return 'Free up storage space and try again.';
+      case ExportErrorType.platformError:
+      case ExportErrorType.unknown:
+      case null:
+        return 'Try again or contact support.';
+    }
+  }
+
+  /// Infers [ExportErrorType] from a raw error string.
+  static ExportErrorType _classifyError(String error) {
+    final lower = error.toLowerCase();
+    if (lower.contains('permission') ||
+        lower.contains('denied') ||
+        lower.contains('access')) {
+      return ExportErrorType.permissionDenied;
+    }
+    if (lower.contains('no space') ||
+        lower.contains('storage full') ||
+        lower.contains('disk full') ||
+        lower.contains('enospc')) {
+      return ExportErrorType.storageFull;
+    }
+    if (lower.contains('path') ||
+        lower.contains('invalid') ||
+        lower.contains('not found') ||
+        lower.contains('enoent')) {
+      return ExportErrorType.invalidPath;
+    }
+    if (lower.contains('null') || lower.contains('platform')) {
+      return ExportErrorType.platformError;
+    }
+    return ExportErrorType.unknown;
+  }
 }
 
 /// Result of an import (file pick + read) operation performed by [FileService].

@@ -236,12 +236,12 @@ Current export/import success and failure messages are generic and do not includ
 - "Open folder" uses `url_launcher` to open the directory in the OS file manager.
 
 ### Acceptance Criteria
-- [ ] Success message shows filename and path.
-- [ ] Path is truncated gracefully if too long.
-- [ ] "Open folder" button is shown on Android and desktop; hidden on Web.
-- [ ] Failure message classifies the error type.
-- [ ] Failure message includes a suggested action (e.g., "Check storage permissions").
-- [ ] No regression in existing SnackBar dismiss behavior.
+- [x] Success message shows filename and path.
+- [x] Path is truncated gracefully if too long.
+- [x] "Open folder" button is shown on Android and desktop; hidden on Web.
+- [x] Failure message classifies the error type.
+- [x] Failure message includes a suggested action (e.g., "Check storage permissions").
+- [x] No regression in existing SnackBar dismiss behavior.
 
 ### Regression Risk
 Low-Medium — `FileService` return type changes; all call sites must be updated.
@@ -250,8 +250,10 @@ Low-Medium — `FileService` return type changes; all call sites must be updated
 - `ExportResultMessage` model implemented
 - `FileService` updated and all call sites migrated
 - SnackBar builder implemented and manually tested on all platforms
-- [ ] All call sites updated to handle `ExportResultMessage`
-- [ ] No legacy boolean return logic remains in any call site
+- [x] All call sites updated to handle `ExportResultMessage`
+- [x] No legacy boolean return logic remains in any call site
+
+**Status: COMPLETE**
 
 ### Suggested Labels
 `enhancement`, `storage`, `ui`, `priority:P2`
@@ -822,10 +824,10 @@ We verify file integrity but not source authenticity. This leaves a supply-chain
 - Design extension point for signature verification (do not implement signature yet).
 
 ### Acceptance Criteria
-- [ ] `UpdateService` rejects non-HTTPS URLs.
-- [ ] `update.json` trust model documented.
-- [ ] `docs/update-contract.md` created.
-- [ ] Architecture allows future signature validation.
+- [x] `UpdateService` rejects non-HTTPS URLs.
+- [x] `update.json` trust model documented.
+- [x] `docs/update-contract.md` created.
+- [x] Architecture allows future signature validation.
 
 ### Regression Risk
 Low
@@ -837,6 +839,8 @@ Low
 
 ### Suggested Labels
 `security`, `update-system`, `priority:P1`
+
+**Status: COMPLETE**
 
 ---
 

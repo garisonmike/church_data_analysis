@@ -68,17 +68,7 @@ class _AttendanceChartsScreenState
         if (!mounted) return;
 
         if (isValid) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('Saved to: $filePath'),
-              backgroundColor: Colors.green,
-              action: SnackBarAction(
-                label: 'OK',
-                textColor: Colors.white,
-                onPressed: () {},
-              ),
-            ),
-          );
+          ExportResultSnackBar.show(context, ExportResult.success(filePath));
         } else {
           if (kDebugMode) {
             debugPrint('Chart export verification failed for: $chartName');
@@ -97,11 +87,9 @@ class _AttendanceChartsScreenState
         debugPrint('Stack trace: $stack');
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Export failed. Please try again.'),
-          backgroundColor: Colors.red,
-        ),
+      ExportResultSnackBar.show(
+        context,
+        ExportResult.failure('Export failed: $e'),
       );
     }
   }

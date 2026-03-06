@@ -495,3 +495,86 @@ None - no changes to existing code paths. New models are isolated until UpdateSe
 Clean. No errors in any new files.
 
 ---
+
+---
+
+## STORAGE-006 — Extended success/failure message with full file path
+
+**Date:** 2026-03-06
+**Priority:** P2
+**Status:** READY FOR REVIEW
+
+### Problem Addressed
+All export/import operations showed generic `_showStatus()` text ("CSV exported successfully. Saved to: Unknown", "Export failed. Please try again.") that gave users no actionable information. The actual saved path was not surfaced, failures had no categorisation or remediation guidance, and there was no way to quickly open the folder or copy the path.
+
+### Files Created/Modified
+
+| File | Action |
+|------|--------|
+| `lib/services/file_service.dart` | **UPDATED** — added `ExportErrorType` enum (5 values); enriched `ExportResult` with `filename`, `errorType`, `errorDetail` fields, `remediation` getter, and `_classifyError()` static helper |
+| `lib/ui/widgets/export_result_snack_bar.dart` | **CREATED** — `ExportResultSnackBar` widget with `show()`, `showImportError()`, `showImportSuccess()` methods; platform-aware "Open folder" (Process.run), copy-to-clipboard `_CopyIconButton` |
+| `lib/ui/widgets/widgets.dart` | **UPDATED** — added `export 'export_result_snack_bar.dart'` |
+| `lib/ui/screens/reports_screen.dart` | **UPDATED** — added import; replaced `_showStatus()` in `_exportPdf`, `_exportCsv`, `_createBackup`, `_restoreBackup` with `ExportResultSnackBar.show()` / `showImportSuccess()` / `showImportError()` |
+| `lib/ui/screens/attendance_charts_screen.dart` | **UPDATED** — replaced inline `ScaffoldMessenger.showSnackBar()` success and failure blocks in `_exportChart()` with `ExportResultSnackBar.show()` |
+| `pubspec.yaml` | **UPDATED** — added `url_launcher: ^6.3.1` dependency |
+| `test/services/export_result_enrichment_test.dart` | **CREATED** — 28 unit tests covering `ExportResult` enrichment |
+
+### Implementation Summary
+
+**`ExportErrorType` enum** (5 values):
+- `permissionDenied` — matched on "permission", "denied", "access"
+- `storageFull` — matched on "no space", "storage full", "disk full", "enospc"
+- `invalidPath` — matched on "path", "invalid", "not found", "enoent"
+- `platformError` — matched on "null", "platform"
+- `unknown` — default fallback
+
+**`ExportResult` enrichments:**
+- `filename` — extracted from `filePath` (last segment after `/` or `\`)
+- `errorType` — auto-classified from `error` message via `_classifyError()` (overridable)
+- `errorDetail` — raw exception string for debugging
+- `remediation` getter — user-facing hint per error type (e.g. "Check your storage permissions in Settings.")
+
+**`ExportResultSnackBar.show(context, result)`:**
+- Success: green `SnackBar` with bold filename + truncated path (≤60 chars); "Open folder" action on desktop/Android; copy-to-clipboard `_CopyIconButton` on desktop; 6-second duration
+- Failure: red `SnackBar` with classified error title + remediation hint; 8-second duration
+- `showImportSuccess(context, filename)` — green SnackBar for successful restore
+- `showImportError(context, {errorMessage, errorType})` — red SnackBar for failed restore
+
+**Call sites migrated:**
+- `reports_screen.dart`: `_exportPdf`, `_exportCsv`, `_createBackup`, `_restoreBackup` (4 of 4)
+- `attendance_charts_screen.dart`: `_exportChart` success and failure paths (1 of 1)
+
+`_showStatus()` is retained in `reports_screen.dart` for non-result statuses (cancel messages, loading states) — intentional, not a regression.
+
+### Acceptance Criteria Verification
+- [x] Success message displays full saved file path — `ExportResultSnackBar` shows `result.filename` (bold) + truncated full path
+- [x] Failure message is categorised with remediation guidance — `errorType` classification + `remediation` getter surfaced in SnackBar subtitle
+- [x] "Open folder" action available on desktop/Android — `Process.run('xdg-open'/'explorer'/'open', [dir])` per platform
+- [x] Copy-to-clipboard available on desktop — `_CopyIconButton` inside success SnackBar
+- [x] All export call sites migrated — 5 call sites across 2 screens updated
+- [x] Backward compatible — all existing `ExportResult.failure(msg)` calls still compile unchanged
+
+### Test Results
+```
+28/28 new tests pass (export_result_enrichment_test.dart)
+493/493 full test suite passes (465 prior + 28 new). No regressions.
+```
+
+### Regression Risk
+**Low** — purely additive to `ExportResult`; SnackBar widget is new; existing callers unaffected. `_restoreBackup` and `_exportPdf`/`_exportCsv`/`_createBackup` compile and behave correctly. `_showStatus` retained for non-result paths.
+
+### Static Analysis
+`flutter analyze` reports no issues on any of the modified files.
+
+### Manual Verification Required
+- [ ] Export CSV → green SnackBar with filename and truncated path displayed
+- [ ] Export PDF → green SnackBar with filename
+- [ ] Export chart PNG → green SnackBar with filename
+- [ ] Create backup → green SnackBar with filename
+- [ ] Restore backup (success) → green SnackBar with restored filename
+- [ ] Restore backup (corrupt file) → red SnackBar with error category and remediation
+- [ ] Linux: click "Open folder" → file manager opens to export directory
+- [ ] Desktop: copy-to-clipboard button → path copied, icon toggles to checkmark, reverts after 2s
+- [ ] Cancel export (picker dismissed) → no SnackBar shown, only `_showStatus` cancel message
+
+---
