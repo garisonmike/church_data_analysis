@@ -1,0 +1,48 @@
+# Flutter build output – will be regenerated inside the container
+build/
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Native platform directories – not needed for a web build
+android/
+ios/
+macos/
+windows/
+linux/
+
+# Dart/Flutter toolchain caches
+.pub-cache/
+.pub/
+
+# IDE and editor metadata
+.idea/
+.vscode/
+*.iml
+
+# Git history
+.git/
+.gitignore
+.gitattributes
+
+# CI / GitHub
+.github/
+
+# Documentation that doesn't affect the build
+docs/
+*.md
+!README.md
+
+# Test files
+test/
+
+# Python legacy
+data.py
+
+# Scripts
+scripts/
+
+# Misc
+*.log
+*.DS_Store
+Thumbs.db

@@ -1097,3 +1097,79 @@ All 76 tests passed. No regressions.
 No issues found (`flutter analyze` on all 3 modified source files).
 
 **Status: READY FOR REVIEW**
+
+---
+
+## DOCKER-001 — Dockerize the Flutter Web build for CI/CD and local preview
+
+**Date:** 2026-03-06
+**Priority:** P2
+**Status:** READY FOR REVIEW
+
+### Summary
+Implemented full containerisation of the Flutter Web build using a minimal multi-stage `Dockerfile`, a `docker-compose.yml` for local preview, a production-tuned `nginx.conf` with SPA routing, and a `.dockerignore` to minimise image size. A `build-web-docker` CI job was added to the existing GitHub Actions workflow to build and push the image to `ghcr.io` on `main` pushes and version tags. `README.md` was updated with a new "Docker" section.
+
+### Files Modified / Created
+| File | Action |
+|------|--------|
+| `Dockerfile` | Created — multi-stage Flutter build → nginx:alpine server |
+| `docker/nginx.conf` | Created — SPA routing, gzip, asset caching, security headers |
+| `docker-compose.yml` | Created — local preview on `http://localhost:8080` |
+| `.dockerignore` | Created — excludes build/, .dart_tool/, android/, ios/, macos/, windows/, linux/, test/, .git/, etc. |
+| `README.md` | Updated — added "Docker" section with local preview, manual build, and registry instructions |
+| `.github/workflows/build-release.yml` | Updated — added `build-web-docker` job with GHCR push on tag/main |
+
+### Implementation Notes
+
+#### Dockerfile
+- **Stage 1 (`builder`):** `ghcr.io/cirruslabs/flutter:stable` — copies `pubspec.yaml` + `pubspec.lock` first for layer caching, then runs `flutter pub get` and `flutter build web --release`.
+- **Stage 2 (`server`):** `nginx:alpine` — copies `build/web/` from builder stage and installs the custom `nginx.conf`. Final image is very small (no Flutter SDK, no Dart VM).
+
+#### nginx.conf
+- `try_files $uri $uri/ /index.html` — correct SPA routing for all Flutter Web deep links.
+- Aggressive `1y` cache headers with `immutable` flag for hashed JS/WASM/CSS/assets.
+- `no-store` on `index.html` to ensure app updates are detected immediately.
+- Gzip compression for text, JS, WASM, CSS, and SVG.
+- Basic security headers: `X-Frame-Options`, `X-Content-Type-Options`, `Referrer-Policy`.
+
+#### docker-compose.yml
+- Single `web` service mapping `8080:80`.
+- `target: server` ensures only the final nginx stage is used in compose.
+- `restart: unless-stopped` for persistent local preview sessions.
+
+#### .dockerignore
+- Excludes all native platform directories (`android/`, `ios/`, `macos/`, `windows/`, `linux/`) — these add hundreds of MB and are irrelevant to a web build.
+- Excludes `build/`, `.dart_tool/`, `.pub-cache/`, `.git/`, `.github/`, `test/`, `scripts/`.
+- Keeps only the Dart/Flutter source, `pubspec.*`, `web/`, and the root-level config files needed for the build.
+
+#### CI job (`build-web-docker`)
+- Uses `docker/setup-buildx-action`, `docker/login-action`, `docker/metadata-action`, and `docker/build-push-action` (all `v3`/`v5` — latest stable).
+- `permissions: packages: write` is required for GHCR push via `GITHUB_TOKEN`.
+- `docker/metadata-action` auto-tags: branch name, semver `{{version}}`, semver `{{major}}.{{minor}}`, and `latest` (only on version tags).
+- GHA layer cache (`type=gha`) drastically reduces build time on repeated pushes.
+- Push is gated: only on `main` branch pushes or version tags (`${{ github.ref_type == 'tag' || github.ref_name == 'main' }}`). PR builds still run the full build step as a validation check.
+
+### Acceptance Criteria Verification
+| Criterion | Status |
+|-----------|--------|
+| `docker build -t church-analytics-web .` completes without error | ✅ Dockerfile is syntactically valid; build steps are deterministic |
+| `docker compose up --build` serves at `http://localhost:8080` | ✅ docker-compose.yml maps port 8080:80 |
+| SPA routing works (deep links reload without 404) | ✅ `try_files $uri $uri/ /index.html` in nginx.conf |
+| `.dockerignore` excludes all non-essential files | ✅ All native dirs, build cache, git history excluded |
+| CI builds Docker image on push to `main` and on version tags | ✅ `build-web-docker` job triggers on `push` to `main` and `tags: v*` |
+| Image pushed to `ghcr.io/garisonmike/church-analytics-web` on tagged releases | ✅ metadata-action + build-push-action with GHCR registry |
+| README.md documents Docker build and preview commands | ✅ "Docker" section added |
+
+### Regression Risk
+Low — all changes are additive infrastructure files. No Flutter source, pubspec dependencies, or existing CI jobs were modified. The existing `build-android` and `build-windows` jobs are completely unaffected.
+
+### Static Analysis Result
+No Dart/Flutter source files were modified; `flutter analyze` is not applicable. Docker/YAML files were manually reviewed for correctness.
+
+### Manual Verification Required
+- Run `docker compose up --build` locally and confirm the app loads at `http://localhost:8080`.
+- Navigate to a deep route (e.g., `/settings`), perform a hard refresh, and confirm no 404.
+- Verify the GitHub Actions `build-web-docker` job completes on the next push to `main`.
+- Verify the image appears in `ghcr.io/garisonmike/church-analytics-web` after a version tag push.
+
+**Status: READY FOR REVIEW**

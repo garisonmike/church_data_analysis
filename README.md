@@ -85,6 +85,40 @@ flutter build web --release
 flutter clean
 ```
 
+## Docker
+
+The Flutter Web build can be fully containerised using the provided `Dockerfile`, `docker-compose.yml`, and `docker/nginx.conf`.
+
+### Local preview
+
+```bash
+# Build the image and start the server
+docker compose up --build
+
+# The app is now available at http://localhost:8080
+```
+
+Deep links and hard refreshes work correctly — nginx is configured with `try_files $uri $uri/ /index.html` for SPA routing.
+
+### Manual image build
+
+```bash
+docker build -t church-analytics-web .
+docker run --rm -p 8080:80 church-analytics-web
+```
+
+### Image registry
+
+Tagged releases are automatically pushed to:
+
+```
+ghcr.io/garisonmike/church-analytics-web:<tag>
+```
+
+The `latest` tag tracks the most recent versioned release.
+
+---
+
 ## Disk Usage Notes
 
 Flutter builds can generate large folders (especially `build/` and `.dart_tool/`). It is safe to delete these and regenerate them:
