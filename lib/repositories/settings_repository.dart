@@ -39,8 +39,7 @@ class SettingsRepository {
       _prefs.setString(_defaultExportPathKey, path);
 
   /// Removes the user-override export path, restoring the platform default.
-  Future<void> clearDefaultExportPath() =>
-      _prefs.remove(_defaultExportPathKey);
+  Future<void> clearDefaultExportPath() => _prefs.remove(_defaultExportPathKey);
 }
 
 // ---------------------------------------------------------------------------
@@ -83,5 +82,5 @@ class DefaultExportPathNotifier extends StateNotifier<String?> {
 /// [clearCustomPath].
 final defaultExportPathProvider =
     StateNotifierProvider<DefaultExportPathNotifier, String?>((ref) {
-  return DefaultExportPathNotifier(ref.read(settingsRepositoryProvider));
-});
+      return DefaultExportPathNotifier(ref.read(settingsRepositoryProvider));
+    });

@@ -43,13 +43,15 @@ void main() {
       expect(repo.getDefaultExportPath(), isNull);
     });
 
-    test('path persists across separate instances sharing the same prefs',
-        () async {
-      await repo.setDefaultExportPath('/shared/dir');
+    test(
+      'path persists across separate instances sharing the same prefs',
+      () async {
+        await repo.setDefaultExportPath('/shared/dir');
 
-      final repo2 = SettingsRepository(prefs);
-      expect(repo2.getDefaultExportPath(), equals('/shared/dir'));
-    });
+        final repo2 = SettingsRepository(prefs);
+        expect(repo2.getDefaultExportPath(), equals('/shared/dir'));
+      },
+    );
   });
 
   // -------------------------------------------------------------------------

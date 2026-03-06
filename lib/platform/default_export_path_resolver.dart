@@ -131,7 +131,7 @@ class DefaultExportPathResolver {
   Future<String> _resolveNative() async {
     // Highest priority: user-overridden custom path.
     if (_getCustomPath != null) {
-      final custom = _getCustomPath!();
+      final custom = _getCustomPath();
       if (custom != null && custom.isNotEmpty) {
         try {
           final customDir = Directory(custom);
