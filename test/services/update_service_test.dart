@@ -522,4 +522,156 @@ void main() {
       expect(ok.isUpdateAvailable, isTrue);
     });
   });
+
+  // ---------------------------------------------------------------------------
+  // Cache invalidation (UPDATE-012)
+  // ---------------------------------------------------------------------------
+
+  group('UpdateService — cache-busting (UPDATE-012)', () {
+    test('outgoing request URL contains ?cb= query parameter', () async {
+      Uri? capturedUri;
+
+      final service = UpdateService(
+        client: MockClient((request) async {
+          capturedUri = request.url;
+          return http.Response(jsonEncode(makeManifestJson('1.0.0')), 200);
+        }),
+        manifestUrl: kManifestUrl,
+        getPackageInfo: () async => makePackageInfo('1.0.0'),
+      );
+
+      await service.checkForUpdate();
+
+      expect(capturedUri, isNotNull);
+      expect(
+        capturedUri!.queryParameters,
+        containsPair('cb', anything),
+        reason: 'cb parameter must be appended to bust HTTP caches',
+      );
+    });
+
+    test('cb parameter is a non-empty numeric string', () async {
+      Uri? capturedUri;
+
+      final service = UpdateService(
+        client: MockClient((request) async {
+          capturedUri = request.url;
+          return http.Response(jsonEncode(makeManifestJson('1.0.0')), 200);
+        }),
+        manifestUrl: kManifestUrl,
+        getPackageInfo: () async => makePackageInfo('1.0.0'),
+      );
+
+      await service.checkForUpdate();
+
+      final cb = capturedUri!.queryParameters['cb']!;
+      expect(cb, isNotEmpty);
+      expect(
+        int.tryParse(cb),
+        isNotNull,
+        reason: 'cb value must be parseable as an integer (epoch ms)',
+      );
+    });
+
+    test('cb value matches injectable timestampProvider', () async {
+      const pinnedTs = 1_700_000_000_000;
+      Uri? capturedUri;
+
+      final service = UpdateService(
+        client: MockClient((request) async {
+          capturedUri = request.url;
+          return http.Response(jsonEncode(makeManifestJson('1.0.0')), 200);
+        }),
+        manifestUrl: kManifestUrl,
+        getPackageInfo: () async => makePackageInfo('1.0.0'),
+        timestampProvider: () => pinnedTs,
+      );
+
+      await service.checkForUpdate();
+
+      expect(
+        capturedUri!.queryParameters['cb'],
+        '$pinnedTs',
+        reason: 'cb must use the value returned by timestampProvider',
+      );
+    });
+
+    test('second call (cached) does not issue another HTTP request', () async {
+      var requestCount = 0;
+
+      final service = UpdateService(
+        client: MockClient((request) async {
+          requestCount++;
+          return http.Response(jsonEncode(makeManifestJson('1.0.0')), 200);
+        }),
+        manifestUrl: kManifestUrl,
+        getPackageInfo: () async => makePackageInfo('1.0.0'),
+      );
+
+      await service.checkForUpdate();
+      await service.checkForUpdate(); // should be served from cache
+
+      expect(
+        requestCount,
+        1,
+        reason: 'Session cache must prevent redundant fetches',
+      );
+    });
+
+    test(
+      'after resetCache() a new fetch carries a fresh cb timestamp',
+      () async {
+        const firstTs = 1_000;
+        const secondTs = 2_000;
+        var callIndex = 0;
+        final capturedCbs = <String>[];
+
+        final service = UpdateService(
+          client: MockClient((request) async {
+            capturedCbs.add(request.url.queryParameters['cb'] ?? '');
+            return http.Response(jsonEncode(makeManifestJson('1.0.0')), 200);
+          }),
+          manifestUrl: kManifestUrl,
+          getPackageInfo: () async => makePackageInfo('1.0.0'),
+          timestampProvider: () => callIndex++ == 0 ? firstTs : secondTs,
+        );
+
+        await service.checkForUpdate();
+        service.resetCache();
+        await service.checkForUpdate();
+
+        expect(capturedCbs, hasLength(2));
+        expect(capturedCbs[0], '$firstTs');
+        expect(
+          capturedCbs[1],
+          '$secondTs',
+          reason: 'resetCache() must cause a fresh fetch with a new timestamp',
+        );
+      },
+    );
+
+    test(
+      'cb parameter is preserved when manifest URL already has query params',
+      () async {
+        const urlWithParam = 'https://example.com/update.json?channel=stable';
+        Uri? capturedUri;
+
+        final service = UpdateService(
+          client: MockClient((request) async {
+            capturedUri = request.url;
+            return http.Response(jsonEncode(makeManifestJson('1.0.0')), 200);
+          }),
+          manifestUrl: urlWithParam,
+          getPackageInfo: () async => makePackageInfo('1.0.0'),
+          timestampProvider: () => 42,
+        );
+
+        await service.checkForUpdate();
+
+        // Both the original param AND cb must be present.
+        expect(capturedUri!.queryParameters['channel'], 'stable');
+        expect(capturedUri!.queryParameters['cb'], '42');
+      },
+    );
+  });
 }

@@ -1247,3 +1247,70 @@ Low — `AboutUpdatesCard` constructor defaults preserve existing behaviour. `Ac
 - Check Activity Log (once STORAGE-004 lands) to confirm the failure entry is persisted.
 
 **Status: READY FOR REVIEW**
+
+---
+
+## UPDATE-012 — Web update cache invalidation strategy
+
+**Priority:** P2  
+**Executed:** 2026-06-15  
+**Status:** COMPLETE
+
+### Problem
+Flutter Web's service worker and GitHub's CDN both cache `update.json` aggressively. After a release is published, the app could continue reading a stale manifest for minutes-to-hours, silently showing no update available even when one exists.
+
+### Solution Implemented
+**Strategy 1 — Query-parameter cache bust** (`_buildFetchUri()` in `UpdateService`):
+
+Every time `checkForUpdate()` issues a fresh HTTP request (i.e., on the first call and after any `resetCache()`), the manifest URL is rewritten to append `?cb=<millisecondsSinceEpoch>`. The epoch timestamp guarantees a URL that no cache has seen before, forcing a full round-trip to the origin server.
+
+- The strategy is **transparent to GitHub Releases** — unknown query parameters are ignored.
+- The existing **session cache** (`_cachedResult`) is preserved, so repeated calls within a single session still return the cached result without redundant network traffic.
+- `resetCache()` clears `_cachedResult`, so a user-triggered "Check again" or a foreground-resume will always produce a fresh fetch with a new timestamp.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `lib/services/update_service.dart` | Added `timestampProvider` constructor param (`int Function()`), `_buildFetchUri()` method, integrated cache-bust into `checkForUpdate()` |
+| `docs/update-contract.md` | Strategy 1 section updated — marked ✅ Implemented; added v1.1.0 changelog entry |
+| `test/services/update_service_test.dart` | Added `'UpdateService — cache-busting (UPDATE-012)'` group (6 new tests) |
+
+### Implementation Notes
+
+#### `timestampProvider` injection
+The constructor accepts an optional `int Function()? timestampProvider` parameter that defaults to `() => DateTime.now().millisecondsSinceEpoch`. This makes the cache-busting deterministic in tests — callers can pass a pinned value such as `() => 1_700_000_000_000` and assert that the exact string appears on the wire.
+
+#### `_buildFetchUri()`
+```dart
+Uri _buildFetchUri() {
+  final base = Uri.parse(_manifestUrl);
+  final params = Map<String, String>.from(base.queryParameters)
+    ..['cb'] = '${_timestampProvider()}';
+  return base.replace(queryParameters: params);
+}
+```
+Cloning `base.queryParameters` before adding `cb` preserves any existing query parameters the caller supplied in `manifestUrl` (e.g., a `channel=stable` param). No existing URL that ships in production has any params, but the implementation is safe regardless.
+
+#### No native-platform side-effects
+Native platforms (Android, Linux…) issue `http.Client` requests directly — no service worker, no browser cache. Appending `cb` has no measurable overhead and may even benefit from `ETag`/conditional-GET de-duplication at the CDN, but is otherwise a no-op on those platforms.
+
+### Acceptance Criteria Verification
+| Criterion | Status |
+|-----------|--------|
+| Cache invalidation strategy documented | ✅ `docs/update-contract.md` Strategy 1 section updated |
+| Web update check tested | ✅ 6 new unit tests in `update_service_test.dart` |
+| No stale `update.json` behaviour | ✅ Every non-cached fetch uses a unique epoch-based URL |
+
+### Test Results
+```
+39 total tests in update_service_test.dart — all passed (6 new, 33 pre-existing).
+```
+
+### Regression Risk
+**None.** `UpdateService` constructor gains an optional parameter with a safe default; all 33 pre-existing tests and all call sites continue to compile and pass without modification.
+
+### Static Analysis Result
+`flutter analyze lib/services/update_service.dart` — no issues found.
+
+**Status: READY FOR REVIEW**

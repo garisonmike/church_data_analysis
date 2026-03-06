@@ -143,15 +143,21 @@ class UpdateService {
     String? manifestUrl,
     Future<PackageInfo> Function()? getPackageInfo,
     Duration? networkTimeout,
+
+    /// Override in tests to pin the cache-buster value.
+    int Function()? timestampProvider,
   }) : _client = client ?? http.Client(),
        _manifestUrl = manifestUrl ?? _kDefaultManifestUrl,
        _getPackageInfo = getPackageInfo ?? PackageInfo.fromPlatform,
-       _networkTimeout = networkTimeout ?? _kDefaultNetworkTimeout;
+       _networkTimeout = networkTimeout ?? _kDefaultNetworkTimeout,
+       _timestampProvider =
+           timestampProvider ?? (() => DateTime.now().millisecondsSinceEpoch);
 
   final http.Client _client;
   final String _manifestUrl;
   final Future<PackageInfo> Function() _getPackageInfo;
   final Duration _networkTimeout;
+  final int Function() _timestampProvider;
 
   /// In-memory session cache; non-null once a successful or failed check has
   /// been completed.
@@ -174,8 +180,11 @@ class UpdateService {
       UpdateUrlValidator.validateHttpsUrl(_manifestUrl);
 
       // Fetch the manifest with the configured timeout.
+      // A cache-busting query parameter (?cb=<epoch_ms>) is appended to
+      // prevent stale responses on Flutter Web, where browsers and CDNs may
+      // aggressively cache the manifest URL (UPDATE-012).
       final response = await _client
-          .get(Uri.parse(_manifestUrl))
+          .get(_buildFetchUri())
           .timeout(_networkTimeout);
 
       if (response.statusCode != 200) {
@@ -240,6 +249,25 @@ class UpdateService {
         ),
       );
     }
+  }
+
+  /// Builds the fetch [Uri] from [_manifestUrl] with a cache-busting query
+  /// parameter appended.
+  ///
+  /// The `cb` parameter holds the current epoch in milliseconds, which
+  /// guarantees a unique URL on every invocation and prevents browsers, CDNs,
+  /// and the Flutter Web service-worker from serving stale cached responses
+  /// for `update.json` (UPDATE-012).
+  ///
+  /// The parameter is harmless on native platforms — GitHub Releases ignores
+  /// unknown query parameters — and the session-level [_cachedResult] already
+  /// ensures this URI is only fetched once per session (twice after a manual
+  /// [resetCache]).
+  Uri _buildFetchUri() {
+    final base = Uri.parse(_manifestUrl);
+    final params = Map<String, String>.from(base.queryParameters)
+      ..['cb'] = '${_timestampProvider()}';
+    return base.replace(queryParameters: params);
   }
 
   /// Clears the in-memory cache so that the next [checkForUpdate] call

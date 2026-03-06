@@ -6,7 +6,7 @@ This document defines the contract for the Church Analytics update system, inclu
 
 ## Version
 
-**Contract Version:** 1.0.0  
+**Contract Version:** 1.0.1  
 **Last Updated:** 2026-03-06
 
 ---
@@ -279,16 +279,34 @@ GitHub Releases automatically provides these headers for publicly accessible ass
 
 Web browsers and CDNs may cache `update.json`, preventing update detection. Two strategies are available:
 
-#### Strategy 1: Query Parameter Versioning (Recommended)
+#### Strategy 1: Query Parameter Versioning (Recommended) ✅ Implemented
 
-Append a timestamp or version query parameter to bust caches:
+A `cb` (cache-buster) query parameter containing the current epoch in
+milliseconds is appended to the manifest URL immediately before every HTTP GET:
 
 ```dart
-final manifestUrl = 'https://github.com/.../update.json?v=${DateTime.now().millisecondsSinceEpoch}';
+// Inside UpdateService._buildFetchUri()
+final params = Map<String, String>.from(base.queryParameters)
+  ..['cb'] = '${DateTime.now().millisecondsSinceEpoch}';
+return base.replace(queryParameters: params);
 ```
 
-**Pros**: Simple, works everywhere  
-**Cons**: Bypasses all caching (minor bandwidth cost)
+Example resulting URL:
+```
+https://github.com/GarisonMike/church_data_analysis/releases/latest/download/update.json?cb=1741270800000
+```
+
+**Effect**: Browsers and CDNs cache by exact URL. Each unique `cb` value
+creates a distinct cache key, forcing a network request for the latest
+manifest.
+
+**Bandwidth cost**: Negligible — `UpdateService` only issues one HTTP GET per
+session (subsequent calls return the in-memory cached result).  After a manual
+`resetCache()`, a fresh fetch with a new timestamp is issued, which is the
+correct behaviour.
+
+**GitHub Releases compatibility**: Confirmed — GitHub Releases ignores unknown
+query parameters and serves the file normally.
 
 #### Strategy 2: Cache-Control Headers
 
@@ -319,6 +337,7 @@ When implementing the update system, developers MUST:
 - [ ] Log update checks and failures to the activity log (see STORAGE-004)
 - [ ] Enforce a 10-second timeout on network requests
 - [ ] Delete partial downloads if checksum verification fails
+- [x] Append cache-busting `?cb=<epoch_ms>` query parameter to manifest URL before each fetch (UPDATE-012)
 
 ---
 
@@ -348,6 +367,13 @@ For questions or proposed changes to this contract:
 ---
 
 ## Changelog
+
+### v1.0.1 (2026-03-06)
+- **Cache invalidation implemented (UPDATE-012)**: `UpdateService` now appends
+  `?cb=<epoch_ms>` to the manifest URL via `_buildFetchUri()`, preventing
+  stale Web browser / CDN cache hits.
+- CORS requirements documented under Web Platform Considerations.
+- Implementation checklist updated with cache-invalidation item.
 
 ### v1.0.0 (2026-03-06)
 - Initial contract definition

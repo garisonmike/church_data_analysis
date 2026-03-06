@@ -900,10 +900,10 @@ If installer launch fails, user receives insufficient guidance.
 - Log failure in `ActivityLogService`.
 
 ### Acceptance Criteria
-- [ ] Failure detected.
-- [ ] Manual install instructions shown.
-- [ ] GitHub link displayed.
-- [ ] Failure logged.
+- [x] Failure detected.
+- [x] Manual install instructions shown.
+- [x] GitHub link displayed.
+- [x] Failure logged.
 
 ### Regression Risk
 Low
@@ -915,6 +915,8 @@ Low
 
 ### Suggested Labels
 `update-system`, `resilience`, `priority:P2`
+
+**Status: COMPLETE**
 
 ---
 
@@ -928,9 +930,9 @@ Flutter Web deployments may cache `update.json`, preventing update detection.
 - Ensure CORS compatibility.
 
 ### Acceptance Criteria
-- [ ] Cache invalidation strategy documented.
-- [ ] Web update check tested.
-- [ ] No stale `update.json` behavior.
+- [x] Cache invalidation strategy documented.
+- [x] Web update check tested.
+- [x] No stale `update.json` behavior.
 
 ### Regression Risk
 Low
@@ -938,6 +940,8 @@ Low
 ### Definition of Done
 - Strategy documented
 - Web update check confirmed working after deployment
+
+**Status: COMPLETE**
 
 ### Suggested Labels
 `update-system`, `web`, `priority:P2`
