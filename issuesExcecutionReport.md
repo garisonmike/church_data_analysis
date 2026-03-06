@@ -689,3 +689,47 @@ No issues found on any new or modified file.
 Low — new files only; no existing code modified except pubspec.yaml and services.dart barrel.
 
 ---
+
+## UPDATE-003 — Version comparison logic
+
+### Status: READY FOR REVIEW
+
+### Files Created
+- `lib/models/version.dart` — `Version` value class implementing `Comparable<Version>`; fields: `major`, `minor`, `patch`, `preRelease`; factories `Version.parse(String)` / `Version.tryParse(String)`; operators `>`, `<`, `>=`, `<=`, `==`; semver §9 pre-release ordering; build metadata stripped on parse
+- `lib/models/version_comparator.dart` — `VersionComparator` utility (non-instantiable); `static bool isNewer(String current, String remote)` (returns false on malformed input, never throws); `static Version parse(String)` convenience wrapper
+- `test/models/version_comparator_test.dart` — 51 tests across 6 groups
+
+### Files Modified
+- `lib/models/models.dart` — added `export 'version.dart';` and `export 'version_comparator.dart';`
+- `lib/services/update_service.dart` — replaced private `_isRemoteNewer()` + `_parseVersion()` inline logic with `VersionComparator.isNewer(currentVersion, manifest.version)`; removed NOTE comment and both private methods
+- `test/services/update_service_test.dart` — corrected one test that expected incorrect behavior (old inline code stripped pre-release and treated `1.0.0-beta` as equal to `1.0.0`; correct semver §9 says `1.0.0` > `1.0.0-beta`, so `isUpdateAvailable` should be `true`)
+
+### Implementation Notes
+- `Version` is a `Comparable<Version>` value class. Ordering: major → minor → patch (integer comparison), then pre-release rules per semver §9: stable release > any pre-release of same core; two pre-release identifiers compared lexicographically.
+- Build metadata (`+…`) is stripped during `parse()` and ignored for comparison.
+- `Version.tryParse()` returns `null` on any `FormatException` — provides a null-safe path for `VersionComparator.isNewer()`.
+- `VersionComparator.isNewer()` is the public API surface; both arguments go through `tryParse()` so no exception can escape.
+- `UpdateService` now delegates entirely to `VersionComparator.isNewer()` — inline duplication eliminated.
+
+### Test Results
+```
+51/51 new tests pass (version_comparator_test.dart)
+609/609 full test suite passes. No regressions.
+(558 prior + 51 new)
+```
+
+### Acceptance Criteria Verified
+- [x] `1.10.0` is correctly identified as newer than `1.9.0` (integer minor comparison)
+- [x] `1.2.0` is not identified as newer than `1.2.0` (equal)
+- [x] `1.2.1` is identified as newer than `1.2.0` (patch bump)
+- [x] `1.2.0-beta` is identified as older than `1.2.0` (semver §9 pre-release < release)
+- [x] Malformed version returns `false` without crashing (empty string, garbage, partial semver)
+- [x] Unit tests cover all cases above plus: major bump, minor bump, `>=`/`<=`, lexicographic pre-release comparison, build metadata, `tryParse` returning null, `toString`, `hashCode`/equality
+
+### Regression Risk
+Low — UpdateService behaviour unchanged for all valid `major.minor.patch` versions; one UPDATE-002 test corrected to reflect proper semver semantics (pre-release → stable is a valid update).
+
+### Static Analysis
+No issues found (`flutter analyze lib/models/version.dart lib/models/version_comparator.dart lib/services/update_service.dart`).
+
+---

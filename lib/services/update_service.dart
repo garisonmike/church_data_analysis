@@ -180,10 +180,7 @@ class UpdateService {
       final packageInfo = await _getPackageInfo();
       final currentVersion = packageInfo.version;
 
-      final newer = _isRemoteNewer(
-        current: currentVersion,
-        remote: manifest.version,
-      );
+      final newer = VersionComparator.isNewer(currentVersion, manifest.version);
 
       return _cache(
         newer
@@ -227,39 +224,6 @@ class UpdateService {
   UpdateCheckResult _cache(UpdateCheckResult result) {
     _cachedResult = result;
     return result;
-  }
-
-  /// Lightweight semver comparison (major.minor.patch as integers).
-  ///
-  /// Returns `true` only when [remote] is strictly greater than [current].
-  /// Pre-release / build suffixes are stripped before comparison.
-  ///
-  /// NOTE: UPDATE-003 will replace this inline logic with the dedicated
-  /// [VersionComparator] class once that issue is implemented.
-  bool _isRemoteNewer({required String current, required String remote}) {
-    try {
-      final c = _parseVersion(current);
-      final r = _parseVersion(remote);
-      for (var i = 0; i < 3; i++) {
-        if (r[i] > c[i]) return true;
-        if (r[i] < c[i]) return false;
-      }
-      return false; // equal — not newer
-    } catch (_) {
-      return false; // malformed version → treat as "not newer"
-    }
-  }
-
-  /// Parses `"major.minor.patch[-prerelease][+build]"` into `[major, minor,
-  /// patch]` as integers.  Throws [FormatException] on invalid input.
-  List<int> _parseVersion(String version) {
-    // Strip pre-release / build metadata (e.g. "1.2.0-beta+1" → "1.2.0").
-    final clean = version.split(RegExp(r'[-+]')).first;
-    final parts = clean.split('.');
-    if (parts.length != 3) {
-      throw FormatException('Not a valid semver string: $version');
-    }
-    return parts.map(int.parse).toList();
   }
 }
 

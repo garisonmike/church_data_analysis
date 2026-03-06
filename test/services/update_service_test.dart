@@ -192,14 +192,15 @@ void main() {
     });
 
     test('handles pre-release suffix on current version', () async {
-      // "1.0.0-beta" strips to "1.0.0"; remote "1.0.0" should be equal.
+      // current = 1.0.0-beta (pre-release), remote = 1.0.0 (stable release).
+      // By semver rules, the stable release is newer than its pre-release.
       final result = await makeService(
         json: makeManifestJson('1.0.0'),
         currentVersion: '1.0.0-beta',
       ).checkForUpdate();
 
-      // After stripping "-beta", both parse as 1.0.0 — not newer.
-      expect(result.isUpdateAvailable, isFalse);
+      // 1.0.0 > 1.0.0-beta per semver §9 — update is available.
+      expect(result.isUpdateAvailable, isTrue);
     });
 
     test('manifest version and latestVersion match', () async {
