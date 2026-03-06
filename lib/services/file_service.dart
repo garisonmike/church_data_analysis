@@ -4,6 +4,7 @@ import 'package:church_analytics/platform/file_storage_interface.dart';
 import 'package:church_analytics/platform/filename_conflict_resolver.dart';
 import 'package:church_analytics/platform/filename_sanitizer.dart';
 import 'package:church_analytics/platform/path_safety_guard.dart';
+import 'package:church_analytics/repositories/settings_repository.dart';
 import 'package:church_analytics/services/activity_log_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -399,4 +400,15 @@ class FileService {
 /// final fileService = ref.read(fileServiceProvider);
 /// final result = await fileService.exportFile(filename: 'data.csv', content: csv);
 /// ```
-final fileServiceProvider = Provider<FileService>((ref) => FileService());
+///
+/// Injects [DefaultExportPathResolver] with the user-override getter from
+/// [SettingsRepository] so that a custom export folder (if set) is always
+/// used as the highest-priority default path.
+final fileServiceProvider = Provider<FileService>((ref) {
+  final settingsRepo = ref.read(settingsRepositoryProvider);
+  return FileService(
+    exportPathResolver: DefaultExportPathResolver(
+      getCustomPath: settingsRepo.getDefaultExportPath,
+    ),
+  );
+});

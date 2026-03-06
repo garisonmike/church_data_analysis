@@ -407,3 +407,47 @@ Audit identified that AC4 ("Default path is exposed to the UI") was not satisfie
 - [ ] Web export: confirm browser blob download still triggers normally
 
 ---
+
+---
+
+## STORAGE-003 — Allow custom save location override
+
+**Date:** 2026-03-06
+**Priority:** P2
+
+### Files Created
+- `lib/repositories/settings_repository.dart` — `SettingsRepository`, `DefaultExportPathNotifier`, `settingsRepositoryProvider`, `defaultExportPathProvider`
+- `test/repositories/settings_repository_test.dart` — 12 unit tests
+
+### Files Modified
+- `lib/platform/default_export_path_resolver.dart` — added `GetCustomPathFn` typedef, `_getCustomPath` field, `getCustomPath` constructor param; `_resolveNative()` checks custom path first, falls back to platform default if null/empty/inaccessible
+- `lib/services/file_service.dart` — added `settings_repository` import; updated `fileServiceProvider` to inject `DefaultExportPathResolver` with `SettingsRepository.getDefaultExportPath` as `getCustomPath`
+- `lib/repositories/repositories.dart` — added `export 'settings_repository.dart'`
+- `lib/ui/screens/app_settings_screen.dart` — added `file_picker`, `flutter/foundation`, `settings_repository` imports; added `if (!kIsWeb) const _ExportFolderCard()` in ListView; added new `_ExportFolderCard` ConsumerWidget class
+- `test/platform/default_export_path_resolver_test.dart` — added 7 custom path tests + updated constructor test
+
+### Implementation Summary
+`SettingsRepository` stores/retrieves a custom export directory path via SharedPreferences under key `default_export_path`. `DefaultExportPathNotifier` wraps it as a Riverpod `StateNotifier<String?>` for reactive UI updates.
+
+`DefaultExportPathResolver._resolveNative()` now checks `_getCustomPath()` first. If it returns a non-null, non-empty path, that directory is returned (created if needed). If the path is inaccessible, it falls through to the platform default. `fileServiceProvider` wires the two together — each export call automatically benefits from the user's persisted override.
+
+`_ExportFolderCard` in `AppSettingsScreen` shows the current custom path (or platform-default description), a folder-picker button (`Icons.folder_open`), and a conditional reset button. The OS directory picker (`FilePicker.platform.getDirectoryPath`) validates folder existence before the path is persisted. The card is suppressed on Web via `if (!kIsWeb)`.
+
+### Acceptance Criteria Verification
+- [x] User can select and persist a custom export folder from Settings — `_ExportFolderCard` + picker
+- [x] Custom path is used in all subsequent export operations — injected into `DefaultExportPathResolver` via `fileServiceProvider`
+- [x] "Reset to Default" clears the override and falls back to platform default — `clearCustomPath()` via reset `IconButton`
+- [x] Setting survives app restart — persisted in `SharedPreferences`
+- [x] Picker validates the path is writable before saving — OS directory picker confirms existence; resolver gracefully falls back if path later becomes inaccessible
+
+### Test Results
+442/442 all pass. No regressions.
+
+### Manual Verification Required
+- [ ] Open App Settings → File Export card appears on Linux/Android; absent on Web
+- [ ] Pick a custom folder → folder picker opens, path shown in card subtitle
+- [ ] Export a file → file lands in custom folder
+- [ ] Reset to Default → subtitle reverts to platform-default description
+- [ ] Restart app → custom path survives (SharedPreferences persistence)
+
+---

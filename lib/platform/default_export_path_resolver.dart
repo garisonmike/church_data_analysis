@@ -25,6 +25,12 @@ typedef GetDownloadsDirFn = Future<Directory?> Function();
 typedef GetExternalStorageDirsFn =
     Future<List<Directory>?> Function(StorageDirectory type);
 
+/// Returns the user-overridden export directory path, or `null` when no
+/// override has been set.
+///
+/// Typically backed by [SettingsRepository.getDefaultExportPath].
+typedef GetCustomPathFn = String? Function();
+
 // ---------------------------------------------------------------------------
 // DefaultExportPathResolver
 // ---------------------------------------------------------------------------
@@ -62,18 +68,25 @@ class DefaultExportPathResolver {
 
   final GetDownloadsDirFn? _getDownloads;
   final GetExternalStorageDirsFn? _getExternalDirs;
+  final GetCustomPathFn? _getCustomPath;
 
-  /// Creates a resolver with optional injectable path_provider overrides.
+  /// Creates a resolver with optional injectable overrides.
   ///
-  /// When [getDownloads] is omitted the real [getDownloadsDirectory] from
-  /// `path_provider` is used on Linux/Windows/macOS.
-  /// When [getExternalDirs] is omitted the real
-  /// [getExternalStorageDirectories] from `path_provider` is used on
+  /// [getCustomPath] — when provided and returns a non-null, non-empty path,
+  /// that directory is used as the highest-priority export location (ahead of
+  /// the platform default).  Typically backed by
+  /// `SettingsRepository.getDefaultExportPath`.
+  ///
+  /// [getDownloads] — overrides [getDownloadsDirectory] on
+  /// Linux/Windows/macOS.
+  /// [getExternalDirs] — overrides [getExternalStorageDirectories] on
   /// Android.
   const DefaultExportPathResolver({
+    GetCustomPathFn? getCustomPath,
     GetDownloadsDirFn? getDownloads,
     GetExternalStorageDirsFn? getExternalDirs,
-  }) : _getDownloads = getDownloads,
+  }) : _getCustomPath = getCustomPath,
+       _getDownloads = getDownloads,
        _getExternalDirs = getExternalDirs;
 
   // -------------------------------------------------------------------------
@@ -116,6 +129,34 @@ class DefaultExportPathResolver {
   // -------------------------------------------------------------------------
 
   Future<String> _resolveNative() async {
+    // Highest priority: user-overridden custom path.
+    if (_getCustomPath != null) {
+      final custom = _getCustomPath!();
+      if (custom != null && custom.isNotEmpty) {
+        try {
+          final customDir = Directory(custom);
+          if (!await customDir.exists()) {
+            await customDir.create(recursive: true);
+          }
+          if (kDebugMode) {
+            debugPrint(
+              '[DefaultExportPathResolver] using custom path: $custom',
+            );
+          }
+          return custom;
+        } catch (e) {
+          // Custom path is inaccessible — fall through to platform default.
+          if (kDebugMode) {
+            debugPrint(
+              '[DefaultExportPathResolver] custom path inaccessible '
+              '($custom): $e — falling back to platform default.',
+            );
+          }
+        }
+      }
+    }
+
+    // Platform default: <downloads>/ChurchAnalytics/
     final baseDir = await _resolveBaseDir();
     final exportDir = Directory('${baseDir.path}/$appFolderName');
     if (!await exportDir.exists()) {

@@ -1,7 +1,10 @@
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/app_settings.dart';
+import '../../repositories/settings_repository.dart';
 import '../../services/settings_service.dart';
 
 /// Screen for managing application settings like currency, locale etc.
@@ -286,6 +289,11 @@ class AppSettingsScreen extends ConsumerWidget {
             ),
           ),
 
+          const SizedBox(height: 16),
+
+          // File Export Settings Card (native platforms only)
+          if (!kIsWeb) const _ExportFolderCard(),
+
           const SizedBox(height: 32),
         ],
       ),
@@ -406,6 +414,94 @@ class _PresetChip extends StatelessWidget {
 }
 
 /// File-private const widget for titleLarge card section headings.
+// ---------------------------------------------------------------------------
+// Export folder card (native platforms only — hidden on Web via kIsWeb guard)
+// ---------------------------------------------------------------------------
+
+/// Settings card that lets the user pick and persist a custom export folder.
+///
+/// The current override is read from [defaultExportPathProvider].  When no
+/// override is set the subtitle shows the platform default description.
+///
+/// The folder picker uses [FilePicker.platform.getDirectoryPath], which
+/// presents a native OS directory picker — the OS itself validates that the
+/// path exists before returning it.
+class _ExportFolderCard extends ConsumerWidget {
+  const _ExportFolderCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final customPath = ref.watch(defaultExportPathProvider);
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const _CardTitle('File Export'),
+            const SizedBox(height: 16),
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Default Export Folder'),
+              subtitle: Text(
+                customPath ?? 'Platform default (Downloads/ChurchAnalytics/)',
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+              ),
+              trailing: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.folder_open),
+                    tooltip: 'Choose folder',
+                    onPressed: () => _pickFolder(context, ref),
+                  ),
+                  if (customPath != null)
+                    IconButton(
+                      icon: const Icon(Icons.restore),
+                      tooltip: 'Reset to default',
+                      onPressed: () => ref
+                          .read(defaultExportPathProvider.notifier)
+                          .clearCustomPath(),
+                    ),
+                ],
+              ),
+            ),
+            if (customPath != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'Custom folder active',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                        color: Theme.of(context).colorScheme.primary,
+                      ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickFolder(BuildContext context, WidgetRef ref) async {
+    final path = await FilePicker.platform.getDirectoryPath(
+      dialogTitle: 'Select default export folder',
+    );
+    if (path == null || path.trim().isEmpty) return;
+    await ref.read(defaultExportPathProvider.notifier).setCustomPath(path.trim());
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Export folder updated')),
+      );
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Shared private widgets
+// ---------------------------------------------------------------------------
+
 class _CardTitle extends StatelessWidget {
   final String text;
 

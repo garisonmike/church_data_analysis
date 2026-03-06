@@ -230,11 +230,121 @@ void main() {
       test('accepts all optional parameters without error', () {
         expect(
           () => DefaultExportPathResolver(
+            getCustomPath: () => null,
             getDownloads: () async => Directory.systemTemp,
             getExternalDirs: (_) async => [Directory.systemTemp],
           ),
           returnsNormally,
         );
+      });
+    });
+
+    // -----------------------------------------------------------------------
+    // resolve() — custom path override
+    // -----------------------------------------------------------------------
+
+    group('resolve() with custom path override', () {
+      test('uses custom path when getCustomPath returns an existing dir',
+          () async {
+        final customDir = Directory('${tempDir.path}/custom_export');
+        await customDir.create();
+
+        final resolver = DefaultExportPathResolver(
+          getDownloads: () async => tempDir, // must NOT be called
+          getCustomPath: () => customDir.path,
+        );
+
+        final result = await resolver.resolve();
+        expect(result, equals(customDir.path));
+      });
+
+      test('creates custom directory when it does not yet exist', () async {
+        final customDir = Directory('${tempDir.path}/new_custom_export');
+        expect(await customDir.exists(), isFalse);
+
+        final resolver = DefaultExportPathResolver(
+          getDownloads: () async => tempDir,
+          getCustomPath: () => customDir.path,
+        );
+
+        await resolver.resolve();
+        expect(await customDir.exists(), isTrue);
+      });
+
+      test('returns the custom path string after creating the directory',
+          () async {
+        final customDir = Directory('${tempDir.path}/returns_custom');
+
+        final resolver = DefaultExportPathResolver(
+          getDownloads: () async => tempDir,
+          getCustomPath: () => customDir.path,
+        );
+
+        final result = await resolver.resolve();
+        expect(result, equals(customDir.path));
+      });
+
+      test('falls back to platform default when getCustomPath returns null',
+          () async {
+        final resolver = DefaultExportPathResolver(
+          getDownloads: () async => tempDir,
+          getCustomPath: () => null,
+        );
+
+        final result = await resolver.resolve();
+        expect(
+          result,
+          equals(
+            '${tempDir.path}/${DefaultExportPathResolver.appFolderName}',
+          ),
+        );
+      });
+
+      test(
+          'falls back to platform default when getCustomPath returns empty string',
+          () async {
+        final resolver = DefaultExportPathResolver(
+          getDownloads: () async => tempDir,
+          getCustomPath: () => '',
+        );
+
+        final result = await resolver.resolve();
+        expect(
+          result,
+          equals(
+            '${tempDir.path}/${DefaultExportPathResolver.appFolderName}',
+          ),
+        );
+      });
+
+      test(
+          'falls back to platform default when custom directory cannot be created',
+          () async {
+        // Use a path that is guaranteed to be invalid on Linux.
+        const invalidPath = '/proc/sys/not/writable/path';
+
+        final resolver = DefaultExportPathResolver(
+          getDownloads: () async => tempDir,
+          getCustomPath: () => invalidPath,
+        );
+
+        final result = await resolver.resolve();
+        // Should not return the invalid path; platform default used instead.
+        expect(result, isNot(equals(invalidPath)));
+        expect(result, contains(DefaultExportPathResolver.appFolderName));
+      });
+
+      test('returns correct path on repeated calls with custom path', () async {
+        final customDir = Directory('${tempDir.path}/stable_custom');
+
+        final resolver = DefaultExportPathResolver(
+          getDownloads: () async => tempDir,
+          getCustomPath: () => customDir.path,
+        );
+
+        final first = await resolver.resolve();
+        final second = await resolver.resolve();
+        expect(first, equals(second));
       });
     });
   });
