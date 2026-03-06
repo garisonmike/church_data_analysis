@@ -46,12 +46,18 @@ class UpdateCheckResult {
   /// Human-readable error message; non-null only when the check failed.
   final String? error;
 
+  /// Structured classification of the failure.
+  ///
+  /// Non-null only when the check failed ([isError] is `true`).
+  final UpdateErrorType? errorType;
+
   const UpdateCheckResult._({
     required this.isUpdateAvailable,
     this.latestVersion,
     this.currentVersion,
     this.manifest,
     this.error,
+    this.errorType,
   });
 
   // -------------------------------------------------------------------------
@@ -83,8 +89,17 @@ class UpdateCheckResult {
   );
 
   /// The check failed; [error] describes the problem.
-  factory UpdateCheckResult.failure(String error) =>
-      UpdateCheckResult._(isUpdateAvailable: false, error: error);
+  ///
+  /// [errorType] classifies the root cause.  Defaults to
+  /// [UpdateErrorType.networkError] when not specified.
+  factory UpdateCheckResult.failure(
+    String error, {
+    UpdateErrorType errorType = UpdateErrorType.networkError,
+  }) => UpdateCheckResult._(
+    isUpdateAvailable: false,
+    error: error,
+    errorType: errorType,
+  );
 
   // -------------------------------------------------------------------------
   // Convenience
@@ -167,6 +182,7 @@ class UpdateService {
         return _cache(
           UpdateCheckResult.failure(
             'Server returned HTTP ${response.statusCode}',
+            errorType: UpdateErrorType.networkError,
           ),
         );
       }
@@ -196,17 +212,33 @@ class UpdateService {
               ),
       );
     } on UpdateSecurityException catch (e) {
-      return _cache(UpdateCheckResult.failure(e.message));
+      return _cache(
+        UpdateCheckResult.failure(
+          e.message,
+          errorType: UpdateErrorType.networkError,
+        ),
+      );
     } on UpdateManifestParseException catch (e) {
-      return _cache(UpdateCheckResult.failure(e.message));
+      return _cache(
+        UpdateCheckResult.failure(
+          e.message,
+          errorType: UpdateErrorType.parseError,
+        ),
+      );
     } on TimeoutException {
       return _cache(
         UpdateCheckResult.failure(
           'Update check timed out after ${_networkTimeout.inSeconds} seconds',
+          errorType: UpdateErrorType.networkError,
         ),
       );
     } catch (e) {
-      return _cache(UpdateCheckResult.failure('$e'));
+      return _cache(
+        UpdateCheckResult.failure(
+          '$e',
+          errorType: UpdateErrorType.networkError,
+        ),
+      );
     }
   }
 

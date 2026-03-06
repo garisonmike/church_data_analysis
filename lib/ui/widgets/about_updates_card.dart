@@ -1,7 +1,10 @@
+import 'package:church_analytics/models/update_error_messages.dart';
+import 'package:church_analytics/models/update_error_type.dart';
 import 'package:church_analytics/services/update_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 // ---------------------------------------------------------------------------
 // State enum
@@ -57,6 +60,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
   String _currentVersion = '';
   String? _latestVersion;
   String? _errorMessage;
+  UpdateErrorType? _errorType;
   DateTime? _lastChecked;
 
   // -------------------------------------------------------------------------
@@ -100,6 +104,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
       if (result.isError) {
         _state = _CheckState.error;
         _errorMessage = result.error;
+        _errorType = result.errorType;
       } else if (result.isUpdateAvailable) {
         _state = _CheckState.updateAvailable;
         _latestVersion = result.latestVersion;
@@ -143,8 +148,9 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
                 Text(
                   _currentVersion.isEmpty ? '…' : _currentVersion,
                   key: const ValueKey('version_text'),
-                  style: theme.textTheme.bodyMedium
-                      ?.copyWith(fontWeight: FontWeight.bold),
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ],
             ),
@@ -287,11 +293,17 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
           children: [
             Row(
               children: [
-                Icon(Icons.error_outline, color: theme.colorScheme.error, size: 18),
+                Icon(
+                  Icons.error_outline,
+                  color: theme.colorScheme.error,
+                  size: 18,
+                ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
-                    _errorMessage ?? 'An unknown error occurred.',
+                    _errorType != null
+                        ? UpdateErrorMessages.messageFor(_errorType!)
+                        : (_errorMessage ?? 'An unknown error occurred.'),
                     key: const ValueKey('error_message_text'),
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.error,
@@ -301,11 +313,26 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
               ],
             ),
             const SizedBox(height: 8),
-            TextButton.icon(
-              key: const ValueKey('retry_button'),
-              onPressed: _checkForUpdates,
-              icon: const Icon(Icons.refresh, size: 16),
-              label: const Text('Retry'),
+            Wrap(
+              spacing: 8,
+              runSpacing: 4,
+              children: [
+                TextButton.icon(
+                  key: const ValueKey('retry_button'),
+                  onPressed: _checkForUpdates,
+                  icon: const Icon(Icons.refresh, size: 16),
+                  label: const Text('Retry'),
+                ),
+                TextButton.icon(
+                  key: const ValueKey('open_github_releases_button'),
+                  onPressed: () => launchUrl(
+                    Uri.parse(UpdateErrorMessages.fallbackUrl),
+                    mode: LaunchMode.externalApplication,
+                  ),
+                  icon: const Icon(Icons.open_in_new, size: 16),
+                  label: const Text(UpdateErrorMessages.fallbackLabel),
+                ),
+              ],
             ),
           ],
         );

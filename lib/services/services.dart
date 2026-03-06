@@ -13,6 +13,8 @@ export 'pdf_report_service.dart';
 export 'performance_monitor.dart';
 export 'settings_service.dart';
 export 'theme_service.dart';
+export 'update_download_result.dart';
+export 'update_download_service.dart';
 export 'update_service.dart';
 export 'validation_service.dart';
 export 'weekly_records_provider.dart';

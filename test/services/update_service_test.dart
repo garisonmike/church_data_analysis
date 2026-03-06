@@ -95,6 +95,32 @@ void main() {
       expect(result.manifest, isNull);
       expect(result.latestVersion, isNull);
       expect(result.currentVersion, isNull);
+      // Default error type is networkError
+      expect(result.errorType, UpdateErrorType.networkError);
+    });
+
+    test('failure() accepts explicit parseError type', () {
+      final result = UpdateCheckResult.failure(
+        'bad json',
+        errorType: UpdateErrorType.parseError,
+      );
+      expect(result.errorType, UpdateErrorType.parseError);
+    });
+
+    test('available() and upToDate() have no errorType', () {
+      final manifest = UpdateManifest.fromJson(makeManifestJson('1.1.0'));
+      final available = UpdateCheckResult.available(
+        latestVersion: '1.1.0',
+        currentVersion: '1.0.0',
+        manifest: manifest,
+      );
+      final upToDate = UpdateCheckResult.upToDate(
+        latestVersion: '1.0.0',
+        currentVersion: '1.0.0',
+        manifest: manifest,
+      );
+      expect(available.errorType, isNull);
+      expect(upToDate.errorType, isNull);
     });
 
     test('toString() describes an error result', () {
@@ -314,6 +340,87 @@ void main() {
 
       expect(result.isError, isTrue);
       expect(result.error, contains('timed out'));
+    });
+  });
+
+  // ---------------------------------------------------------------------------
+  // UpdateCheckResult — errorType classification
+  // ---------------------------------------------------------------------------
+
+  group('UpdateService.checkForUpdate() — errorType classification', () {
+    test('network exception yields networkError errorType', () async {
+      final service = UpdateService(
+        client: MockClient((_) async => throw Exception('connection refused')),
+        manifestUrl: kManifestUrl,
+        getPackageInfo: () async => makePackageInfo('1.0.0'),
+      );
+      final result = await service.checkForUpdate();
+      expect(result.errorType, UpdateErrorType.networkError);
+    });
+
+    test('HTTP error yields networkError errorType', () async {
+      final service = UpdateService(
+        client: MockClient((_) async => http.Response('Not Found', 404)),
+        manifestUrl: kManifestUrl,
+        getPackageInfo: () async => makePackageInfo('1.0.0'),
+      );
+      final result = await service.checkForUpdate();
+      expect(result.errorType, UpdateErrorType.networkError);
+    });
+
+    test(
+      'malformed JSON yields networkError errorType (generic catch)',
+      () async {
+        final service = UpdateService(
+          client: MockClient(
+            (_) async => http.Response('{invalid json!!!}', 200),
+          ),
+          manifestUrl: kManifestUrl,
+          getPackageInfo: () async => makePackageInfo('1.0.0'),
+        );
+        final result = await service.checkForUpdate();
+        // FormatException is caught by the generic catch → networkError
+        expect(result.errorType, UpdateErrorType.networkError);
+      },
+    );
+
+    test(
+      'manifest with missing required field yields parseError errorType',
+      () async {
+        final service = UpdateService(
+          client: MockClient(
+            (_) async => http.Response(jsonEncode({'version': '1.1.0'}), 200),
+          ),
+          manifestUrl: kManifestUrl,
+          getPackageInfo: () async => makePackageInfo('1.0.0'),
+        );
+        final result = await service.checkForUpdate();
+        expect(result.errorType, UpdateErrorType.parseError);
+      },
+    );
+
+    test('non-HTTPS URL yields networkError errorType', () async {
+      final service = UpdateService(
+        client: MockClient((_) async => http.Response('{}', 200)),
+        manifestUrl: 'http://example.com/update.json',
+        getPackageInfo: () async => makePackageInfo('1.0.0'),
+      );
+      final result = await service.checkForUpdate();
+      expect(result.errorType, UpdateErrorType.networkError);
+    });
+
+    test('timeout yields networkError errorType', () async {
+      final service = UpdateService(
+        client: MockClient((_) async {
+          await Future.delayed(const Duration(milliseconds: 300));
+          return http.Response('{}', 200);
+        }),
+        manifestUrl: kManifestUrl,
+        getPackageInfo: () async => makePackageInfo('1.0.0'),
+        networkTimeout: const Duration(milliseconds: 100),
+      );
+      final result = await service.checkForUpdate();
+      expect(result.errorType, UpdateErrorType.networkError);
     });
   });
 

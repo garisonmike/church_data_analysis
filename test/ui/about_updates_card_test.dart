@@ -398,6 +398,51 @@ void main() {
       expect(find.byKey(const ValueKey('up_to_date_result')), findsOneWidget);
       expect(callCount, 2);
     });
+
+    testWidgets(
+      '"Open GitHub Releases" fallback button is shown in error state',
+      (tester) async {
+        final service = UpdateService(
+          client: MockClient(
+            (_) async => throw Exception('connection refused'),
+          ),
+          manifestUrl: kManifestUrl,
+          getPackageInfo: () async => makePackageInfo('1.0.0'),
+        );
+
+        await tester.pumpWidget(buildWidget(service));
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byKey(const ValueKey('check_updates_button')));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.byKey(const ValueKey('open_github_releases_button')),
+          findsOneWidget,
+        );
+      },
+    );
+
+    testWidgets('typed error message shown in error state', (tester) async {
+      final service = UpdateService(
+        // Trigger a parse error by returning malformed manifest JSON.
+        client: MockClient(
+          (_) async => http.Response(jsonEncode({'version': '1.0.0'}), 200),
+        ),
+        manifestUrl: kManifestUrl,
+        getPackageInfo: () async => makePackageInfo('1.0.0'),
+      );
+
+      await tester.pumpWidget(buildWidget(service));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const ValueKey('check_updates_button')));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const ValueKey('error_result')), findsOneWidget);
+      // Should show the typed message (parseError mentions format/corrupt).
+      expect(find.byKey(const ValueKey('error_message_text')), findsOneWidget);
+    });
   });
 
   // ---------------------------------------------------------------------------

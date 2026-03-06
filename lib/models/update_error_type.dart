@@ -1,0 +1,24 @@
+/// Enumerates the distinct failure modes across all stages of the update flow.
+///
+/// Each value maps to a user-readable message in [UpdateErrorMessages].
+enum UpdateErrorType {
+  /// The device is offline or the update server is unreachable.
+  networkError,
+
+  /// The update manifest could not be decoded or failed schema validation.
+  parseError,
+
+  /// The installer file could not be downloaded from the remote server.
+  downloadError,
+
+  /// The downloaded installer's SHA-256 hash does not match the manifest.
+  ///
+  /// This is a security-level failure and must never be silently ignored.
+  checksumMismatch,
+
+  /// The installer could not be launched or executed on the current platform.
+  installError,
+
+  /// Automatic installation is not supported on the current platform.
+  unsupportedPlatform,
+}

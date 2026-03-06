@@ -779,3 +779,64 @@ Low — additive UI section only; no existing widgets or services modified.
 No issues found (`flutter analyze` on all 3 source files).
 
 ---
+
+## UPDATE-008 — Update error handling & fallback messaging
+
+### Status: READY FOR REVIEW
+
+### Files Created
+- `lib/models/update_error_type.dart` — `UpdateErrorType` enum: `networkError`, `parseError`, `downloadError`, `checksumMismatch`, `installError`, `unsupportedPlatform`
+- `lib/models/update_error_messages.dart` — `UpdateErrorMessages` non-instantiable class: `messageFor(type)`, `actionFor(type)`, `fallbackUrl` const, `fallbackLabel` const
+- `lib/services/update_download_result.dart` — `UpdateDownloadResult` immutable value class: `success(filePath)` / `failure(error, {errorType})` factories; `isError` getter
+- `lib/services/update_download_service.dart` — `UpdateDownloadService` skeleton with platform-asset resolution, HTTP download, partial-file cleanup contract in `catch` block; checksum verify stubbed for UPDATE-006
+- `test/models/update_error_messages_test.dart` — 14 tests: distinct messages, distinct actions, per-type content assertions, constants validation
+- `test/services/update_download_service_test.dart` — 13 tests: `UpdateDownloadResult` factories, HTTP 404/500, network exception + partial-file cleanup, successful download
+
+### Files Modified
+- `lib/models/models.dart` — added exports: `update_error_type.dart`, `update_error_messages.dart`
+- `lib/services/services.dart` — added exports: `update_download_result.dart`, `update_download_service.dart`
+- `lib/services/update_service.dart` — added `UpdateErrorType? errorType` field to `UpdateCheckResult`; updated `failure()` factory signature; wired errorType in all 4 catch branches (`UpdateSecurityException` → `networkError`, `UpdateManifestParseException` → `parseError`, `TimeoutException` → `networkError`, generic catch → `networkError`)
+- `lib/ui/widgets/about_updates_card.dart` — added imports (`url_launcher`, `UpdateErrorMessages`, `UpdateErrorType`); added `_errorType` field; set `_errorType = result.errorType` on error; error state now displays `UpdateErrorMessages.messageFor(_errorType)` (typed message); retry button + "Open GitHub Releases" button in `Wrap` (ValueKey `open_github_releases_button`); `launchUrl` with `LaunchMode.externalApplication`
+- `test/services/update_service_test.dart` — added: `errorType` defaults to `networkError` in `failure()` test; `failure()` with explicit `parseError` test; `available()`/`upToDate()` have no `errorType` test; new group with 6 errorType-classification tests
+- `test/ui/about_updates_card_test.dart` — added 2 tests: "Open GitHub Releases" button present in error state; typed error message shown for parse error
+
+### Implementation Notes
+- `UpdateErrorMessages` uses `abstract final class ... { ... ._(); }` pattern — non-instantiable, no factory constructor lint.
+- Error messages are user-facing: no stack traces, no technical internals exposed.
+- `checksumMismatch` message specifically warns "Do not install" — security-critical distinction.
+- Retry + Open GitHub Releases are in a `Wrap` widget so they wrap gracefully on narrow screens.
+- `UpdateDownloadService._deletePartial()` is best-effort: cleanup failures are silently swallowed to never cascade into the error result.
+- Checksum verification is stubbed with a `// TODO(UPDATE-006)` comment block showing exactly what to implement.
+
+### Partial-file cleanup verification
+Test: `deletes pre-existing partial file when network request throws`
+- Creates real temp directory on filesystem
+- Writes a file with the expected name (`app-1.0.0.tar.gz`) before calling `download()`
+- Mocks HTTP client to throw `Exception('connection refused')`
+- Asserts the file no longer exists after the call
+
+### Fix applied during development
+`const kValidSha = 'a' * 64` → `final kValidSha = 'a' * 64` — Dart's `String.*` operator is not a const operation; the compile-time `const` caused a constant-evaluation error.
+
+### Test Results
+```
+New tests  : 36/36 pass
+Full suite : 663/663 pass. No regressions.
+(627 prior + 36 new)
+```
+
+### Acceptance Criteria Verified
+- [x] Each `UpdateErrorType` has a distinct, actionable user-facing message
+- [x] "Open GitHub Releases" fallback shown for all error types (open_github_releases_button key in error state)
+- [x] Partial files are cleaned up on download failure (UpdateDownloadService catch block + test)
+- [x] Checksum mismatch shows a security-specific warning ("Security warning: … Do not install")
+- [x] Network error shows a connectivity-specific message with retry button
+- [x] No unhandled exceptions propagate from the update flow to the top-level error handler
+
+### Regression Risk
+Low — error classification is additive; failure() default `errorType` = `networkError` is backward-compatible; happy paths untouched.
+
+### Static Analysis
+No issues found (`flutter analyze` on all 6 source files).
+
+---

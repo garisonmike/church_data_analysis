@@ -5,6 +5,8 @@ export 'church.dart';
 export 'dashboard_config.dart';
 export 'derived_metrics.dart';
 export 'export_history.dart';
+export 'update_error_messages.dart';
+export 'update_error_type.dart';
 export 'update_manifest.dart';
 export 'update_manifest_parse_exception.dart';
 export 'update_security_exception.dart';

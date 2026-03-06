@@ -325,7 +325,6 @@ void main() {
     group('ExportResult', () {
       test('success result carries filePath returned by storage', () async {
         const returned = '/fake/downloads/ChurchAnalytics/data.csv';
-        final storage = _FakeFileStorage();
         // Override saveFile to return a specific path.
         final service = FileService(
           fileStorage: _FixedPathStorage(returned),
