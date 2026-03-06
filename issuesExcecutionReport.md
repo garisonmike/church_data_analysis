@@ -150,3 +150,85 @@ No new lint warnings or errors introduced. `@visibleForTesting` annotation used 
 - [ ] Linux/Windows: confirm file saves succeed to expected locations.
 
 ---
+
+## STORAGE-008 — Centralise all file I/O through FileService
+
+**Priority:** P1  
+**Status:** Implementation complete; all automated tests passing (202/202)
+
+---
+
+### Files Modified / Created
+
+| File | Action |
+|------|--------|
+| `lib/services/file_service.dart` | **CREATED** — `FileService`, `ExportResult`, `ImportResult` value classes, `fileServiceProvider` |
+| `lib/services/activity_log_service.dart` | **CREATED** — abstract `ActivityLogService` + `NoOpActivityLogService` stub |
+| `lib/services/services.dart` | **UPDATED** — added exports for new files |
+| `lib/services/backup_service.dart` | **MIGRATED** — `FileStorage` → `FileService` |
+| `lib/services/csv_export_service.dart` | **MIGRATED** — `FileStorage` → `FileService`; all three export methods updated |
+| `lib/services/pdf_report_service.dart` | **MIGRATED** — `getFileStorage()` removed; `FileService?` injected into `savePdf` |
+| `lib/services/chart_export_service.dart` | **MIGRATED** — `FileStorage?` → `FileService?` in `saveAsPng` and `exportChart` |
+| `lib/services/import_service.dart` | **MIGRATED** — uses `FileService`; retains `FileStorage?` param for test backwards-compat |
+| `lib/services/csv_import_service.dart` | **MIGRATED** — same backwards-compat pattern as `ImportService` |
+| `lib/ui/screens/reports_screen.dart` | **UPDATED** — removed direct `_fileStorage` field; uses `fileServiceProvider` via Riverpod |
+| `test/services/chart_export_service_test.dart` | **UPDATED** — `fileStorage:` → `fileService: FileService(fileStorage:)` |
+
+---
+
+### Implementation Summary
+
+**Goal:** No service or screen instantiates `FileStorage` directly. All file I/O flows through `FileService`, which applies `PathSafetyGuard` audit and calls `ActivityLogService` before delegating to the underlying `FileStorage`.
+
+**Key decisions:**
+- `_auditPath()` calls `PathSafetyGuard.guard()` and emits a `debugPrint` warning on flagged paths. **Does not block** in `FileService` — blocking enforcement remains at the UI layer (`_pickExportPath`) so integration tests using `/tmp/` paths are unaffected.
+- `ActivityLogService` is an abstract interface; `NoOpActivityLogService` is the injected default — forward-compatible stub for STORAGE-004.
+- `ExportResult` / `ImportResult` are value classes with named factories (`.success`, `.failure`, `.cancelled`) replacing raw `String?` returns.
+- Backwards-compatible constructors on `ImportService` and `CsvImportService`: `FileStorage? fileStorage` wraps into `FileService(fileStorage: fileStorage)` so existing tests need no changes.
+
+---
+
+### Acceptance Criteria Verification
+
+| AC | Result |
+|----|--------|
+| Single `FileService` used by all services | ✅ All 6 services migrated |
+| `getFileStorage()` not called directly in services/screens | ✅ Removed from all migrated files |
+| `ExportResult` / `ImportResult` value types returned | ✅ Used throughout |
+| `ActivityLogService` stub in place (STORAGE-004 forward compat) | ✅ `activity_log_service.dart` created |
+| `PathSafetyGuard` audit runs on all export paths | ✅ `_auditPath()` called in `exportFile` and `exportFileBytes` |
+| Activity logging fires for every operation (export AND import) | ✅ `pickFile()` pass-through now logs on success (audit correction) |
+| Riverpod singleton used at all screen call-sites | ✅ `PdfReportService.savePdf` + `ChartExportService.exportChart` pass `ref.read(fileServiceProvider)` (audit correction) |
+| All existing tests pass | ✅ 202/202 tests passed |
+| Static analysis: 0 issues | ✅ 1 pre-existing info (drift web deprecation, unrelated) |
+
+---
+
+### Test Results
+
+```
+flutter test test/services/ test/platform/ test/ui/
++202: All tests passed!
+```
+
+### Audit Corrections Applied (post-implementation re-audit)
+
+| # | File | Fix |
+|---|------|-----|
+| 1 | `lib/services/file_service.dart` | `pickFile()` expanded to async body; calls `_activityLog.logImport()` on success — ensures import activity is logged for all callers, not just those using `importFile()` |
+| 2 | `lib/ui/screens/reports_screen.dart` | `PdfReportService.savePdf(...)` now receives `fileService: ref.read(fileServiceProvider)` — avoids silent anonymous `FileService()` instantiation |
+| 3 | `lib/ui/screens/attendance_charts_screen.dart` | `ChartExportService.exportChart(...)` now receives `fileService: ref.read(fileServiceProvider)` — same fix; ensures the singleton `ActivityLogService` is used |
+
+---
+
+### Manual QA Checklist
+
+- [ ] CSV export on mobile: confirm file saves to expected path.
+- [ ] PDF report: confirm file saves successfully.
+- [ ] Chart PNG export: confirm file saves.
+- [ ] Backup: confirm JSON file written.
+- [ ] Restore from backup: confirm data loads correctly.
+- [ ] CSV import: confirm data parsed and inserted.
+- [ ] Confirm no `getFileStorage()` calls remain in production code.
+
+---

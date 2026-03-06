@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../database/app_database.dart' as db;
 import '../../models/models.dart';
-import '../../platform/file_storage.dart';
 import '../../platform/path_safety_guard.dart';
 import '../../repositories/repositories.dart';
 import '../../services/services.dart';
@@ -68,7 +67,6 @@ class _ReportOptions {
 class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   final _csvService = CsvExportService();
   final _backupService = BackupService();
-  final _fileStorage = getFileStorage();
 
   bool _isProcessing = false;
   bool _promptForLocation = true;
@@ -161,6 +159,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         pdf: pdf,
         fileName: suggestedName,
         customPath: customPath,
+        fileService: ref.read(fileServiceProvider),
       );
 
       if (savedPath != null) {
@@ -292,7 +291,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   Future<void> _restoreBackup() async {
     setState(() => _isProcessing = true);
     try {
-      final file = await _fileStorage.pickFile(allowedExtensions: ['json']);
+      final file = await ref
+          .read(fileServiceProvider)
+          .pickFile(allowedExtensions: ['json']);
       if (file != null) {
         final result = await _backupService.restoreFromBackup(file);
         if (result.success) {
@@ -645,10 +646,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       return null;
     }
 
-    final rawPath = await _fileStorage.pickSaveLocation(
-      suggestedName: suggestedName,
-      allowedExtensions: allowedExtensions,
-    );
+    final rawPath = await ref
+        .read(fileServiceProvider)
+        .pickSaveLocation(
+          suggestedName: suggestedName,
+          allowedExtensions: allowedExtensions,
+        );
 
     final trimmed = normalizeExportPath(rawPath);
 

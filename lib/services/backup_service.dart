@@ -1,8 +1,8 @@
 import 'dart:convert';
 
 import 'package:church_analytics/models/models.dart';
-import 'package:church_analytics/platform/file_storage.dart';
 import 'package:church_analytics/platform/file_storage_interface.dart';
+import 'package:church_analytics/services/file_service.dart';
 
 /// Result of a backup operation
 class BackupResult {
@@ -144,7 +144,10 @@ class BackupData {
 class BackupService {
   static const String backupVersion = '1.0';
   static const String appVersion = '1.0.0';
-  final FileStorage _fileStorage = getFileStorage();
+  final FileService _fileService;
+
+  BackupService({FileService? fileService})
+    : _fileService = fileService ?? FileService();
 
   /// Generate a timestamped backup filename
   String generateBackupFilename() {
@@ -285,17 +288,17 @@ class BackupService {
         '  ',
       ).convert(backupData.toJson());
 
-      final savedPath = await _fileStorage.saveFile(
-        fileName: fileName,
+      final result = await _fileService.exportFile(
+        filename: fileName,
         content: jsonString,
-        fullPath: fullPath,
+        forcedPath: fullPath,
       );
 
-      if (savedPath == null) {
-        return BackupResult.error('Failed to save backup file');
+      if (!result.success) {
+        return BackupResult.error(result.error ?? 'Failed to save backup file');
       }
 
-      return BackupResult.success(savedPath, metadata);
+      return BackupResult.success(result.filePath!, metadata);
     } catch (e) {
       return BackupResult.error('Failed to create backup: $e');
     }
@@ -304,7 +307,7 @@ class BackupService {
   /// Read and parse a backup file
   Future<BackupData?> readBackup(PlatformFileResult file) async {
     try {
-      final content = await _fileStorage.readFileAsString(file);
+      final content = await _fileService.readFileAsString(file);
       final json = jsonDecode(content) as Map<String, dynamic>;
       return BackupData.fromJson(json);
     } catch (e) {
@@ -422,7 +425,7 @@ class BackupService {
   /// Verify backup integrity by checking file exists and is valid JSON
   Future<bool> verifyBackupIntegrity(PlatformFileResult file) async {
     try {
-      final content = await _fileStorage.readFileAsString(file);
+      final content = await _fileService.readFileAsString(file);
 
       // Try to parse as JSON
       final json = jsonDecode(content);

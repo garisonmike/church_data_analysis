@@ -184,7 +184,7 @@ void main() {
         final result = await ChartExportService.saveAsPng(
           imageBytes: bytes,
           fileName: 'chart_export',
-          fileStorage: storage,
+          fileService: FileService(fileStorage: storage),
         );
 
         expect(result, 'ok');

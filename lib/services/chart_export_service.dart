@@ -1,7 +1,6 @@
 import 'dart:ui' as ui;
 
-import 'package:church_analytics/platform/file_storage.dart';
-import 'package:church_analytics/platform/file_storage_interface.dart';
+import 'package:church_analytics/services/file_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
@@ -54,10 +53,10 @@ class ChartExportService {
   static Future<String?> saveAsPng({
     required Uint8List imageBytes,
     required String fileName,
-    FileStorage? fileStorage,
+    FileService? fileService,
   }) async {
     try {
-      final storage = fileStorage ?? getFileStorage();
+      final service = fileService ?? FileService();
       final fullFileName = fileName.endsWith('.png')
           ? fileName
           : '$fileName.png';
@@ -66,15 +65,15 @@ class ChartExportService {
         debugPrint('Chart save requested. File name: $fullFileName');
       }
 
-      final path = await storage.saveFileBytes(
-        fileName: fullFileName,
+      final result = await service.exportFileBytes(
+        filename: fullFileName,
         bytes: imageBytes,
       );
 
       if (kDebugMode) {
-        debugPrint('Chart saved successfully: $path');
+        debugPrint('Chart saved successfully: ${result.filePath}');
       }
-      return path;
+      return result.filePath;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Error saving PNG: $e');
@@ -130,7 +129,7 @@ class ChartExportService {
     required GlobalKey repaintBoundaryKey,
     required String churchName,
     required String chartType,
-    FileStorage? fileStorage,
+    FileService? fileService,
   }) async {
     try {
       // Step 1: Capture the widget
@@ -149,7 +148,7 @@ class ChartExportService {
       final filePath = await saveAsPng(
         imageBytes: imageBytes,
         fileName: fileName,
-        fileStorage: fileStorage,
+        fileService: fileService,
       );
 
       return filePath;

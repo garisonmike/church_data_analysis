@@ -1,25 +1,29 @@
 import 'package:church_analytics/models/models.dart';
-import 'package:church_analytics/platform/file_storage.dart';
 import 'package:church_analytics/platform/file_storage_interface.dart';
+import 'package:church_analytics/services/file_service.dart';
 import 'package:church_analytics/services/import_service.dart';
 import 'package:csv/csv.dart';
 
 /// Service for importing weekly records from CSV files
 class CsvImportService {
-  final FileStorage _fileStorage;
+  final FileService _fileService;
 
-  CsvImportService({FileStorage? fileStorage})
-    : _fileStorage = fileStorage ?? getFileStorage();
+  CsvImportService({FileService? fileService, FileStorage? fileStorage})
+    : _fileService =
+          fileService ??
+          (fileStorage != null
+              ? FileService(fileStorage: fileStorage)
+              : FileService());
 
   /// Pick a CSV file from the device
   Future<PlatformFileResult?> pickFile() async {
-    return _fileStorage.pickFile(allowedExtensions: ['csv']);
+    return _fileService.pickFile(allowedExtensions: ['csv']);
   }
 
   /// Parse CSV file and return raw data as list of lists
   Future<ParseResult> parseCsvFile(PlatformFileResult file) async {
     try {
-      final input = await _fileStorage.readFileAsString(file);
+      final input = await _fileService.readFileAsString(file);
       final normalized = input
           .replaceAll('\r\n', '\n')
           .replaceAll('\r', '\n')

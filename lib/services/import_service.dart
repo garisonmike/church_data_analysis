@@ -1,6 +1,6 @@
 import 'package:church_analytics/models/models.dart';
-import 'package:church_analytics/platform/file_storage.dart';
 import 'package:church_analytics/platform/file_storage_interface.dart';
+import 'package:church_analytics/services/file_service.dart';
 import 'package:church_analytics/services/validation_service.dart';
 import 'package:csv/csv.dart';
 import 'package:excel/excel.dart';
@@ -8,16 +8,20 @@ import 'package:excel/excel.dart';
 /// Service for importing weekly records from CSV or XLSX files
 class ImportService {
   final ValidationService _validationService = ValidationService();
-  final FileStorage _fileStorage;
+  final FileService _fileService;
 
-  ImportService({FileStorage? fileStorage})
-    : _fileStorage = fileStorage ?? getFileStorage();
+  ImportService({FileService? fileService, FileStorage? fileStorage})
+    : _fileService =
+          fileService ??
+          (fileStorage != null
+              ? FileService(fileStorage: fileStorage)
+              : FileService());
 
   /// Pick a CSV or XLSX file from the device
   Future<PlatformFileResult?> pickFile() async {
-    return _fileStorage.pickFile(allowedExtensions: ['csv', 'xlsx']);
+    return _fileService.pickFile(allowedExtensions: ['csv', 'xlsx']);
   }
-  
+
   /// Parse file and return raw data as list of lists
   Future<ParseResult> parseFile(PlatformFileResult file) async {
     if (file.name.toLowerCase().endsWith('.csv')) {
@@ -25,14 +29,16 @@ class ImportService {
     } else if (file.name.toLowerCase().endsWith('.xlsx')) {
       return _parseXlsxFile(file);
     } else {
-      return ParseResult.error('Unsupported file type. Please select a .csv or .xlsx file.');
+      return ParseResult.error(
+        'Unsupported file type. Please select a .csv or .xlsx file.',
+      );
     }
   }
 
   /// Parse CSV file and return raw data as list of lists
   Future<ParseResult> _parseCsvFile(PlatformFileResult file) async {
     try {
-      final input = await _fileStorage.readFileAsString(file);
+      final input = await _fileService.readFileAsString(file);
       final normalized = input
           .replaceAll('\r\n', '\n')
           .replaceAll('\r', '\n')
@@ -58,7 +64,7 @@ class ImportService {
   /// Parse XLSX file and return raw data as list of lists
   Future<ParseResult> _parseXlsxFile(PlatformFileResult file) async {
     try {
-      final bytes = await _fileStorage.readFileAsBytes(file);
+      final bytes = await _fileService.readFileAsBytes(file);
       final excel = Excel.decodeBytes(bytes);
 
       if (excel.tables.keys.isEmpty) {
@@ -69,8 +75,10 @@ class ImportService {
       if (sheet.rows.isEmpty) {
         return ParseResult.error('XLSX sheet is empty');
       }
-      
-      final headers = sheet.rows.first.map((e) => e?.value.toString().trim() ?? '').toList();
+
+      final headers = sheet.rows.first
+          .map((e) => e?.value.toString().trim() ?? '')
+          .toList();
       final rows = sheet.rows.skip(1).map((row) {
         return row.map((cell) => cell?.value).toList();
       }).toList();
@@ -225,32 +233,16 @@ class ImportService {
 
     // Common variations of field names
     final fieldVariations = {
-      'weekStartDate': [
-        'date',
-        'week',
-        'weekdate',
-        'week_date',
-        'startdate',
-      ],
+      'weekStartDate': ['date', 'week', 'weekdate', 'week_date', 'startdate'],
       'men': ['men', 'male', 'males', 'men_attendance'],
       'women': ['women', 'female', 'females', 'women_attendance'],
       'youth': ['youth', 'youths', 'youth_attendance', 'teenagers'],
       'children': ['children', 'kids', 'children_attendance'],
-      'sundayHomeChurch': [
-        'sundayhomechurch',
-        'home_church',
-        'shc',
-      ],
+      'sundayHomeChurch': ['sundayhomechurch', 'home_church', 'shc'],
       'tithe': ['tithe', 'tithes', 'tithing'],
       'offerings': ['offerings', 'offering', 'offertory'],
-      'emergencyCollection': [
-        'emergencycollection',
-        'emergency',
-      ],
-      'plannedCollection': [
-        'plannedcollection',
-        'planned',
-      ],
+      'emergencyCollection': ['emergencycollection', 'emergency'],
+      'plannedCollection': ['plannedcollection', 'planned'],
     };
 
     final allFields = fieldVariations.keys.toList();
@@ -272,11 +264,11 @@ class ImportService {
           }
         }
       }
-      
+
       if (headerIndex != -1) {
         // Ensure the same header is not used for multiple fields
         if (!mapping.containsValue(headerIndex)) {
-            mapping[fieldName] = headerIndex;
+          mapping[fieldName] = headerIndex;
         }
       }
     }
@@ -300,14 +292,9 @@ class ParseResult {
   final List<String>? headers;
   final List<List<dynamic>>? rows;
 
-  ParseResult.success(this.headers, this.rows)
-    : success = true,
-      error = null;
+  ParseResult.success(this.headers, this.rows) : success = true, error = null;
 
-  ParseResult.error(this.error)
-    : success = false,
-      headers = null,
-      rows = null;
+  ParseResult.error(this.error) : success = false, headers = null, rows = null;
 }
 
 /// Result of importing a single row

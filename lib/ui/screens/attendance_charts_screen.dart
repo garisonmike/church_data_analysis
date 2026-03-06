@@ -56,6 +56,7 @@ class _AttendanceChartsScreenState
         repaintBoundaryKey: key,
         churchName: 'Church', // In a real app, get from database
         chartType: chartName,
+        fileService: ref.read(fileServiceProvider),
       );
 
       if (!mounted) return;

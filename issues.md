@@ -276,11 +276,11 @@ On some platforms, file operations may fall back to hidden or app-internal direc
 - Guard patterns should be platform-specific (Android patterns differ from Linux).
 
 ### Acceptance Criteria
-- [ ] Paths containing `/data/data/`, `/.`, `/cache/` are rejected.
-- [ ] Fallback to `Downloads/ChurchAnalytics/` is automatic and logged.
-- [ ] A non-blocking warning banner informs the user that the path was overridden.
-- [ ] Valid user-accessible paths pass the guard without impact.
-- [ ] Unit tests cover known hidden path patterns.
+- [x] Paths containing `/data/data/`, `/.`, `/cache/` are rejected.
+- [x] Fallback to `Downloads/ChurchAnalytics/` is automatic and logged.
+- [x] A non-blocking warning banner informs the user that the path was overridden.
+- [x] Valid user-accessible paths pass the guard without impact.
+- [x] Unit tests cover known hidden path patterns.
 
 ### Regression Risk
 Low — guard is a new pre-write check; write logic unchanged.
@@ -292,6 +292,8 @@ Low — guard is a new pre-write check; write logic unchanged.
 
 ### Suggested Labels
 `bug`, `storage`, `cross-platform`, `priority:P1`
+
+**Status: COMPLETE**
 
 ---
 

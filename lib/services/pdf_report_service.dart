@@ -1,5 +1,5 @@
 import 'package:church_analytics/models/models.dart' as models;
-import 'package:church_analytics/platform/file_storage.dart';
+import 'package:church_analytics/services/file_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
@@ -491,9 +491,10 @@ class PdfReportService {
     required pw.Document pdf,
     required String fileName,
     String? customPath,
+    FileService? fileService,
   }) async {
     try {
-      final fileStorage = getFileStorage();
+      final service = fileService ?? FileService();
 
       // Ensure filename has .pdf extension
       final fullFileName = fileName.endsWith('.pdf')
@@ -512,18 +513,18 @@ class PdfReportService {
       // Generate PDF bytes
       final bytes = await pdf.save();
 
-      // Save to file
-      final path = await fileStorage.saveFileBytes(
-        fileName: fullFileName,
+      // Save via FileService
+      final result = await service.exportFileBytes(
+        filename: fullFileName,
         bytes: bytes,
-        fullPath: fullPath,
+        forcedPath: fullPath,
       );
 
       if (kDebugMode) {
-        debugPrint('PDF saved to: $path');
+        debugPrint('PDF saved to: ${result.filePath}');
       }
 
-      return path;
+      return result.filePath;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Error saving PDF: $e');

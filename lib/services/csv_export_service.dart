@@ -1,6 +1,5 @@
 import 'package:church_analytics/models/models.dart';
-import 'package:church_analytics/platform/file_storage.dart';
-import 'package:church_analytics/platform/file_storage_interface.dart';
+import 'package:church_analytics/services/file_service.dart';
 import 'package:csv/csv.dart';
 
 /// Result of a CSV export operation
@@ -47,7 +46,10 @@ class CsvExportOptions {
 
 /// Service for exporting data to CSV files
 class CsvExportService {
-  final FileStorage _fileStorage = getFileStorage();
+  final FileService _fileService;
+
+  CsvExportService({FileService? fileService})
+    : _fileService = fileService ?? FileService();
 
   /// Options for customizing CSV export content
   static const CsvExportOptions defaultOptions = CsvExportOptions();
@@ -193,11 +195,11 @@ class CsvExportService {
         fileName = generateExportFilename('weekly_records');
       }
 
-      final savedPath = await _fileStorage.saveFile(
-        fileName: fileName,
+      final savedPath = (await _fileService.exportFile(
+        filename: fileName,
         content: csv,
-        fullPath: fullPath,
-      );
+        forcedPath: fullPath,
+      )).filePath;
       if (savedPath == null) {
         return CsvExportResult.error('Failed to save CSV file');
       }
@@ -336,11 +338,11 @@ class CsvExportService {
         fileName = generateExportFilename('churches');
       }
 
-      final savedPath = await _fileStorage.saveFile(
-        fileName: fileName,
+      final savedPath = (await _fileService.exportFile(
+        filename: fileName,
         content: csv,
-        fullPath: fullPath,
-      );
+        forcedPath: fullPath,
+      )).filePath;
 
       return CsvExportResult.success(savedPath ?? fileName, churches.length);
     } catch (e) {
@@ -379,11 +381,11 @@ class CsvExportService {
         fileName = generateExportFilename('admin_users');
       }
 
-      final savedPath = await _fileStorage.saveFile(
-        fileName: fileName,
+      final savedPath = (await _fileService.exportFile(
+        filename: fileName,
         content: csv,
-        fullPath: fullPath,
-      );
+        forcedPath: fullPath,
+      )).filePath;
 
       return CsvExportResult.success(savedPath ?? fileName, admins.length);
     } catch (e) {
