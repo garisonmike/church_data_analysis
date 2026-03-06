@@ -468,11 +468,11 @@ The app has no mechanism to check for available updates. A machine-readable `upd
 - Schema version field to allow future non-breaking evolution.
 
 ### Acceptance Criteria
-- [ ] `update.json` schema is fully documented.
-- [ ] `UpdateManifest` Dart model parses the schema without error.
-- [ ] Unknown fields are ignored gracefully (forward compatibility).
-- [ ] Missing required fields throw a typed `UpdateManifestParseException`.
-- [ ] Unit tests cover valid, partial, and malformed JSON inputs.
+- [x] `update.json` schema is fully documented.
+- [x] `UpdateManifest` Dart model parses the schema without error.
+- [x] Unknown fields are ignored gracefully (forward compatibility).
+- [x] Missing required fields throw a typed `UpdateManifestParseException`.
+- [x] Unit tests cover valid, partial, and malformed JSON inputs.
 
 ### Regression Risk
 None — new contract and model only.
@@ -481,6 +481,8 @@ None — new contract and model only.
 - Schema documented in `docs/update-contract.md`
 - `UpdateManifest` model implemented with unit tests
 - Example `update.json` committed to `docs/`
+
+**Status: COMPLETE**
 
 ### Suggested Labels
 `enhancement`, `update-system`, `priority:P2`

@@ -578,3 +578,76 @@ All export/import operations showed generic `_showStatus()` text ("CSV exported 
 - [ ] Cancel export (picker dismissed) → no SnackBar shown, only `_showStatus` cancel message
 
 ---
+
+
+---
+
+## UPDATE-001 — Introduce update.json contract
+
+**Date:** 2026-03-06
+**Priority:** P2
+**Status:** READY FOR REVIEW
+
+### Problem Addressed
+The app had no `UpdateManifest` Dart model to parse the `update.json` schema defined in `docs/update-contract.md` (delivered in UPDATE-009). Without the model, no downstream service (`UpdateService`, `UpdateService.checkForUpdate`) could consume the manifest, and the contract document had no Dart reference implementation.
+
+### Files Created/Modified
+
+| File | Action |
+|------|--------|
+| `lib/models/update_manifest_parse_exception.dart` | **CREATED** — `UpdateManifestParseException` with `message`, `field`, `invalidValue` |
+| `lib/models/update_manifest.dart` | **CREATED** — `PlatformAsset`, `UpdateManifest` with `fromJson`, `assetFor`, validation helpers |
+| `lib/models/models.dart` | **UPDATED** — added exports for both new files |
+| `docs/update.json` | **CREATED** — example v1.0.0 manifest with android/windows/linux assets |
+| `test/models/update_manifest_test.dart` | **CREATED** — 40 unit tests |
+
+### Implementation Summary
+
+**`UpdateManifestParseException`** — typed exception for parse/validation failures:
+- `message` (required), `field` (field path e.g. `"platforms.android.sha256"`), `invalidValue` (raw bad value)
+- Implements `Exception`; `toString()` includes all context fields
+
+**`PlatformAsset.fromJson(json, platformKey)`**:
+- Validates `download_url` (required, must be `https://`)
+- Validates `sha256` (required, must be exactly 64 hex chars)
+- Unknown fields silently ignored
+
+**`UpdateManifest.fromJson(Object? json)`**:
+- Validates top-level is `Map<String, dynamic>`
+- Validates `version` and `min_supported_version` match `^\d+\.\d+\.\d+$`
+- Validates `release_date` matches `^\d{4}-\d{2}-\d{2}$`
+- Validates `release_notes` is a string (empty allowed)
+- Validates `platforms` is a JSON object; delegates each entry to `PlatformAsset.fromJson`
+- Returns platforms as an unmodifiable map
+- Unknown top-level or platform-level fields silently ignored (forward compatibility)
+- `assetFor(platformName)` — null-safe lookup helper
+
+**`docs/update.json`** — committed example for v1.0.0 with realistic release notes and three platform assets (android, windows, linux).
+
+### Acceptance Criteria Verification
+- [x] `update.json` schema fully documented — complete in `docs/update-contract.md` (UPDATE-009)
+- [x] `UpdateManifest` Dart model parses the schema without error — `fromJson` handles all valid inputs
+- [x] Unknown fields ignored gracefully — confirmed by dedicated tests for both top-level and platform-level unknown fields
+- [x] Missing required fields throw `UpdateManifestParseException` — all 6 required fields validated; `field` property set in every exception
+- [x] Unit tests cover valid, partial, and malformed JSON inputs — 40 tests across 7 groups
+
+### Test Results
+```
+40/40 new tests pass (update_manifest_test.dart)
+533/533 full test suite passes. No regressions.
+```
+
+### Regression Risk
+None — entirely new model files; no existing code modified except models.dart barrel.
+
+### Static Analysis
+No issues found on any new or modified file.
+
+### Integration Notes for UPDATE-002
+`UpdateService.checkForUpdate()` should:
+1. Fetch manifest JSON via HTTP GET (`UpdateUrlValidator.validateHttpsUrl()` first)
+2. Call `UpdateManifest.fromJson(jsonDecode(body))`
+3. Catch `UpdateManifestParseException` → return `UpdateCheckResult.error()`
+4. Call `manifest.assetFor(currentPlatformName)` for the platform asset
+
+---
