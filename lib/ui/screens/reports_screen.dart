@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../database/app_database.dart' as db;
 import '../../models/models.dart';
 import '../../platform/file_storage.dart';
+import '../../platform/path_safety_guard.dart';
 import '../../repositories/repositories.dart';
 import '../../services/services.dart';
 
@@ -651,10 +652,30 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
 
     final trimmed = normalizeExportPath(rawPath);
 
-    if (trimmed != null && mounted) {
-      setState(() => _lastExportPath = trimmed);
-      if (kDebugMode) {
-        debugPrint('Export location selected: $trimmed');
+    if (trimmed != null) {
+      // Reject paths that point to hidden or app-internal directories.
+      final guardResult = PathSafetyGuard.guard(trimmed);
+      if (guardResult.wasOverridden) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Selected folder is not user-accessible. '
+                'Using the default export folder instead.',
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        // Return null so the caller falls back to the platform default path.
+        return null;
+      }
+
+      if (mounted) {
+        setState(() => _lastExportPath = trimmed);
+        if (kDebugMode) {
+          debugPrint('Export location selected: $trimmed');
+        }
       }
     }
 

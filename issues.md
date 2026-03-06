@@ -22,10 +22,10 @@ If the picker returns a path with trailing whitespace, saving may fail silently 
 - Add assertion or guard: `assert(path == path.trim(), 'Export path must not contain leading/trailing whitespace')`.
 
 ### Acceptance Criteria
-- [ ] Returned path is always trimmed.
-- [ ] Stored export path (`_lastExportPath`) is trimmed.
-- [ ] No trailing whitespace can cause a save failure.
-- [ ] No regression in file selection behavior across platforms.
+- [x] Returned path is always trimmed.
+- [x] Stored export path (`_lastExportPath`) is trimmed.
+- [x] No trailing whitespace can cause a save failure.
+- [x] No regression in file selection behavior across platforms.
 
 ### Regression Risk
 Low — isolated logic change with no structural impact.
@@ -38,6 +38,8 @@ Low — isolated logic change with no structural impact.
 
 ### Suggested Labels
 `bug`, `storage`, `priority:P1`
+
+**Status: COMPLETE**
 
 ---
 
