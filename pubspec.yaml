@@ -68,6 +68,10 @@ dependencies:
   # URL / folder launcher
   url_launcher: ^6.3.1
 
+  # Update service
+  http: ^1.2.2
+  package_info_plus: ^8.0.3
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

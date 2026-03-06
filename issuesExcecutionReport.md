@@ -651,3 +651,41 @@ No issues found on any new or modified file.
 4. Call `manifest.assetFor(currentPlatformName)` for the platform asset
 
 ---
+
+## UPDATE-002 — Implement UpdateService
+
+### Status: COMPLETE
+
+### Files Created
+- `lib/services/update_service.dart` — `UpdateCheckResult` value class (named factories: `available`, `upToDate`, `failure`), `UpdateService` (injectable `http.Client`, `manifestUrl`, `getPackageInfo`, `networkTimeout`), Riverpod `updateServiceProvider` and `updateCheckProvider` (`AsyncNotifierProvider<UpdateCheckNotifier, UpdateCheckResult>`)
+- `test/services/update_service_test.dart` — 25 tests across 4 groups
+
+### Files Modified
+- `pubspec.yaml` — added `http: ^1.2.2` and `package_info_plus: ^8.0.3` under dependencies
+- `lib/services/services.dart` — added `export 'update_service.dart';`
+
+### Implementation Notes
+- `UpdateService` is fully injectable for testing: `http.Client`, manifest URL, `PackageInfo` getter, and network timeout are all constructor parameters; production defaults are applied when omitted.
+- Session cache: `_cachedResult` is set on the first call (success or failure) and returned on all subsequent calls; `resetCache()` clears it for a fresh re-fetch.
+- Timeout: injected `Duration` defaults to 10 s; `TimeoutException` is caught and surfaced as `UpdateCheckResult.failure('… timed out …')`.
+- All error paths (security, parse, network, HTTP non-200) return typed `UpdateCheckResult.failure(message)` — no unhandled exceptions escape `checkForUpdate()`.
+- Lightweight semver comparison (major.minor.patch integers, pre-release suffix stripped) — marked with TODO for UPDATE-003 `VersionComparator` integration.
+- Riverpod: `updateServiceProvider` is a plain `Provider<UpdateService>`; `updateCheckProvider` is an `AsyncNotifierProvider` via `UpdateCheckNotifier extends AsyncNotifier<UpdateCheckResult>`. `UpdateCheckNotifier.refresh()` resets the cache and invalidates self.
+
+### Test Results
+```
+25/25 new tests pass (update_service_test.dart)
+558/558 full test suite passes. No regressions.
+```
+
+### Acceptance Criteria Verified
+- [x] `checkForUpdate()` returns correct `isUpdateAvailable` flag (tests: version comparison group, 8 cases)
+- [x] Network timeout enforced — injected 100 ms timeout with 300 ms mock delay
+- [x] Malformed JSON returns typed failure — `{invalid json tail -20 issuesExcecutionReport.md!}` and partial manifest tested
+- [x] Result cached for session — verified with call-count assertion and `identical()` check
+- [x] HTTP mock tests: update available, up-to-date, network error, parse error, timeout, 404, 500, non-HTTPS URL, resetCache scenarios
+
+### Regression Risk
+Low — new files only; no existing code modified except pubspec.yaml and services.dart barrel.
+
+---

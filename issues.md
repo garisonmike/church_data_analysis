@@ -513,11 +513,11 @@ A dedicated `UpdateService` must be implemented to fetch, parse, and cache the r
 - Register as Riverpod `AsyncNotifierProvider`.
 
 ### Acceptance Criteria
-- [ ] `checkForUpdate()` returns correct `isUpdateAvailable` flag.
-- [ ] Network timeout of 10 seconds is enforced.
-- [ ] Malformed JSON returns a typed error, not an unhandled exception.
-- [ ] Result is cached for the session; repeated calls do not re-fetch.
-- [ ] Unit tests mock HTTP responses for: update available, up-to-date, network error, parse error.
+- [x] `checkForUpdate()` returns correct `isUpdateAvailable` flag.
+- [x] Network timeout of 10 seconds is enforced.
+- [x] Malformed JSON returns a typed error, not an unhandled exception.
+- [x] Result is cached for the session; repeated calls do not re-fetch.
+- [x] Unit tests mock HTTP responses for: update available, up-to-date, network error, parse error.
 
 ### Regression Risk
 Low — new service with no changes to existing code.
@@ -529,6 +529,8 @@ Low — new service with no changes to existing code.
 
 ### Suggested Labels
 `enhancement`, `update-system`, `priority:P2`
+
+**Status: COMPLETE**
 
 ---
 
