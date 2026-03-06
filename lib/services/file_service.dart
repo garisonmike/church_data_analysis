@@ -513,6 +513,7 @@ class FileService {
 final fileServiceProvider = Provider<FileService>((ref) {
   final settingsRepo = ref.read(settingsRepositoryProvider);
   return FileService(
+    activityLog: ref.read(activityLogServiceProvider),
     exportPathResolver: DefaultExportPathResolver(
       getCustomPath: settingsRepo.getDefaultExportPath,
     ),

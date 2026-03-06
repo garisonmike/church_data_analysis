@@ -1314,3 +1314,97 @@ Native platforms (Android, Linux…) issue `http.Client` requests directly — n
 `flutter analyze lib/services/update_service.dart` — no issues found.
 
 **Status: READY FOR REVIEW**
+
+---
+
+## STORAGE-004 — Export/Import activity log in Settings
+
+**Priority:** P3  
+**Executed:** 2026-03-06  
+**Status:** COMPLETE
+
+### Problem
+There was no record of past export or import operations. Users could not verify when a backup was last saved or whether an import succeeded. The `ActivityLogService` interface existed as a no-op stub, and `FileService` was already wired to call it but nothing was persisted.
+
+### Solution Implemented
+
+1. **`ActivityLogEntry` model** — new value type capturing `id`, `type` (`ActivityLogEntryType` enum: export / import / installerLaunch), `filename`, `path` (nullable), `success`, `message` (nullable), and `timestamp`. Full `toJson` / `fromJson` round-trip for SharedPreferences persistence. Unknown `type` values fall back to `export` for forward compatibility.
+
+2. **`SharedPreferencesActivityLogService`** — real implementation replacing the `NoOpActivityLogService` stub:
+   - Persists a JSON-encoded list to SharedPreferences under key `activity_log`.
+   - Max 50 entries retained (FIFO — oldest entry dropped when capacity is exceeded).
+   - `getRecentEntries([int count = 10])` returns the most-recent entries in reverse-chronological order (newest first).
+   - Implements all three abstract methods: `logExport`, `logImport`, `logInstallerLaunch`.
+   - Gracefully handles corrupt persisted JSON by starting fresh.
+
+3. **`activityLogServiceProvider`** — Riverpod `Provider<SharedPreferencesActivityLogService>` injected from `sharedPreferencesProvider`.
+
+4. **`fileServiceProvider` wired** — `activityLog: ref.read(activityLogServiceProvider)` injected so every production export/import call is now logged automatically. No changes to `FileService` logic itself.
+
+5. **`ActivityLogCard` widget** — new `ConsumerWidget` displaying the "Recent Activity" card in App Settings:
+   - Shows up to 10 most-recent entries in a `ListView` with `NeverScrollableScrollPhysics` (embedded in the outer scroll view).
+   - Per-entry `ListTile`: green `check_circle_outline` / red `error_outline` icon, filename (overflow ellipsis), type badge (upload_file / download_for_offline / install_mobile icon + label), relative timestamp (just now / Nm ago / Nh ago / Nd ago / MMM d, y).
+   - Optional second subtitle row for error/message text.
+   - Empty-state placeholder when no entries exist.
+
+6. **`app_settings_screen.dart`** — `ActivityLogCard` added between the `_ExportFolderCard` and `AboutUpdatesCard` sections.
+
+### Files Modified / Created
+
+| File | Change |
+|------|--------|
+| `lib/models/activity_log_entry.dart` | **Created** — `ActivityLogEntryType` enum + `ActivityLogEntry` value type |
+| `lib/models/models.dart` | Updated — added `export 'activity_log_entry.dart'` |
+| `lib/services/activity_log_service.dart` | **Replaced** — added `SharedPreferencesActivityLogService` + `activityLogServiceProvider`; abstract class + `NoOpActivityLogService` preserved unchanged |
+| `lib/services/file_service.dart` | Updated — `fileServiceProvider` now injects `activityLogServiceProvider` |
+| `lib/ui/widgets/activity_log_card.dart` | **Created** — `ActivityLogCard` widget with entry tiles, type badges, relative timestamps, and empty state |
+| `lib/ui/widgets/widgets.dart` | Updated — added `export 'activity_log_card.dart'` |
+| `lib/ui/screens/app_settings_screen.dart` | Updated — `ActivityLogCard()` inserted before `AboutUpdatesCard` |
+| `test/services/activity_log_service_test.dart` | **Created** — 27 unit tests |
+
+### Implementation Notes
+
+#### FIFO cap design
+`_append()` always reads the full list, appends, then trims using `sublist(length - kMaxEntries)` to keep the newest entries. This is O(n) but `n ≤ 50`, so the cost is negligible. SharedPreferences `setString` is the only I/O call per operation.
+
+#### NoOpActivityLogService preserved
+The abstract interface and `NoOpActivityLogService` were kept intact so that all existing widget tests and service tests that inject `NoOpActivityLogService` continue to compile and pass without modification.
+
+#### fileServiceProvider injection — no logic change
+`FileService` already called `_activityLog.logExport(...)` and `_activityLog.logImport(...)` at every exit path. Replacing the no-op with the real service required only a single-line change to the Riverpod provider; all call sites are unchanged.
+
+#### Installer launch entries
+`logInstallerLaunch` (added in UPDATE-011) is also persisted — entries appear in the Recent Activity card with the "Install" type badge and the `install_mobile` icon.
+
+### Acceptance Criteria Verification
+
+| Criterion | Status |
+|-----------|--------|
+| Every export produces a log entry (success or failure) | ✅ `FileService.exportFile` and `exportFileBytes` both call `logExport` at every exit path; now backed by real persistence |
+| Every import produces a log entry (success or failure) | ✅ `FileService.importFile` and `pickFile` both call `logImport`; now backed by real persistence |
+| Log visible in Settings under "Recent Activity" | ✅ `ActivityLogCard` inserted in `AppSettingsScreen` |
+| Log persists across app restarts | ✅ SharedPreferences persists between app sessions |
+| Log capped at 50 entries; oldest auto-removed | ✅ `kMaxEntries = 50`; FIFO eviction in `_append()` |
+| Error message shown for failed operations | ✅ `message` field shown as second subtitle line in `_ActivityEntryTile` |
+
+### Test Results
+```
+27 new tests in activity_log_service_test.dart — all passed.
+732 total tests (entire suite) — all passed, zero regressions.
+```
+
+### Regression Risk
+Low — the only breaking change to an existing file is the single-line `fileServiceProvider` update. All previously injected call sites (`FileService` constructor callers in tests) still use `NoOpActivityLogService` as their default, so they are unaffected. All 705 pre-existing tests pass without modification.
+
+### Static Analysis Result
+`flutter analyze` on all 5 modified/created source files — no issues found.
+
+### Manual Verification Required
+- Open App Settings: confirm "Recent Activity" card appears with correct heading.
+- Perform a CSV export: confirm entry (filename, green icon, "Export" badge, relative time) appears in the card on next visit to Settings.
+- Perform a failed import (cancel the picker): confirm NO entry appears (cancelled import is not logged — only errors are).
+- Perform a failed export (inject error): confirm red icon + error message line appear.
+- Close and reopen the app: confirm entries persist across restart.
+- Log 51+ operations: confirm the list cap is respected (max 50 entries visible via `getRecentEntries(50)`).
+
+**Status: READY FOR REVIEW**

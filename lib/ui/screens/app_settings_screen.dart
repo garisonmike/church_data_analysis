@@ -7,6 +7,7 @@ import '../../models/app_settings.dart';
 import '../../repositories/settings_repository.dart';
 import '../../services/settings_service.dart';
 import '../widgets/about_updates_card.dart';
+import '../widgets/activity_log_card.dart';
 
 /// Screen for managing application settings like currency, locale etc.
 class AppSettingsScreen extends ConsumerWidget {
@@ -294,6 +295,11 @@ class AppSettingsScreen extends ConsumerWidget {
 
           // File Export Settings Card (native platforms only)
           if (!kIsWeb) const _ExportFolderCard(),
+
+          const SizedBox(height: 16),
+
+          // Recent Activity Card
+          const ActivityLogCard(),
 
           const SizedBox(height: 16),
 

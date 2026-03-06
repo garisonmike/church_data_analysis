@@ -1,4 +1,5 @@
 // Export all data models
+export 'activity_log_entry.dart';
 export 'admin_user.dart';
 export 'app_settings.dart';
 export 'church.dart';
