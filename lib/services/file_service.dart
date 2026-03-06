@@ -1,5 +1,6 @@
 import 'package:church_analytics/platform/file_storage.dart';
 import 'package:church_analytics/platform/file_storage_interface.dart';
+import 'package:church_analytics/platform/filename_conflict_resolver.dart';
 import 'package:church_analytics/platform/filename_sanitizer.dart';
 import 'package:church_analytics/platform/path_safety_guard.dart';
 import 'package:church_analytics/services/activity_log_service.dart';
@@ -71,6 +72,12 @@ class ImportResult {
 ///   Full auto-resolution enforcement will be added in STORAGE-002.
 /// - Calls [ActivityLogService] for every export and import operation.
 ///   The default implementation is a no-op stub until STORAGE-004 lands.
+/// - Resolves duplicate filenames via [FilenameConflictResolver] when a
+///   [forcedPath] is supplied to [exportFile] / [exportFileBytes].  When the
+///   target path already exists the write is redirected to `stem (1).ext`,
+///   `stem (2).ext`, etc., so that no existing file is silently overwritten.
+///   Default-directory exports (no [forcedPath]) are deduplicated by the
+///   platform layer (`_ensureUniqueFile` in `FileStorageImpl`).
 ///
 /// ### Path safety note
 /// When a [forcedPath] is supplied to [exportFile] / [exportFileBytes],
@@ -86,10 +93,15 @@ class ImportResult {
 class FileService {
   final FileStorage _fileStorage;
   final ActivityLogService _activityLog;
+  final FilenameConflictResolver _conflictResolver;
 
-  FileService({FileStorage? fileStorage, ActivityLogService? activityLog})
-    : _fileStorage = fileStorage ?? getFileStorage(),
-      _activityLog = activityLog ?? const NoOpActivityLogService();
+  FileService({
+    FileStorage? fileStorage,
+    ActivityLogService? activityLog,
+    FilenameConflictResolver? conflictResolver,
+  }) : _fileStorage = fileStorage ?? getFileStorage(),
+       _activityLog = activityLog ?? const NoOpActivityLogService(),
+       _conflictResolver = conflictResolver ?? const FilenameConflictResolver();
 
   // -------------------------------------------------------------------------
   // Export
@@ -101,9 +113,11 @@ class FileService {
   /// the platform layer — invalid characters are stripped, Windows reserved
   /// names are prefixed, and the length is capped automatically.
   ///
-  /// Provide [forcedPath] to write to a specific absolute path;
-  /// omit it to let the platform choose the default export directory
-  /// (`Downloads/ChurchAnalytics/`).
+  /// When [forcedPath] is provided and that path already exists on disk,
+  /// [FilenameConflictResolver] automatically redirects the write to the first
+  /// free path (`stem (1).ext`, `stem (2).ext`, …) so no existing file is
+  /// silently overwritten.  Omit [forcedPath] to let the platform choose the
+  /// default export directory (`Downloads/ChurchAnalytics/`).
   Future<ExportResult> exportFile({
     required String filename,
     required String content,
@@ -111,18 +125,19 @@ class FileService {
   }) async {
     try {
       final safeFilename = _sanitizeFilename(filename);
-      _auditPath(safeFilename, forcedPath);
+      final resolvedPath = await _resolveConflict(forcedPath);
+      _auditPath(safeFilename, resolvedPath);
 
       final savedPath = await _fileStorage.saveFile(
         fileName: safeFilename,
         content: content,
-        fullPath: forcedPath,
+        fullPath: resolvedPath,
       );
 
       if (savedPath == null) {
         _activityLog.logExport(
           filename: safeFilename,
-          path: forcedPath,
+          path: resolvedPath,
           success: false,
           error: 'Platform returned null — file may not have been saved.',
         );
@@ -153,7 +168,8 @@ class FileService {
   /// Saves raw [bytes] to a file named [filename].
   ///
   /// The filename is sanitized via [FilenameSanitizer] before being passed to
-  /// the platform layer (see [exportFile] for details).
+  /// the platform layer (see [exportFile] for details).  Duplicate-path
+  /// resolution applies in the same way as [exportFile].
   ///
   /// Provide [forcedPath] to write to a specific absolute path;
   /// omit it to let the platform choose the default export directory.
@@ -164,18 +180,19 @@ class FileService {
   }) async {
     try {
       final safeFilename = _sanitizeFilename(filename);
-      _auditPath(safeFilename, forcedPath);
+      final resolvedPath = await _resolveConflict(forcedPath);
+      _auditPath(safeFilename, resolvedPath);
 
       final savedPath = await _fileStorage.saveFileBytes(
         fileName: safeFilename,
         bytes: bytes,
-        fullPath: forcedPath,
+        fullPath: resolvedPath,
       );
 
       if (savedPath == null) {
         _activityLog.logExport(
           filename: safeFilename,
-          path: forcedPath,
+          path: resolvedPath,
           success: false,
           error: 'Platform returned null — file may not have been saved.',
         );
@@ -289,6 +306,21 @@ class FileService {
       debugPrint('[FileService] Filename sanitized: "$filename" → "$safe"');
     }
     return safe;
+  }
+
+  /// Resolves a non-conflicting path via [FilenameConflictResolver].
+  ///
+  /// Returns [path] unchanged when it is `null` (default-directory export).
+  /// When [path] already exists on disk the resolver returns the first free
+  /// candidate (`stem (1).ext`, `stem (2).ext`, …) so no existing file is
+  /// silently overwritten.
+  Future<String?> _resolveConflict(String? path) async {
+    if (path == null) return null;
+    final resolved = await _conflictResolver.resolve(path);
+    if (resolved != path && kDebugMode) {
+      debugPrint('[FileService] Conflict resolved: "$path" → "$resolved"');
+    }
+    return resolved;
   }
 
   /// Runs [PathSafetyGuard] against [path] for audit purposes.

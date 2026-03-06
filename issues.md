@@ -364,10 +364,10 @@ Invalid filenames can cause failures on Windows or inconsistent behavior across 
 - Enforce safe max filename length.
 
 ### Acceptance Criteria
-- [ ] Invalid characters removed.
-- [ ] Reserved names blocked or auto-modified.
-- [ ] Whitespace normalized.
-- [ ] Filename length capped safely.
+- [x] Invalid characters removed.
+- [x] Reserved names blocked or auto-modified.
+- [x] Whitespace normalized.
+- [x] Filename length capped safely.
 
 ### Regression Risk
 Medium
@@ -376,6 +376,8 @@ Medium
 - Cross-platform filename sanitizer implemented
 - PDF, CSV, image exports tested
 - No regression in export naming
+
+**Status: COMPLETE**
 
 ### Suggested Labels
 `storage`, `filesystem`, `priority:P1`

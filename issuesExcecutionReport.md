@@ -297,3 +297,64 @@ flutter test test/services/ test/platform/ test/ui/
 - [ ] Export PDF, CSV, chart PNG: confirm extensions are preserved after sanitization.
 
 ---
+
+## STORAGE-010 — Duplicate filename conflict resolution
+
+**Priority:** P1  
+**Status:** Implementation complete; all automated tests passing (277/277)
+
+---
+
+### Files Modified / Created
+
+| File | Action |
+|------|--------|
+| `lib/platform/filename_conflict_resolver.dart` | **CREATED** — `FilenameConflictResolver` with injectable `FileExistsFn`; resolves conflicts via `stem (1).ext`, `stem (2).ext`, … |
+| `lib/services/file_service.dart` | **UPDATED** — added `filename_conflict_resolver.dart` import; `FilenameConflictResolver` field + constructor param; `_resolveConflict()` private helper; both `exportFile` and `exportFileBytes` now resolve conflicts before writing |
+| `test/platform/filename_conflict_resolver_test.dart` | **CREATED** — 17 unit tests covering all 4 AC groups and edge cases |
+
+---
+
+### Implementation Summary
+
+**Conflict resolution scope:** Applies to `forcedPath` (user-picked save path) exports, where `FileService` knows the exact target path before writing. Default-directory exports (no `forcedPath`) are deduplicated by the platform layer's existing `_ensureUniqueFile` in `FileStorageImpl` (uses `_N` suffix pattern).
+
+**Resolution algorithm:**
+1. If the target path does not exist → return unchanged.
+2. Try `stem (1).ext`, `stem (2).ext`, … up to `maxAttempts` (default 999).
+3. If all slots 1–999 are taken → timestamp fallback: `stem_<ms>.ext`.
+
+**Non-blocking on Web:** `FilenameConflictResolver._platformFileExists` always returns `false` on Web (no filesystem access), so no renaming occurs — consistent with Web's download-only export model.
+
+**Testability:** `FileExistsFn` is injectable, enabling fast pure-Dart tests with no real filesystem I/O.
+
+---
+
+### Acceptance Criteria Verification
+
+| AC | Result |
+|----|--------|
+| Duplicate detection implemented | ✅ `FilenameConflictResolver.resolve()` checks existence before writing |
+| Auto-rename logic applied | ✅ `stem (1).ext`, `stem (2).ext`, … chain with timestamp fallback |
+| No silent overwrites | ✅ `FileService` resolves conflict before calling `_fileStorage.saveFile/saveFileBytes` |
+| Behavior documented | ✅ Class and method doc comments; scope note on default-dir vs forced-path |
+
+---
+
+### Test Results
+
+```
+flutter test test/services/ test/platform/ test/ui/
+success: True | passed: 277 | failures: 0
+```
+
+---
+
+### Manual QA Checklist
+
+- [ ] Export a CSV to a path that already contains a file with the same name: confirm `(1)` suffix applied.
+- [ ] Export again with `(1)` also present: confirm `(2)` suffix applied.
+- [ ] Export using default directory (no custom path): confirm platform deduplication still works.
+- [ ] Confirm no behavior change for new paths (no conflict) — file saved at original path.
+
+---
