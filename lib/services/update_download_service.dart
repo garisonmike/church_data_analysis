@@ -151,10 +151,14 @@ class UpdateDownloadService {
       UpdateUrlValidator.validateHttpsUrl(asset.downloadUrl);
 
       // Pre-download disk space check (UPDATE-010).
-      // Fail-open: skipped whenever Content-Length or free space is unknown.
+      // Fail-open: skipped whenever Content-Length is unavailable, zero, or
+      // the free-space query fails.
+      // NOTE: GitHub Releases download URLs typically resolve through CDN
+      // redirects (HTTP 302).  _fetchContentLength returns null for any
+      // non-200 status, so the check is silently skipped in that case.
       final uri = Uri.parse(asset.downloadUrl);
       final contentLength = await _fetchContentLength(uri);
-      if (contentLength != null) {
+      if (contentLength != null && contentLength > 0) {
         final freeBytes = await _freeSpaceResolver(destDir.path);
         if (freeBytes != null && freeBytes < contentLength) {
           return UpdateDownloadResult.failure(
@@ -162,7 +166,7 @@ class UpdateDownloadService {
             '${formatBytes(contentLength)} required, '
             '${formatBytes(freeBytes)} available. '
             'Free up disk space and try again.',
-            errorType: UpdateErrorType.downloadError,
+            errorType: UpdateErrorType.insufficientDiskSpace,
           );
         }
       }
@@ -209,8 +213,21 @@ class UpdateDownloadService {
   // Internals
   // -------------------------------------------------------------------------
 
-  /// Issues a HEAD request to [url] and returns the `Content-Length` value,
-  /// or `null` if the header is absent, non-numeric, or the request fails.
+  /// Issues a HEAD request to [url] and returns the `Content-Length` value in
+  /// bytes, or `null` when the value is unavailable.
+  ///
+  /// Returns `null` when:
+  /// - The response status is not 200 (including redirects — see note below).
+  /// - The `Content-Length` header is absent or non-numeric.
+  /// - The request throws for any reason.
+  /// - The returned value is zero or negative (malformed response).
+  ///
+  /// **CDN redirect note:** GitHub Releases download URLs typically issue an
+  /// HTTP 302 redirect to a CDN (e.g. objects.githubusercontent.com).  If the
+  /// HTTP client does not follow the redirect for HEAD requests, this method
+  /// will receive a 302 and return `null`, causing the disk-space check to be
+  /// skipped (fail-open).  This is the expected behaviour: the download still
+  /// proceeds and a partial-write failure is handled by the catch block.
   ///
   /// Failures are silently swallowed — this is a best-effort preflight that
   /// must never block a legitimate download.
@@ -218,7 +235,9 @@ class UpdateDownloadService {
     try {
       final response = await _client.head(url);
       if (response.statusCode == 200) {
-        return int.tryParse(response.headers['content-length'] ?? '');
+        final parsed = int.tryParse(response.headers['content-length'] ?? '');
+        // Guard against zero / negative — treat as unavailable.
+        return (parsed != null && parsed > 0) ? parsed : null;
       }
     } catch (_) {
       // Best-effort — HEAD not supported or network error; skip the check.

@@ -17,6 +17,11 @@ enum UpdateErrorType {
   /// The installer file could not be downloaded from the remote server.
   downloadError,
 
+  /// There is not enough free disk space to download and save the installer.
+  ///
+  /// The user must free up storage before retrying the download.
+  insufficientDiskSpace,
+
   /// The downloaded installer's SHA-256 hash does not match the manifest.
   ///
   /// This is a security-level failure and must never be silently ignored.

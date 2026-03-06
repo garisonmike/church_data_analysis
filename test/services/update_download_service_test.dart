@@ -256,7 +256,7 @@ void main() {
 
   group('UpdateDownloadService — disk space validation', () {
     test(
-      'aborts with downloadError when free space is less than content-length',
+      'aborts with insufficientDiskSpace when free space is less than content-length',
       () async {
         const installerSize = 50 * 1024 * 1024; // 50 MB
         const freeSpace = 10 * 1024 * 1024; // 10 MB — insufficient
@@ -285,7 +285,7 @@ void main() {
             destDir: destDir,
           );
           expect(result.isError, isTrue);
-          expect(result.errorType, UpdateErrorType.downloadError);
+          expect(result.errorType, UpdateErrorType.insufficientDiskSpace);
           expect(result.error, isNotNull);
           // Message must include both required and available sizes.
           expect(result.error, contains('50.0 MB'));
@@ -464,6 +464,68 @@ void main() {
           );
           expect(result.isError, isTrue);
           expect(result.error!.toLowerCase(), contains('free up disk space'));
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'skips check and proceeds when HEAD returns a redirect (302) — CDN fail-open',
+      () async {
+        // GitHub Releases CDN issues 302 redirects for asset downloads.
+        // A 302 from HEAD must not block the download (fail-open).
+        final service = UpdateDownloadService(
+          client: MockClient((request) async {
+            if (request.method == 'HEAD') {
+              return http.Response(
+                '',
+                302,
+                headers: {'location': 'https://cdn.example.com/app.tar.gz'},
+              );
+            }
+            return http.Response('installer-bytes', 200);
+          }),
+          freeSpaceResolver: (_) async =>
+              1024, // tiny free space — would abort if check ran
+        );
+
+        final destDir = await Directory.systemTemp.createTemp('uds_test_');
+        try {
+          final result = await service.download(
+            manifest: makeManifest(),
+            destDir: destDir,
+          );
+          // Check skipped → download proceeds → success.
+          expect(result.isSuccess, isTrue);
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'skips check and proceeds when HEAD returns content-length of zero',
+      () async {
+        // A zero Content-Length is a malformed response; treat as unavailable.
+        final service = UpdateDownloadService(
+          client: MockClient((request) async {
+            if (request.method == 'HEAD') {
+              return http.Response('', 200, headers: {'content-length': '0'});
+            }
+            return http.Response('installer-bytes', 200);
+          }),
+          freeSpaceResolver: (_) async => 512, // tiny — would abort if checked
+        );
+
+        final destDir = await Directory.systemTemp.createTemp('uds_test_');
+        try {
+          final result = await service.download(
+            manifest: makeManifest(),
+            destDir: destDir,
+          );
+          // Zero content-length → skip check → download proceeds → success.
+          expect(result.isSuccess, isTrue);
         } finally {
           await destDir.delete(recursive: true);
         }

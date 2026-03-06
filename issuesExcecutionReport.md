@@ -1026,3 +1026,74 @@ No issues found (`flutter analyze` on both source files).
 - [ ] Linux: same scenario using `df` output — confirm free-space value is correctly parsed.
 - [ ] Windows: `fsutil volume diskfree` output parsing confirmed at runtime.
 - [ ] Confirm graceful skip when server does not return `Content-Length` (e.g., GitHub Releases CDN redirect).
+
+---
+
+## UPDATE-010 — Post-Audit Correction Pass (2026-03-06)
+
+**Trigger:** Issue re-audit identified three correctness gaps (C1 / C2 / C3).
+
+### Corrections Applied
+
+#### C1 — Generic `downloadError` hides disk-space root cause from UI (High)
+The disk-space abort in `UpdateDownloadService.download()` previously used
+`UpdateErrorType.downloadError`, so the UI would display the generic "The
+update file could not be downloaded. Please try again…" message rather than
+the actionable disk-space message with byte counts — once UPDATE-006 wires
+the download button.
+
+**Fix:**
+- Added `UpdateErrorType.insufficientDiskSpace` to `update_error_type.dart`.
+- Added `UpdateErrorMessages.messageFor(insufficientDiskSpace)`:
+  _"Not enough disk space to download the update. Free up storage on your
+  device and try again."_
+- Added `UpdateErrorMessages.actionFor(insufficientDiskSpace)`:
+  _"Free up disk space and retry the download"_
+- Disk-space abort in `UpdateDownloadService.download()` now emits
+  `errorType: UpdateErrorType.insufficientDiskSpace`.
+
+#### C2 — HEAD redirect / GitHub CDN edge case undocumented (Medium)
+GitHub Releases CDN typically issues HTTP 302 redirects for asset downloads.
+`_fetchContentLength` only accepts HTTP 200, so a redirect causes `null` to
+be returned and the check is silently skipped (correct fail-open behaviour),
+but this was undocumented.
+
+**Fix:**
+- Expanded `_fetchContentLength` doc-comment to explicitly explain the CDN
+  redirect scenario and the fail-open consequence.
+- Added a test: `'skips check and proceeds when HEAD returns a redirect (302)
+  — CDN fail-open'` which simulates a 302 response with a tiny
+  `freeSpaceResolver` (would abort if the check ran) and asserts success.
+
+#### C3 — Zero `Content-Length` not guarded (Low)
+A `content-length: 0` header from a misconfigured CDN would previously pass
+through `_fetchContentLength` as `0`, causing the check `freeBytes < 0` to
+evaluate `false` for any non-negative free-space value — effectively treating
+a broken 0-byte response as "space available."
+
+**Fix:**
+- `_fetchContentLength` now guards: `(parsed != null && parsed > 0) ? parsed : null`.
+  Zero or negative values are treated as unavailable (fail-open).
+- The disk-space `if` block was also tightened to `contentLength > 0` at the
+  call site for clarity.
+- Added a test: `'skips check and proceeds when HEAD returns content-length of
+  zero'` confirming the download proceeds when content-length is 0.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `lib/models/update_error_type.dart` | Added `insufficientDiskSpace` enum value |
+| `lib/models/update_error_messages.dart` | Added `insufficientDiskSpace` message + action |
+| `lib/services/update_download_service.dart` | Emit `insufficientDiskSpace`; guard `contentLength > 0`; expand `_fetchContentLength` doc-comment |
+| `test/services/update_download_service_test.dart` | Updated existing test assertion; added 2 new tests (HEAD 302, zero content-length) |
+| `test/models/update_error_messages_test.dart` | Added `insufficientDiskSpace` message + action content tests |
+
+### Test Results
+```
+All 76 tests passed. No regressions.
+```
+
+### Static Analysis
+No issues found (`flutter analyze` on all 3 modified source files).
+
+**Status: READY FOR REVIEW**

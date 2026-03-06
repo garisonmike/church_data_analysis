@@ -61,6 +61,16 @@ void main() {
       expect(msg.toLowerCase(), contains('download'));
     });
 
+    test('insufficientDiskSpace message mentions disk space', () {
+      final msg = UpdateErrorMessages.messageFor(
+        UpdateErrorType.insufficientDiskSpace,
+      );
+      expect(
+        msg.toLowerCase(),
+        anyOf(contains('disk space'), contains('storage')),
+      );
+    });
+
     test('checksumMismatch message contains security warning', () {
       final msg = UpdateErrorMessages.messageFor(
         UpdateErrorType.checksumMismatch,
@@ -130,6 +140,16 @@ void main() {
       expect(
         action.toLowerCase(),
         anyOf(contains('support'), contains('reinstall')),
+      );
+    });
+
+    test('insufficientDiskSpace action mentions free up or retry', () {
+      final action = UpdateErrorMessages.actionFor(
+        UpdateErrorType.insufficientDiskSpace,
+      );
+      expect(
+        action.toLowerCase(),
+        anyOf(contains('free up'), contains('retry'), contains('space')),
       );
     });
   });

@@ -45,6 +45,9 @@ abstract final class UpdateErrorMessages {
       UpdateErrorType.downloadError =>
         'The update file could not be downloaded. '
             'Please try again or download it manually from GitHub Releases.',
+      UpdateErrorType.insufficientDiskSpace =>
+        'Not enough disk space to download the update. '
+            'Free up storage on your device and try again.',
       UpdateErrorType.checksumMismatch =>
         'Security warning: the downloaded file does not match the expected '
             'checksum. Do not install this file — please download a fresh copy.',
@@ -66,6 +69,8 @@ abstract final class UpdateErrorMessages {
         'Try again later or download manually from GitHub Releases',
       UpdateErrorType.downloadError =>
         'Retry the download or get the installer from GitHub Releases',
+      UpdateErrorType.insufficientDiskSpace =>
+        'Free up disk space and retry the download',
       UpdateErrorType.checksumMismatch =>
         'Re-download from GitHub Releases to get a verified copy',
       UpdateErrorType.installError =>
