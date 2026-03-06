@@ -8,6 +8,26 @@ import '../../platform/file_storage.dart';
 import '../../repositories/repositories.dart';
 import '../../services/services.dart';
 
+/// Normalizes a raw export file-system path by trimming whitespace.
+///
+/// Returns `null` when [rawPath] is `null` or consists solely of whitespace,
+/// so that empty strings never flow into file-system operations.
+///
+/// Exposed for unit testing via `@visibleForTesting`; callers outside this
+/// library should not depend on this function directly.
+@visibleForTesting
+String? normalizeExportPath(String? rawPath) {
+  final trimmed = rawPath?.trim();
+  if (trimmed == null || trimmed.isEmpty) {
+    return null;
+  }
+  assert(
+    trimmed == trimmed.trim(),
+    'Export path must not contain leading/trailing whitespace',
+  );
+  return trimmed;
+}
+
 class ReportsScreen extends ConsumerStatefulWidget {
   final int churchId;
   const ReportsScreen({super.key, required this.churchId});
@@ -624,19 +644,27 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       return null;
     }
 
-    final pickedPath = await _fileStorage.pickSaveLocation(
+    final rawPath = await _fileStorage.pickSaveLocation(
       suggestedName: suggestedName,
       allowedExtensions: allowedExtensions,
     );
 
-    if (pickedPath != null && pickedPath.trim().isNotEmpty && mounted) {
-      setState(() => _lastExportPath = pickedPath);
+    final trimmed = normalizeExportPath(rawPath);
+
+    if (trimmed != null && mounted) {
+      setState(() => _lastExportPath = trimmed);
       if (kDebugMode) {
-        debugPrint('Export location selected: $pickedPath');
+        debugPrint('Export location selected: $trimmed');
       }
     }
 
-    return pickedPath?.trim().isEmpty ?? true ? null : pickedPath;
+    // Guard: the returned path must never contain leading/trailing whitespace.
+    assert(
+      trimmed == null || trimmed == trimmed.trim(),
+      'Export path must not contain leading/trailing whitespace',
+    );
+
+    return trimmed;
   }
 
   @override
