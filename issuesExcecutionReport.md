@@ -876,6 +876,75 @@ No issues found (`flutter analyze` on all 6 source files).
 
 **Status: READY FOR REVIEW**
 
+---
+
+## UPDATE-008 — Post-Audit Correction Pass (2026-03-06)
+
+**Trigger:** Issue re-audit identified three correctness gaps (C1 / C2 / C3).
+
+### Corrections Applied
+
+#### C1 — `UpdateSecurityException` misclassified as `networkError` (Medium)
+A non-HTTPS or malformed manifest URL raises `UpdateSecurityException` inside
+`UpdateService` and `UpdateDownloadService`. Previously both catch blocks mapped
+this to `UpdateErrorType.networkError`, causing the UI to display "Please check
+your internet connection" — a factually wrong message for a security/config
+failure.
+
+**Fix:**
+- Added `UpdateErrorType.securityError` to `lib/models/update_error_type.dart`
+  with doc-comment explaining it is a URL security/config issue, not connectivity.
+- Added `UpdateErrorMessages.messageFor(securityError)`:
+  _"A security validation failed for the update source URL. The URL must use
+  HTTPS. Please reinstall the app or contact support."_
+- Added `UpdateErrorMessages.actionFor(securityError)`:
+  _"Reinstall the app or contact support"_
+- `UpdateService`: `on UpdateSecurityException` → `errorType: UpdateErrorType.securityError`
+- `UpdateDownloadService`: `on UpdateSecurityException` → `errorType: UpdateErrorType.securityError`
+
+#### C2 — AC4 (`checksumMismatch`) deferral not documented (Low / Doc-only)
+`checksumMismatch` message and error type exist and are correct. However the
+SHA-256 verification code path in `UpdateDownloadService.download()` is a
+`// TODO(UPDATE-006)` stub, so `checksumMismatch` is never produced by
+production code. The prior AC table marked this `[x]` without qualification.
+
+**Clarification:** The message layer is complete; the triggering code path is
+explicitly deferred to UPDATE-006. AC4 is satisfied at the message/type layer
+only.
+
+#### C3 — `launchUrl` result unhandled (Low)
+The "Open GitHub Releases" `TextButton.icon` in `about_updates_card.dart` called
+`launchUrl` as a fire-and-forget expression via `() => launchUrl(...)`. If
+`url_launcher` cannot open the URL (no browser registered, restricted
+environment), the failure was silently swallowed.
+
+**Fix:** Changed `onPressed` to `async`; awaits `launchUrl` and shows a
+non-blocking `SnackBar` ("Could not open browser. Visit: …") when `launched`
+is `false` and the widget is still mounted.
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `lib/models/update_error_type.dart` | Added `securityError` enum value |
+| `lib/models/update_error_messages.dart` | Added `securityError` message + action |
+| `lib/services/update_service.dart` | `UpdateSecurityException` → `securityError` |
+| `lib/services/update_download_service.dart` | `UpdateSecurityException` → `securityError` |
+| `lib/ui/widgets/about_updates_card.dart` | `launchUrl` failure SnackBar fallback |
+| `test/models/update_error_messages_test.dart` | 2 new `securityError` content tests |
+| `test/services/update_service_test.dart` | Updated `'non-HTTPS URL'` test to expect `securityError` |
+
+### Test Results
+```
+All 92 tests passed. No regressions.
+```
+
+### Static Analysis
+No issues found (`flutter analyze` on all 5 modified source files).
+
+**Status: READY FOR REVIEW**
+
+---
+
 ## UPDATE-010 — Pre-download disk space validation
 
 **Date:** 2026-03-06

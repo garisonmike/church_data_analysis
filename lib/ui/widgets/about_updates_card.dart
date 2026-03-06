@@ -325,10 +325,22 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
                 ),
                 TextButton.icon(
                   key: const ValueKey('open_github_releases_button'),
-                  onPressed: () => launchUrl(
-                    Uri.parse(UpdateErrorMessages.fallbackUrl),
-                    mode: LaunchMode.externalApplication,
-                  ),
+                  onPressed: () async {
+                    final launched = await launchUrl(
+                      Uri.parse(UpdateErrorMessages.fallbackUrl),
+                      mode: LaunchMode.externalApplication,
+                    );
+                    if (!launched && mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Could not open browser. '
+                            'Visit: ${UpdateErrorMessages.fallbackUrl}',
+                          ),
+                        ),
+                      );
+                    }
+                  },
                   icon: const Icon(Icons.open_in_new, size: 16),
                   label: const Text(UpdateErrorMessages.fallbackLabel),
                 ),

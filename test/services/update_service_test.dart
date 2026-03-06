@@ -399,14 +399,14 @@ void main() {
       },
     );
 
-    test('non-HTTPS URL yields networkError errorType', () async {
+    test('non-HTTPS URL yields securityError errorType', () async {
       final service = UpdateService(
         client: MockClient((_) async => http.Response('{}', 200)),
         manifestUrl: 'http://example.com/update.json',
         getPackageInfo: () async => makePackageInfo('1.0.0'),
       );
       final result = await service.checkForUpdate();
-      expect(result.errorType, UpdateErrorType.networkError);
+      expect(result.errorType, UpdateErrorType.securityError);
     });
 
     test('timeout yields networkError errorType', () async {

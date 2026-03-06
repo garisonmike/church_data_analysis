@@ -36,6 +36,14 @@ void main() {
       expect(msg.toLowerCase(), contains('internet connection'));
     });
 
+    test('securityError message mentions HTTPS and not internet connection', () {
+      final msg = UpdateErrorMessages.messageFor(UpdateErrorType.securityError);
+      expect(msg.toLowerCase(), contains('https'));
+      // Must NOT tell the user to check their internet connection.
+      // securityError is a configuration/tamper issue, not a connectivity issue.
+      expect(msg.toLowerCase(), isNot(contains('internet connection')));
+    });
+
     test('parseError message mentions corrupt or unrecognised format', () {
       final msg = UpdateErrorMessages.messageFor(UpdateErrorType.parseError);
       expect(
@@ -113,6 +121,16 @@ void main() {
         UpdateErrorType.networkError,
       );
       expect(action.toLowerCase(), contains('retry'));
+    });
+
+    test('securityError action mentions support or reinstall', () {
+      final action = UpdateErrorMessages.actionFor(
+        UpdateErrorType.securityError,
+      );
+      expect(
+        action.toLowerCase(),
+        anyOf(contains('support'), contains('reinstall')),
+      );
     });
   });
 

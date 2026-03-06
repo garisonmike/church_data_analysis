@@ -5,6 +5,12 @@ enum UpdateErrorType {
   /// The device is offline or the update server is unreachable.
   networkError,
 
+  /// An update source URL failed HTTPS security validation.
+  ///
+  /// This indicates a misconfigured or potentially tampered manifest URL,
+  /// not a network connectivity problem.
+  securityError,
+
   /// The update manifest could not be decoded or failed schema validation.
   parseError,
 

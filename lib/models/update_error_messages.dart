@@ -36,6 +36,9 @@ abstract final class UpdateErrorMessages {
       UpdateErrorType.networkError =>
         'Unable to reach the update server. '
             'Please check your internet connection and try again.',
+      UpdateErrorType.securityError =>
+        'A security validation failed for the update source URL. '
+            'The URL must use HTTPS. Please reinstall the app or contact support.',
       UpdateErrorType.parseError =>
         'The update information could not be read. '
             'The file may be corrupt or in an unrecognised format.',
@@ -58,6 +61,7 @@ abstract final class UpdateErrorMessages {
   static String actionFor(UpdateErrorType type) {
     return switch (type) {
       UpdateErrorType.networkError => 'Check connection and retry',
+      UpdateErrorType.securityError => 'Reinstall the app or contact support',
       UpdateErrorType.parseError =>
         'Try again later or download manually from GitHub Releases',
       UpdateErrorType.downloadError =>

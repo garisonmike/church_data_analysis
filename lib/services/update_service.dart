@@ -215,7 +215,7 @@ class UpdateService {
       return _cache(
         UpdateCheckResult.failure(
           e.message,
-          errorType: UpdateErrorType.networkError,
+          errorType: UpdateErrorType.securityError,
         ),
       );
     } on UpdateManifestParseException catch (e) {

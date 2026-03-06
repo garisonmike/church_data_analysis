@@ -193,7 +193,7 @@ class UpdateDownloadService {
       await _deletePartial(file);
       return UpdateDownloadResult.failure(
         e.message,
-        errorType: UpdateErrorType.downloadError,
+        errorType: UpdateErrorType.securityError,
       );
     } catch (e) {
       // Always clean up the partial file before surfacing the failure.
