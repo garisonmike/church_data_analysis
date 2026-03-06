@@ -733,3 +733,49 @@ Low — UpdateService behaviour unchanged for all valid `major.minor.patch` vers
 No issues found (`flutter analyze lib/models/version.dart lib/models/version_comparator.dart lib/services/update_service.dart`).
 
 ---
+
+## UPDATE-004 — Settings → Check for Updates UI
+
+### Status: READY FOR REVIEW
+
+### Files Created
+- `lib/ui/widgets/about_updates_card.dart` — `AboutUpdatesCard` ConsumerStatefulWidget; state machine `_CheckState { idle, checking, upToDate, updateAvailable, error }`; loads current version from `PackageInfo.fromPlatform()` in `initState`; "Check for Updates" button with spinner icon while checking (button disabled during check); inline result widget per state; "View Release Notes" + "Download Update" stub buttons when update available; last-checked relative timestamp after each check
+- `test/ui/about_updates_card_test.dart` — 18 widget tests across 5 groups
+
+### Files Modified
+- `lib/ui/widgets/widgets.dart` — added `export 'about_updates_card.dart';`
+- `lib/ui/screens/app_settings_screen.dart` — added `import '../widgets/about_updates_card.dart';` and `const AboutUpdatesCard()` card at bottom of ListView (after `_ExportFolderCard`, before final `SizedBox(height: 32)`)
+
+### Implementation Notes
+- `AboutUpdatesCard` is a public `ConsumerStatefulWidget` in its own file for independent testability.
+- State machine is entirely local (`ConsumerStatefulWidget`); no new Riverpod providers needed — delegates to `updateServiceProvider`.
+- `_checkForUpdates()` calls `resetCache()` before each check to guarantee a fresh network fetch even if a prior result is cached.
+- Button is `null`-onPressed when `_CheckState.checking` (Flutter's standard disabled pattern).
+- Spinner is a 16×16 `CircularProgressIndicator` inside the button's icon slot, keyed with `ValueKey('loading_spinner')` for test targeting.
+- "View Release Notes" and "Download Update" buttons are stubs (`onPressed: () {}`) pending UPDATE-005 and UPDATE-006 integration.
+- `_formatRelative`: Just now / X min ago / X hr ago / X days ago — no external package dependency.
+- `PackageInfo.fromPlatform()` is wrapped in try/catch; version shows `'…'` until loaded or on failure.
+
+### Test Results
+```
+18/18 new widget tests pass (about_updates_card_test.dart)
+627/627 full test suite passes. No regressions.
+(609 prior + 18 new)
+```
+
+### Acceptance Criteria Verified
+- [x] Current version displayed accurately — from PackageInfo mock (1.0.0 visible)
+- [x] "Check for Updates" triggers a fresh fetch — resetCache() + checkForUpdate() called
+- [x] Loading state disables button and shows spinner — onPressed==null, ValueKey('loading_spinner') found
+- [x] "Up to date" state shown when no update — up_to_date_result key + "up to date" text
+- [x] "Update available" state shows new version number — update_available_result key + "1.1.0"
+- [x] Error state shows human-readable message and retry option — error_result + retry_button keys
+- [x] Last-checked timestamp displayed after each check — last_checked_text appears, "Just now" text
+
+### Regression Risk
+Low — additive UI section only; no existing widgets or services modified.
+
+### Static Analysis
+No issues found (`flutter analyze` on all 3 source files).
+
+---

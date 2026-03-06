@@ -555,12 +555,12 @@ Semantic version comparison must be implemented correctly to determine whether t
 - Handle malformed version strings by returning `false` and logging a warning (never crash).
 
 ### Acceptance Criteria
-- [ ] `1.10.0` is correctly identified as newer than `1.9.0`.
-- [ ] `1.2.0` is not identified as newer than `1.2.0`.
-- [ ] `1.2.1` is identified as newer than `1.2.0`.
-- [ ] `1.2.0-beta` is identified as older than `1.2.0`.
-- [ ] Malformed version returns `false` without crashing.
-- [ ] Unit tests cover all cases above plus edge cases.
+- [x] `1.10.0` is correctly identified as newer than `1.9.0`.
+- [x] `1.2.0` is not identified as newer than `1.2.0`.
+- [x] `1.2.1` is identified as newer than `1.2.0`.
+- [x] `1.2.0-beta` is identified as older than `1.2.0`.
+- [x] Malformed version returns `false` without crashing.
+- [x] Unit tests cover all cases above plus edge cases.
 
 ### Regression Risk
 None — new utility only.
@@ -571,6 +571,8 @@ None — new utility only.
 
 ### Suggested Labels
 `enhancement`, `update-system`, `priority:P2`
+
+**Status: COMPLETE**
 
 ---
 
@@ -597,13 +599,13 @@ Users must be able to manually trigger an update check from within App Settings 
 - Display `last checked: <relative time>` below the button.
 
 ### Acceptance Criteria
-- [ ] Current version is displayed accurately.
-- [ ] "Check for Updates" triggers a fresh fetch.
-- [ ] Loading state disables button and shows spinner.
-- [ ] "Up to date" state is shown when no update is available.
-- [ ] "Update available" state shows the new version number.
-- [ ] Error state shows a human-readable message and retry option.
-- [ ] Last-checked timestamp displayed after each check.
+- [x] Current version is displayed accurately.
+- [x] "Check for Updates" triggers a fresh fetch.
+- [x] Loading state disables button and shows spinner.
+- [x] "Up to date" state is shown when no update is available.
+- [x] "Update available" state shows the new version number.
+- [x] Error state shows a human-readable message and retry option.
+- [x] Last-checked timestamp displayed after each check.
 
 ### Regression Risk
 Low — additive UI section in Settings.
@@ -615,6 +617,8 @@ Low — additive UI section in Settings.
 
 ### Suggested Labels
 `enhancement`, `update-system`, `ui`, `priority:P2`
+
+**Status: COMPLETE**
 
 ---
 

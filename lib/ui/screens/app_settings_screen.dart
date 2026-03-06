@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/app_settings.dart';
 import '../../repositories/settings_repository.dart';
 import '../../services/settings_service.dart';
+import '../widgets/about_updates_card.dart';
 
 /// Screen for managing application settings like currency, locale etc.
 class AppSettingsScreen extends ConsumerWidget {
@@ -294,6 +295,11 @@ class AppSettingsScreen extends ConsumerWidget {
           // File Export Settings Card (native platforms only)
           if (!kIsWeb) const _ExportFolderCard(),
 
+          const SizedBox(height: 16),
+
+          // About & Updates Card
+          const AboutUpdatesCard(),
+
           const SizedBox(height: 32),
         ],
       ),
@@ -474,8 +480,8 @@ class _ExportFolderCard extends ConsumerWidget {
                 child: Text(
                   'Custom folder active',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.primary,
-                      ),
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
               ),
           ],
@@ -489,11 +495,13 @@ class _ExportFolderCard extends ConsumerWidget {
       dialogTitle: 'Select default export folder',
     );
     if (path == null || path.trim().isEmpty) return;
-    await ref.read(defaultExportPathProvider.notifier).setCustomPath(path.trim());
+    await ref
+        .read(defaultExportPathProvider.notifier)
+        .setCustomPath(path.trim());
     if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Export folder updated')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Export folder updated')));
     }
   }
 }

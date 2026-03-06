@@ -1,3 +1,4 @@
+export 'about_updates_card.dart';
 export 'church_selector_widget.dart';
 export 'export_result_snack_bar.dart';
 export 'lazy_load_chart.dart';
