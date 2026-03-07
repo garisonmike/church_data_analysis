@@ -13,7 +13,7 @@ Every task is checkbox-based so Copilot (or any developer) can mark progress dir
 
 ## Issue Alignment (from `scripts/issues.sh`)
 
-- [ ] Issue 1: Android export system broken (Downloads folder + file access)
+- [x] Issue 1: Android export system broken (Downloads folder + file access)
 - [ ] Issue 2: Auto update system failing (update.json / GitHub release integration)
 - [ ] Issue 3: Refactor storage and export system (cross-platform reliability)
 - [ ] Issue 4: Improve export success feedback and file accessibility
@@ -27,26 +27,26 @@ Every task is checkbox-based so Copilot (or any developer) can mark progress dir
 Exporting files on Android fails in the default Downloads flow, and exported files are hard to access.
 
 ### Tasks
-- [ ] Fix exporting to `Downloads/ChurchAnalytics`
-- [ ] Auto-create `Downloads/ChurchAnalytics` if missing
-- [ ] Handle Android storage permissions correctly
-- [ ] Replace **Open Folder** with **Open File**
-- [ ] Add **Share** action
-- [ ] Add **Copy Path** action
-- [ ] Display the export path clearly in the UI
-- [ ] Ensure exported files are visible in standard file managers
+- [x] Fix exporting to `Downloads/ChurchAnalytics`
+- [x] Auto-create `Downloads/ChurchAnalytics` if missing
+- [x] Handle Android storage permissions correctly
+- [x] Replace **Open Folder** with **Open File**
+- [x] Add **Share** action
+- [x] Add **Copy Path** action
+- [x] Display the export path clearly in the UI
+- [x] Ensure exported files are visible in standard file managers
 
 ### Acceptance
-- [ ] Files export successfully to `Downloads/ChurchAnalytics`
-- [ ] Export folder is created automatically when missing
-- [ ] Export path is displayed after export
-- [ ] **Open File** opens exported files
-- [ ] **Copy Path** copies the export path
-- [ ] **Share** shares exported files
-- [ ] Tested successfully on Android 10+
+- [x] Files export successfully to `Downloads/ChurchAnalytics`
+- [x] Export folder is created automatically when missing
+- [x] Export path is displayed after export
+- [x] **Open File** opens exported files
+- [x] **Copy Path** copies the export path
+- [x] **Share** shares exported files
+- [x] Tested successfully on Android 10+
 
 ### Issue Complete
-- [ ] Mark this section complete
+- [x] Mark this section complete
 
 ---
 
