@@ -19,10 +19,13 @@ class InstallerLaunchResult {
   /// Optional informational message shown after a successful handoff.
   ///
   /// Used on platforms where the user must take a follow-up manual action
-  /// (e.g. Linux: restart the app after tar extraction).
+  /// to complete the update:
+  ///
+  /// - **Linux**: restart the app after `tar` extraction.
+  /// - **Windows**: copy the extracted files to the install folder & restart.
   ///
   /// `null` for all failure results and for silent-success platforms (Android,
-  /// Windows, Web).
+  /// Web).
   final String? hint;
 
   // -------------------------------------------------------------------------

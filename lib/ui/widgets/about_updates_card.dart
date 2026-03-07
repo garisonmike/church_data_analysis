@@ -529,7 +529,9 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
                         Text(
                           'Debug: $_errorMessage',
                           style: theme.textTheme.bodySmall?.copyWith(
-                            color: theme.colorScheme.error.withOpacity(0.7),
+                            color: theme.colorScheme.error.withValues(
+                              alpha: 0.7,
+                            ),
                             fontFamily: 'monospace',
                           ),
                         ),

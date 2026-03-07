@@ -41,7 +41,7 @@ typedef PopFn = void Function();
 /// | Platform | Mechanism |
 /// |----------|-----------|
 /// | Android  | [OpenFile.open] — triggers APK install intent via `open_file` |
-/// | Windows  | [Process.start] with the `.exe` installer, then `exit(0)` |
+/// | Windows  | PowerShell `Expand-Archive` of the `.zip` release; user copies files & restarts |
 /// | Linux    | `tar -xzf` extraction to the same directory; user restarts app |
 /// | Web      | No-op — browser handled the download in UPDATE-006 |
 /// | Other    | Returns a descriptive failure with manual-install instructions |
@@ -72,18 +72,15 @@ class PlatformInstallerLaunchService implements InstallerLaunchService {
   PlatformInstallerLaunchService({
     OpenFileFn? openFileFn,
     RunProcessFn? runProcessFn,
-    void Function(int)? exitFn,
     PopFn? popFn,
     @visibleForTesting String? overridePlatform,
   }) : _openFileFn = openFileFn ?? OpenFile.open,
        _runProcessFn = runProcessFn ?? Process.run,
-       _exitFn = exitFn ?? exit,
        _popFn = popFn ?? SystemNavigator.pop,
        _overridePlatform = overridePlatform;
 
   final OpenFileFn _openFileFn;
   final RunProcessFn _runProcessFn;
-  final void Function(int) _exitFn;
   final PopFn _popFn;
   final String? _overridePlatform;
 
@@ -163,22 +160,52 @@ class PlatformInstallerLaunchService implements InstallerLaunchService {
     }
   }
 
-  /// Windows: start the `.exe` installer as a detached process, then call
-  /// [exit] to let Windows complete the installation uninterrupted.
+  /// Windows: the release is a ZIP archive, not an EXE installer.
   ///
-  /// The `exit(0)` call means this method does not return in production.
-  /// The injected [_exitFn] (defaulting to `dart:io exit`) is called instead
-  /// so that tests can override it with a no-op.
+  /// Extracts the archive to a staging folder next to the downloaded file
+  /// using PowerShell's built-in `Expand-Archive` cmdlet (available on all
+  /// Windows 10+ systems), then returns a success result with a [hint]
+  /// instructing the user to replace the current installation manually.
+  ///
+  /// In-place binary replacement is not attempted here because the running
+  /// `church_analytics.exe` is locked by Windows while the app is open.
+  /// A future version could automate the swap via a small helper launcher.
   Future<InstallerLaunchResult> _launchWindows(String installerPath) async {
-    await Process.start(
-      installerPath,
-      [],
-      mode: ProcessStartMode.detached,
-      runInShell: false,
+    final downloadDir = File(installerPath).parent.path;
+    final stagingDir = '$downloadDir\\ChurchAnalytics-Update';
+
+    // Escape single-quotes inside the paths so they are safe inside
+    // PowerShell's single-quoted (literal) string syntax.
+    final safeInstaller = installerPath.replaceAll("'", "''");
+    final safeStaging = stagingDir.replaceAll("'", "''");
+
+    final result = await _runProcessFn('powershell', [
+      '-NoProfile',
+      '-NonInteractive',
+      '-Command',
+      "Expand-Archive -LiteralPath '$safeInstaller' -DestinationPath '$safeStaging' -Force",
+    ]);
+
+    if (result.exitCode != 0) {
+      final stderr = result.stderr as String? ?? '';
+      return InstallerLaunchResult.failure(
+        'Failed to extract the update archive.'
+        '${stderr.isNotEmpty ? '\n\nDetails: $stderr' : ''}\n\n'
+        'You can extract it manually:\n$installerPath',
+      );
+    }
+
+    // The CI ZIP contains a "windows" subfolder at its root.
+    final extractedDir = '$stagingDir\\windows';
+    return InstallerLaunchResult.success(
+      hint:
+          'Update extracted to:\n$extractedDir\n\n'
+          'To complete the update:\n'
+          '1. Close Church Analytics\n'
+          '2. Copy all files from the above folder to your existing '
+          'Church Analytics installation folder\n'
+          '3. Relaunch Church Analytics',
     );
-    _exitFn(0);
-    // Unreachable in production; satisfies the Dart type checker.
-    return const InstallerLaunchResult.success();
   }
 
   /// Linux: extract the `.tar.gz` installer archive to the same directory,
@@ -201,12 +228,20 @@ class PlatformInstallerLaunchService implements InstallerLaunchService {
         'complete the update.',
       );
     }
-    // AC3/AC6 (UPDATE-007): extraction succeeded; the user must relaunch
-    // manually since there is no standard in-place binary replacement on Linux.
-    return const InstallerLaunchResult.success(
+    // Extraction succeeded.  Because the archive is downloaded to the system
+    // temp directory, the extracted files are also in temp — NOT over the
+    // running binaries.  Simply restarting the app would relaunch the old
+    // version.  Inform the user of the exact extraction path and instruct
+    // them to copy the files over their existing installation manually before
+    // relaunching (same approach as Windows).
+    return InstallerLaunchResult.success(
       hint:
-          'Update extracted successfully.\n\n'
-          'Please close and restart Church Analytics to complete the update.',
+          'Update extracted to:\n$destDir\n\n'
+          'To complete the update:\n'
+          '1. Close Church Analytics\n'
+          '2. Copy all files from the above folder to your existing '
+          'Church Analytics installation folder\n'
+          '3. Relaunch Church Analytics',
     );
   }
 

@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:open_file/open_file.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
 /// Maximum characters displayed for an export path before truncation.
@@ -398,9 +399,34 @@ class _ShareIconButton extends StatelessWidget {
 
   Future<void> _share() async {
     try {
-      final file = XFile(filePath);
+      // share_plus's built-in FileProvider only covers the app's internal
+      // directories (cache, files, external-files, external-cache).  Files
+      // saved to the public Downloads folder (/storage/emulated/0/Download/…)
+      // are outside that scope and will cause a permission denial when
+      // share_plus tries to create a content:// URI for them.
+      //
+      // Fix: copy to the app's temp cache dir first so share_plus can expose
+      // a valid content URI.  The temp file is small (a single export) and
+      // will be removed by the OS eventually.
+      String sharePath = filePath;
+      if (!kIsWeb && Platform.isAndroid) {
+        try {
+          final cacheDir = await getTemporaryDirectory();
+          final fileName = filePath.split('/').last;
+          final cacheFile = File('${cacheDir.path}/$fileName');
+          await File(filePath).copy(cacheFile.path);
+          sharePath = cacheFile.path;
+        } catch (copyError) {
+          // If the copy fails, try sharing the original path anyway.
+          if (kDebugMode) {
+            debugPrint(
+              '[_ShareIconButton] Cache copy failed, trying original path: $copyError',
+            );
+          }
+        }
+      }
       await Share.shareXFiles([
-        file,
+        XFile(sharePath),
       ], text: 'Exported file from Church Analytics');
     } catch (e) {
       if (kDebugMode) {

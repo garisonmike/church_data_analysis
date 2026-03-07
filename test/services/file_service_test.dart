@@ -1,3 +1,4 @@
+// ignore_for_file: library_private_types_in_public_api
 import 'dart:typed_data';
 
 import 'package:church_analytics/platform/default_export_path_resolver.dart';
@@ -310,12 +311,15 @@ void main() {
         expect(await service.getDefaultExportPath(), equals(expected));
       });
 
-      test('returns null when resolver returns null (Web simulation)', () async {
-        final service = makeService(
-          resolver: const _FakeExportPathResolver(fakePath: null),
-        );
-        expect(await service.getDefaultExportPath(), isNull);
-      });
+      test(
+        'returns null when resolver returns null (Web simulation)',
+        () async {
+          final service = makeService(
+            resolver: const _FakeExportPathResolver(fakePath: null),
+          );
+          expect(await service.getDefaultExportPath(), isNull);
+        },
+      );
     });
 
     // -----------------------------------------------------------------------

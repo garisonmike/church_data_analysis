@@ -1,7 +1,6 @@
 import 'dart:io';
 
 import 'package:church_analytics/platform/platform_installer_launch_service.dart';
-import 'package:church_analytics/services/installer_launch_result.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:open_file/open_file.dart';
 
@@ -16,14 +15,12 @@ void main() {
     required String platform,
     OpenFileFn? openFileFn,
     RunProcessFn? runProcessFn,
-    void Function(int)? exitFn,
     void Function()? popFn,
   }) {
     return PlatformInstallerLaunchService(
       overridePlatform: platform,
       openFileFn: openFileFn,
       runProcessFn: runProcessFn,
-      exitFn: exitFn,
       popFn: popFn,
     );
   }
@@ -184,21 +181,33 @@ void main() {
       expect(result.isSuccess, isTrue);
     });
 
-    test('success result carries a restart-required hint (AC3)', () async {
-      final service = makeService(
-        platform: 'linux',
-        runProcessFn: (_, __) async => ProcessResult(0, 0, '', ''),
-      );
+    test(
+      'success result carries extraction path and copy instructions (AC3)',
+      () async {
+        final service = makeService(
+          platform: 'linux',
+          runProcessFn: (_, __) async => ProcessResult(0, 0, '', ''),
+        );
 
-      final result = await service.launch('/tmp/app-1.0.0.tar.gz');
+        final result = await service.launch('/tmp/app-1.0.0.tar.gz');
 
-      expect(result.hint, isNotNull);
-      expect(
-        result.hint!.toLowerCase(),
-        contains('restart'),
-        reason: 'hint must instruct the user to restart the app',
-      );
-    });
+        expect(result.hint, isNotNull);
+        // The hint must expose the extraction directory (/tmp) so the user
+        // knows where to find the extracted files.
+        expect(
+          result.hint,
+          contains('/tmp'),
+          reason: 'hint must include the extraction directory path',
+        );
+        // The hint must instruct the user to copy the files — not merely restart.
+        expect(
+          result.hint!.toLowerCase(),
+          contains('copy'),
+          reason:
+              'hint must instruct the user to copy files to their install folder',
+        );
+      },
+    );
 
     test('returns failure when tar exits with non-zero code', () async {
       final service = makeService(
@@ -253,43 +262,54 @@ void main() {
   // Windows
   // -------------------------------------------------------------------------
 
-  group('Windows — Process.start + exit', () {
-    test('calls exitFn with code 0 after starting the process', () async {
-      int? exitCode;
+  group('Windows — PowerShell Expand-Archive', () {
+    test('returns success with hint when powershell exits 0', () async {
       final service = makeService(
         platform: 'windows',
-        // runProcessFn is not used on Windows; Process.start is called instead.
-        // We override exitFn to capture the code instead of terminating the VM.
-        exitFn: (code) => exitCode = code,
+        runProcessFn: (cmd, args) async => ProcessResult(
+          0, // pid
+          0, // exitCode — success
+          '', // stdout
+          '',
+        ),
       );
 
-      // Note: Process.start will not work in the test environment because
-      // 'C:\\setup.exe' does not exist; the service's catch block will capture
-      // the ProcessException and return a failure.  This test purely validates
-      // that the exit function is called with the expected code when the
-      // process _does_ start successfully.
-      //
-      // A full integration test would require a real executable path.
-      // Here we verify the failure path is graceful (non-throw).
-      final result = await service.launch('C:\\setup.exe');
+      final result = await service.launch('C:\\Downloads\\update.zip');
 
-      // In the test environment Process.start will throw (file not found),
-      // producing a failure result rather than calling exitFn.  That is
-      // acceptable — the important invariant is that the service never throws.
-      expect(result, isA<InstallerLaunchResult>());
-      // exitCode may be null (process didn't start) — that's expected on Linux CI.
-      expect(exitCode, anyOf(isNull, 0));
+      expect(result.isSuccess, isTrue);
+      expect(result.hint, isNotNull);
+      expect(result.hint, contains('ChurchAnalytics-Update'));
+    });
+
+    test('returns failure when powershell fails', () async {
+      final service = makeService(
+        platform: 'windows',
+        runProcessFn: (cmd, args) async => ProcessResult(
+          0,
+          1, // non-zero exit code
+          '',
+          'Expand-Archive: Cannot create file',
+        ),
+      );
+
+      final result = await service.launch('C:\\Downloads\\update.zip');
+
+      expect(result.isError, isTrue);
+      expect(result.error, contains('Failed to extract'));
     });
 
     test(
       'returns a failure result (not a thrown exception) on process error',
       () async {
-        final service = makeService(platform: 'windows', exitFn: (_) {});
+        final service = makeService(
+          platform: 'windows',
+          runProcessFn: (cmd, args) =>
+              Future.error(Exception('process failed')),
+        );
 
-        // Launching a non-existent path should produce a failure, not throw.
-        final result = await service.launch('/no/such/installer.exe');
+        final result = await service.launch('C:\\Downloads\\update.zip');
 
-        expect(result, isA<InstallerLaunchResult>());
+        expect(result.isError, isTrue);
       },
     );
   });

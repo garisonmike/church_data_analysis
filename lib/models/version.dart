@@ -143,8 +143,9 @@ class Version implements Comparable<Version> {
     // associated normal version.
     if (preRelease == null && other.preRelease == null) return 0;
     if (preRelease == null) return 1; // this is release; other is pre-release
-    if (other.preRelease == null)
+    if (other.preRelease == null) {
       return -1; // this is pre-release; other is release
+    }
 
     // Both carry pre-release identifiers — compare lexicographically.
     return preRelease!.compareTo(other.preRelease!);
