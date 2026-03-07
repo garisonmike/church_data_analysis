@@ -3,6 +3,10 @@
 ///
 /// Carries either a [success] flag indicating the OS handoff was initiated, or
 /// a human-readable [error] message describing why the launch failed.
+///
+/// On some platforms (e.g. Linux) a successful launch may also carry a [hint]
+/// — a short user-visible instruction shown after handoff (e.g. "restart the
+/// app to complete the update").
 class InstallerLaunchResult {
   /// Whether the installer was handed off to the OS successfully.
   final bool isSuccess;
@@ -12,19 +16,30 @@ class InstallerLaunchResult {
   /// Non-null only when [isSuccess] is `false`.
   final String? error;
 
-  const InstallerLaunchResult._({required this.isSuccess, this.error});
+  /// Optional informational message shown after a successful handoff.
+  ///
+  /// Used on platforms where the user must take a follow-up manual action
+  /// (e.g. Linux: restart the app after tar extraction).
+  ///
+  /// `null` for all failure results and for silent-success platforms (Android,
+  /// Windows, Web).
+  final String? hint;
 
   // -------------------------------------------------------------------------
   // Named factories
   // -------------------------------------------------------------------------
 
   /// The installer launch was initiated successfully.
-  const InstallerLaunchResult.success() : isSuccess = true, error = null;
+  ///
+  /// Supply [hint] when a follow-up user action is required after handoff.
+  const InstallerLaunchResult.success({this.hint})
+    : isSuccess = true,
+      error = null;
 
   /// The installer launch failed with [error] as the reason.
-  const InstallerLaunchResult.failure(String error)
+  const InstallerLaunchResult.failure(String this.error)
     : isSuccess = false,
-      error = error;
+      hint = null;
 
   // -------------------------------------------------------------------------
   // Convenience
@@ -35,7 +50,11 @@ class InstallerLaunchResult {
 
   @override
   String toString() {
-    if (isSuccess) return 'InstallerLaunchResult.success()';
+    if (isSuccess) {
+      return hint != null
+          ? 'InstallerLaunchResult.success(hint: $hint)'
+          : 'InstallerLaunchResult.success()';
+    }
     return 'InstallerLaunchResult.failure($error)';
   }
 }

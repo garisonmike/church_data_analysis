@@ -715,6 +715,8 @@ Low — new service; no changes to existing code.
 ### Suggested Labels
 `enhancement`, `update-system`, `cross-platform`, `priority:P3`
 
+**Status: COMPLETE**
+
 ---
 
 ## [UPDATE-007] Platform-specific installer execution
@@ -763,6 +765,8 @@ Low — new service; existing app lifecycle is only affected during explicit upd
 
 ### Suggested Labels
 `enhancement`, `update-system`, `cross-platform`, `priority:P3`
+
+**Status: COMPLETE**
 
 ---
 

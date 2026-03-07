@@ -7,6 +7,7 @@ import 'package:church_analytics/services/activity_log_service.dart';
 import 'package:church_analytics/services/installer_launch_service.dart';
 import 'package:church_analytics/services/update_download_service.dart';
 import 'package:church_analytics/services/update_service.dart';
+import 'package:church_analytics/ui/widgets/installer_confirmation_dialog.dart';
 import 'package:church_analytics/ui/widgets/release_notes_dialog.dart';
 import 'package:church_analytics/ui/widgets/update_download_progress_dialog.dart';
 import 'package:church_analytics/ui/widgets/update_install_failure_dialog.dart';
@@ -84,12 +85,20 @@ class AboutUpdatesCard extends ConsumerStatefulWidget {
   /// to avoid real filesystem calls.
   final Future<Directory> Function()? destDirResolver;
 
+  /// Confirmation dialog function injected for testability.
+  ///
+  /// Called at the start of [_doInstall] to show the pre-install confirmation.
+  /// Defaults to [InstallerConfirmationDialog.show].  Inject
+  /// `(_) async => true` in tests to bypass the dialog.
+  final Future<bool?> Function(BuildContext)? confirmInstall;
+
   const AboutUpdatesCard({
     super.key,
     this.launchService = const NoOpInstallerLaunchService(),
     this.activityLog = const NoOpActivityLogService(),
     this.downloadService,
     this.destDirResolver,
+    this.confirmInstall,
   });
 
   @override
@@ -138,8 +147,20 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
 
   /// Passes [installerPath] to the platform installer-launch service.
   ///
-  /// Logs the outcome and shows [UpdateInstallFailureDialog] on failure.
+  /// First shows [InstallerConfirmationDialog] (non-dismissable) to inform
+  /// the user that the app will close.  If the user cancels, the method
+  /// returns without launching the installer.
+  ///
+  /// On confirmation, delegates to the launch service, logs the outcome,
+  /// and shows [UpdateInstallFailureDialog] on failure.
   Future<void> _doInstall(String installerPath) async {
+    // Show pre-install confirmation (AC5 — UPDATE-007).
+    final confirmed =
+        await (widget.confirmInstall ?? InstallerConfirmationDialog.show)(
+          context,
+        );
+    if (!mounted || confirmed != true) return;
+
     final result = await widget.launchService.launch(installerPath);
 
     // Log the outcome regardless of success or failure.
@@ -150,6 +171,22 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
 
     if (result.isError && mounted) {
       await UpdateInstallFailureDialog.show(context, errorDetail: result.error);
+    } else if (result.hint != null && mounted) {
+      // Linux (and any future platform) where the user must take a follow-up
+      // action after extraction (AC3 / AC6 — UPDATE-007).
+      await showDialog<void>(
+        context: context,
+        builder: (_) => AlertDialog(
+          title: const Text('Update Extracted'),
+          content: Text(result.hint!),
+          actions: [
+            FilledButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     }
   }
 
@@ -239,10 +276,9 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              result.error ??
-                  UpdateErrorMessages.messageFor(
-                    result.errorType ?? UpdateErrorType.downloadError,
-                  ),
+              UpdateErrorMessages.messageFor(
+                result.errorType ?? UpdateErrorType.downloadError,
+              ),
             ),
             action: SnackBarAction(
               label: 'Try Again',

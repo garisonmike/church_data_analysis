@@ -9,6 +9,8 @@ export 'csv_import_service.dart';
 export 'dashboard_config_service.dart';
 export 'file_service.dart';
 export 'import_service.dart';
+export 'installer_launch_result.dart';
+export 'installer_launch_service.dart';
 export 'pdf_report_service.dart';
 export 'performance_monitor.dart';
 export 'settings_service.dart';

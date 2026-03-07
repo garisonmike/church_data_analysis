@@ -2,6 +2,7 @@ export 'about_updates_card.dart';
 export 'activity_log_card.dart';
 export 'church_selector_widget.dart';
 export 'export_result_snack_bar.dart';
+export 'installer_confirmation_dialog.dart';
 export 'lazy_load_chart.dart';
 export 'profile_switcher_widget.dart';
 export 'release_notes_dialog.dart';

@@ -146,6 +146,8 @@ Widget buildCardWithUpdateAvailable({
             // Skip real HTTP download and filesystem calls in tests.
             downloadService: _FakeDownloadService(),
             destDirResolver: () async => Directory.systemTemp,
+            // Bypass the confirmation dialog so tests reach the launch path.
+            confirmInstall: (_) async => true,
           ),
         ),
       ),

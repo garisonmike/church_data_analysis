@@ -1693,3 +1693,70 @@ The "Download Update" button in `AboutUpdatesCard` called `_onInstall()` directl
 - [ ] Slow connection: confirm progress indicator transitions from indeterminate to determinate once Content-Length is received.
 
 **Status: READY FOR REVIEW**
+---
+
+## UPDATE-007 — Platform-specific installer execution
+
+### Files Created
+| File | Purpose |
+|------|---------|
+| `lib/platform/platform_installer_launch_service.dart` | Concrete `InstallerLaunchService` for all platforms (android/windows/linux/web/unsupported) |
+| `lib/ui/widgets/installer_confirmation_dialog.dart` | Pre-install `AlertDialog` (`barrierDismissible: false`); returns `bool?` |
+| `test/platform/platform_installer_launch_service_test.dart` | 21 unit tests — all platform paths, popFn verification, Linux hint, exception safety |
+| `test/ui/installer_confirmation_dialog_test.dart` | 7 widget tests — content, barrier, cancel/proceed returns |
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `pubspec.yaml` | Added `open_file: ^3.3.2` |
+| `android/app/src/main/AndroidManifest.xml` | Added `REQUEST_INSTALL_PACKAGES` permission |
+| `lib/services/installer_launch_result.dart` | Added `hint` field for post-success user instructions (Linux restart) |
+| `lib/ui/widgets/widgets.dart` | Exported `installer_confirmation_dialog.dart` |
+| `lib/services/services.dart` | Exported `installer_launch_result.dart` + `installer_launch_service.dart` |
+| `lib/ui/widgets/about_updates_card.dart` | Added `confirmInstall` injectable param; `_doInstall()` shows confirmation dialog before launch; shows hint dialog on Linux success |
+| `test/ui/update_install_failure_dialog_test.dart` | Injected `confirmInstall: (_) async => true` to bypass dialog in existing tests |
+
+### Re-Audit Corrections Applied
+**Trigger:** Post-implementation re-audit identified two unmet acceptance criteria (C1 / C2).
+
+#### C1 — Android app not exiting after APK handoff (AC6)
+- **Symptom:** `_launchAndroid()` returned after `ResultType.done` without dismissing the app; APK installer opened over the running app.
+- **Fix:** Added injectable `PopFn popFn` constructor parameter (default: `SystemNavigator.pop`) to `PlatformInstallerLaunchService`. Called after `ResultType.done` before returning success. Added two tests: `calls popFn after successful APK handoff` and `does not call popFn when APK launch fails`.
+
+#### C2 — Linux success path produced no user-visible feedback (AC3)
+- **Symptom:** After `tar -xzf` extraction, app returned silently with no instruction to restart.
+- **Fix:** Added `String? hint` field to `InstallerLaunchResult`. `_launchLinux()` now returns `InstallerLaunchResult.success(hint: 'Update extracted … restart Church Analytics …')`. `_doInstall()` in `AboutUpdatesCard` shows an `AlertDialog` when `result.hint != null`. Added test: `success result carries a restart-required hint (AC3)`.
+
+### Acceptance Criteria Verification
+| Criterion | Status |
+|-----------|--------|
+| Android: launch APK via `open_file` | ✅ `_launchAndroid()` calls `OpenFile.open(path)` |
+| Android: `REQUEST_INSTALL_PACKAGES` declared | ✅ Added to `AndroidManifest.xml` |
+| Android: permission denial → user-friendly Settings instructions | ✅ `ResultType.permissionDenied` returns step-by-step guide |
+| Android: app exits cleanly after APK handoff | ✅ `_popFn()` called after `ResultType.done` (injectable `SystemNavigator.pop`) |
+| Windows: `Process.start` detached + `exit(0)` | ✅ `_launchWindows()` implemented with injectable `exitFn` |
+| Linux: `tar -xzf` extraction | ✅ `_launchLinux()` calls `Process.run('tar', ['-xzf', path, '-C', destDir])` |
+| Linux: manual restart instruction shown to user | ✅ `InstallerLaunchResult.success(hint: '…restart…')` → `AlertDialog` in `_doInstall()` |
+| Web: no-op | ✅ `'web'` case returns success immediately, no I/O |
+| Confirmation dialog before launch | ✅ `InstallerConfirmationDialog.show()` invoked in `_doInstall()` before `launchService.launch()` |
+| Unsupported platforms get GitHub Releases fallback | ✅ macOS/iOS/unknown → failure with GitHub Releases instructions |
+| All paths exception-safe (never throws) | ✅ All launch methods wrapped in `try/catch` |
+
+### Test Results
+```
++767: All tests passed!
+```
+(+28 new tests: 21 platform service + 7 dialog)
+
+### Static Analysis Result
+`flutter analyze lib/` — 2 issues remaining, both pre-existing (`lib/database/connection/web.dart` drift deprecated, `lib/models/version.dart` curly braces). Zero new issues in any file created or modified by this issue.
+
+### Manual Verification Required
+- [ ] Android emulator: tap "Install Update" — confirmation dialog appears — tap "Install Now" — APK installer launched — app closes.
+- [ ] Android: deny install permission — error dialog shows Settings navigation steps.
+- [ ] Linux desktop: tap "Install Update" — confirmation dialog — tar extraction succeeds — "Update Extracted" info dialog with restart instruction appears.
+- [ ] Windows (if available): installer starts as detached process — app exits cleanly.
+- [ ] All platforms: tap "Cancel" in confirmation dialog — install aborted, no launcher called and app stays open.
+
+**Status: READY FOR REVIEW**
+**Status: READY FOR REVIEW**

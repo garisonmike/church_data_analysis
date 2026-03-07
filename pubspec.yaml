@@ -73,6 +73,7 @@ dependencies:
   package_info_plus: ^8.0.3
   flutter_markdown: ^0.7.7+1
   crypto: ^3.0.3
+  open_file: ^3.3.2
 
 dev_dependencies:
   flutter_test:

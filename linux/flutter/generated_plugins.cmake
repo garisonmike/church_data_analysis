@@ -3,6 +3,7 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  open_file_linux
   printing
   sqlite3_flutter_libs
   url_launcher_linux
