@@ -1,8 +1,12 @@
 import 'dart:convert';
+import 'dart:io';
 
+import 'package:church_analytics/models/models.dart';
 import 'package:church_analytics/services/activity_log_service.dart';
 import 'package:church_analytics/services/installer_launch_result.dart';
 import 'package:church_analytics/services/installer_launch_service.dart';
+import 'package:church_analytics/services/update_download_result.dart';
+import 'package:church_analytics/services/update_download_service.dart';
 import 'package:church_analytics/services/update_service.dart';
 import 'package:church_analytics/ui/widgets/about_updates_card.dart';
 import 'package:church_analytics/ui/widgets/update_install_failure_dialog.dart';
@@ -16,6 +20,24 @@ import 'package:package_info_plus/package_info_plus.dart';
 // ---------------------------------------------------------------------------
 // Test doubles
 // ---------------------------------------------------------------------------
+
+/// A minimal [UpdateDownloadService] that immediately returns success without
+/// performing a real HTTP download.  Used by update card integration tests so
+/// the download step is skipped and the installer-launch path is exercised.
+class _FakeDownloadService extends UpdateDownloadService {
+  static final _tempDir = Directory.systemTemp;
+
+  @override
+  Future<UpdateDownloadResult> download({
+    required UpdateManifest manifest,
+    required Directory destDir,
+    void Function(double progress)? onProgress,
+    CancelToken? cancelToken,
+  }) async {
+    // Return a fake path; no real file is created.
+    return UpdateDownloadResult.success('${_tempDir.path}/fake-installer.bin');
+  }
+}
 
 /// An [InstallerLaunchService] that always returns a failure with [error].
 class _FailingLaunchService implements InstallerLaunchService {
@@ -121,6 +143,9 @@ Widget buildCardWithUpdateAvailable({
           child: AboutUpdatesCard(
             launchService: launchService,
             activityLog: activityLog,
+            // Skip real HTTP download and filesystem calls in tests.
+            downloadService: _FakeDownloadService(),
+            destDirResolver: () async => Directory.systemTemp,
           ),
         ),
       ),

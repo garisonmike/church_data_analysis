@@ -32,4 +32,7 @@ enum UpdateErrorType {
 
   /// Automatic installation is not supported on the current platform.
   unsupportedPlatform,
+
+  /// The download was cancelled by the user before completion.
+  downloadCancelled,
 }

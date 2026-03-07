@@ -1,14 +1,20 @@
+import 'dart:io' show Directory;
+
 import 'package:church_analytics/models/update_error_messages.dart';
 import 'package:church_analytics/models/update_error_type.dart';
 import 'package:church_analytics/models/update_manifest.dart';
 import 'package:church_analytics/services/activity_log_service.dart';
 import 'package:church_analytics/services/installer_launch_service.dart';
+import 'package:church_analytics/services/update_download_service.dart';
 import 'package:church_analytics/services/update_service.dart';
 import 'package:church_analytics/ui/widgets/release_notes_dialog.dart';
+import 'package:church_analytics/ui/widgets/update_download_progress_dialog.dart';
 import 'package:church_analytics/ui/widgets/update_install_failure_dialog.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 // ---------------------------------------------------------------------------
@@ -65,10 +71,25 @@ class AboutUpdatesCard extends ConsumerStatefulWidget {
   /// Activity-log service injected for testability.
   final ActivityLogService activityLog;
 
+  /// Download service injected for testability.
+  ///
+  /// When `null` (production default), a new [UpdateDownloadService] instance
+  /// is created inline inside [_onDownloadUpdate].  Inject a custom subclass
+  /// in tests to bypass real HTTP requests.
+  final UpdateDownloadService? downloadService;
+
+  /// Destination directory resolver for testability.
+  ///
+  /// Defaults to [getTemporaryDirectory].  Inject a custom resolver in tests
+  /// to avoid real filesystem calls.
+  final Future<Directory> Function()? destDirResolver;
+
   const AboutUpdatesCard({
     super.key,
     this.launchService = const NoOpInstallerLaunchService(),
     this.activityLog = const NoOpActivityLogService(),
+    this.downloadService,
+    this.destDirResolver,
   });
 
   @override
@@ -115,15 +136,10 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
   // Install flow (UPDATE-011 failure recovery)
   // -------------------------------------------------------------------------
 
-  /// Initiates the installer launch with the downloaded installer path.
+  /// Passes [installerPath] to the platform installer-launch service.
   ///
-  /// Until UPDATE-006 provides the real download path, [installerPath] is
-  /// passed as an empty string, which will cause [NoOpInstallerLaunchService]
-  /// to return a failure immediately and show [UpdateInstallFailureDialog].
-  ///
-  /// When UPDATE-006 lands, the download result path will be passed here
-  /// instead.
-  Future<void> _onInstall([String installerPath = '']) async {
+  /// Logs the outcome and shows [UpdateInstallFailureDialog] on failure.
+  Future<void> _doInstall(String installerPath) async {
     final result = await widget.launchService.launch(installerPath);
 
     // Log the outcome regardless of success or failure.
@@ -134,6 +150,110 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
 
     if (result.isError && mounted) {
       await UpdateInstallFailureDialog.show(context, errorDetail: result.error);
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // Download + install flow (UPDATE-006)
+  // -------------------------------------------------------------------------
+
+  /// Orchestrates the full download-and-install flow.
+  ///
+  /// On **Web**: opens [UpdateErrorMessages.fallbackUrl] in a browser tab
+  /// (browsers handle downloads natively; no installer streaming is needed).
+  ///
+  /// On **native platforms**:
+  /// 1. Shows [UpdateDownloadProgressDialog] with a cancel option.
+  /// 2. Streams the installer from the manifest URL via
+  ///    [UpdateDownloadService.download], reporting progress.
+  /// 3. Verifies the SHA-256 checksum.
+  /// 4. On success, dismisses the dialog and calls [_doInstall] with the
+  ///    downloaded file path.
+  /// 5. On cancellation, dismisses the dialog silently.
+  /// 6. On any other error, dismisses the dialog and shows a [SnackBar] with
+  ///    a "Try Again" action.
+  Future<void> _onDownloadUpdate() async {
+    final manifest = _manifest;
+    if (manifest == null) return;
+
+    // Web: no streaming installer — open GitHub Releases in browser tab.
+    if (kIsWeb) {
+      final launched = await launchUrl(
+        Uri.parse(UpdateErrorMessages.fallbackUrl),
+        mode: LaunchMode.externalApplication,
+      );
+      if (!launched && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Could not open browser. '
+              'Visit: ${UpdateErrorMessages.fallbackUrl}',
+            ),
+          ),
+        );
+      }
+      return;
+    }
+
+    final cancelToken = CancelToken();
+    final progressNotifier = ValueNotifier<double>(0.0);
+    var dialogPopped = false;
+
+    void popDialog() {
+      if (!dialogPopped && mounted) {
+        dialogPopped = true;
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+    }
+
+    // Show the progress dialog.  Fire-and-forget: the dialog is dismissed
+    // imperatively via Navigator.pop rather than by awaiting this future.
+    // ignore: unawaited_futures
+    UpdateDownloadProgressDialog.show(
+      context,
+      progress: progressNotifier,
+      onCancel: () {
+        cancelToken.cancel();
+        popDialog();
+      },
+    );
+
+    try {
+      final destDir = await (widget.destDirResolver ?? getTemporaryDirectory)();
+      final service = widget.downloadService ?? UpdateDownloadService();
+      final result = await service.download(
+        manifest: manifest,
+        destDir: destDir,
+        onProgress: (p) => progressNotifier.value = p,
+        cancelToken: cancelToken,
+      );
+
+      popDialog();
+      progressNotifier.dispose();
+
+      if (!mounted) return;
+
+      if (result.isSuccess) {
+        await _doInstall(result.filePath!);
+      } else if (result.errorType != UpdateErrorType.downloadCancelled) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              result.error ??
+                  UpdateErrorMessages.messageFor(
+                    result.errorType ?? UpdateErrorType.downloadError,
+                  ),
+            ),
+            action: SnackBarAction(
+              label: 'Try Again',
+              onPressed: _onDownloadUpdate,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      popDialog();
+      progressNotifier.dispose();
     }
   }
 
@@ -325,16 +445,15 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
                     context,
                     version: _latestVersion ?? '',
                     releaseNotes: _manifest?.releaseNotes ?? '',
-                    onDownloadUpdate: _onInstall,
+                    onDownloadUpdate: _onDownloadUpdate,
                   ),
                   icon: const Icon(Icons.article_outlined, size: 16),
                   label: const Text('View Release Notes'),
                 ),
-                // Wired to installer launch + failure recovery (UPDATE-011).
-                // UPDATE-006 will supply the real downloaded-file path.
+                // Initiates full download + verify + install flow (UPDATE-006).
                 FilledButton.icon(
                   key: const ValueKey('download_update_button'),
-                  onPressed: _onInstall,
+                  onPressed: _onDownloadUpdate,
                   icon: const Icon(Icons.download, size: 16),
                   label: const Text('Download Update'),
                 ),

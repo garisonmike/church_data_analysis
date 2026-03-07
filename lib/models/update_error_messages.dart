@@ -57,6 +57,7 @@ abstract final class UpdateErrorMessages {
       UpdateErrorType.unsupportedPlatform =>
         'Automatic updates are not supported on this platform. '
             'Please download the latest version from GitHub Releases.',
+      UpdateErrorType.downloadCancelled => 'The download was cancelled.',
     };
   }
 
@@ -77,6 +78,7 @@ abstract final class UpdateErrorMessages {
         'Download and install manually from GitHub Releases',
       UpdateErrorType.unsupportedPlatform =>
         'Download the latest version from GitHub Releases',
+      UpdateErrorType.downloadCancelled => 'Retry the download',
     };
   }
 }

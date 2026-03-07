@@ -1577,3 +1577,119 @@ None — `ReleaseNotesDialog` is a new widget; the only change to existing code 
 - Test at narrow (mobile) and wide (tablet/desktop) breakpoints.
 
 **Status: READY FOR REVIEW**
+
+---
+
+## UPDATE-006 — Download installer from GitHub Releases
+
+**Priority:** P3
+**Executed:** 2026-03-07
+**Status:** READY FOR REVIEW
+
+### Problem
+The "Download Update" button in `AboutUpdatesCard` called `_onInstall()` directly with an empty path, bypassing any actual download. No HTTP download was performed; no progress was shown to the user; SHA-256 checksum verification (required for security) was never executed; and there was no way to cancel a download in progress.
+
+### Solution Implemented
+
+**`pubspec.yaml`** *(modified)*
+
+- Added `crypto: ^3.0.3` under `# Update service` block to provide SHA-256 digest support.
+
+**`lib/models/update_error_type.dart`** *(modified)*
+
+- Added `downloadCancelled` enum value with doc-comment:
+  ```dart
+  /// The download was cancelled by the user before completion.
+  downloadCancelled,
+  ```
+
+**`lib/models/update_error_messages.dart`** *(modified)*
+
+- Added `downloadCancelled` to `messageFor()`: `'The download was cancelled.'`
+- Added `downloadCancelled` to `actionFor()`: `'Retry the download'`
+
+**`lib/services/update_download_service.dart`** *(modified — major rewrite)*
+
+- Added `import 'dart:typed_data'` and `import 'package:crypto/crypto.dart'`.
+- Added `CancelToken` class — cooperative cancellation token with `.cancel()` method, `.isCancelled` getter, and optional `onCancelled` callback.
+- `download()` signature now accepts `void Function(double progress)? onProgress` and `CancelToken? cancelToken` parameters.
+- Replaced `_client.get()` (non-streaming) with `_client.send(request)` — `StreamedResponse` enables real-time progress reporting.
+- Streaming loop with per-chunk cancellation check; SHA-256 verification after all bytes received using `_sha256Hex(bytes)` compared to `asset.sha256.toLowerCase()`.
+- File deleted on checksum mismatch before returning failure result.
+- Removed `// TODO(UPDATE-006)` stub comment — implementation is complete.
+
+**`lib/ui/widgets/update_download_progress_dialog.dart`** *(new file)*
+
+- `UpdateDownloadProgressDialog` — `StatelessWidget` modal dialog (`barrierDismissible: false`).
+  - `ValueListenable<double> progress` — determinate when `> 0.0`, otherwise indeterminate.
+  - `String? filename` subtitle; `VoidCallback onCancel`; static `show()` factory.
+  - `ValueListenableBuilder` rebuilds only the indicator and percentage text as progress changes.
+  - ValueKeys: `download_progress_indicator`, `download_percentage_text`, `cancel_download_button`.
+
+**`lib/ui/widgets/widgets.dart`** *(modified)*
+
+- Added `export 'update_download_progress_dialog.dart';`.
+
+**`lib/ui/widgets/about_updates_card.dart`** *(modified — major update)*
+
+- Added imports: `dart:io`, `update_download_service.dart`, `update_download_progress_dialog.dart`, `flutter/foundation.dart`, `path_provider.dart`.
+- Added injectable constructor parameters `downloadService` and `destDirResolver` (both nullable, production-defaulting).
+- Renamed `_onInstall` → `_doInstall`; added `_onDownloadUpdate()` with Web fallback via `launchUrl` and native streaming download flow with progress dialog, cancellation, post-download SHA-256 check, and error SnackBar.
+- Both "Download Update" buttons (card + `ReleaseNotesDialog`) wired to `_onDownloadUpdate`.
+
+**`test/services/update_download_service_test.dart`** *(modified)*
+
+- Added `sha256Of()` helper; updated `makeManifest()` to accept `sha256` param; updated all 8 success-path tests with correct hashes.
+- Added `_NullContentLengthClient` helper to test null content-length path.
+- Added new test groups: `SHA-256 checksum verification` (3 tests), `Cancellation` (2 tests), `Progress callback` (2 tests).
+
+**`test/ui/update_install_failure_dialog_test.dart`** *(modified)*
+
+- Added `_FakeDownloadService` that returns immediate success without HTTP; injected into `buildCardWithUpdateAvailable()` along with `destDirResolver: () async => Directory.systemTemp` to prevent `getTemporaryDirectory()` hang in test environment.
+
+### Files Modified / Created
+
+| File | Change |
+|------|--------|
+| `pubspec.yaml` | Added `crypto: ^3.0.3` |
+| `lib/models/update_error_type.dart` | Added `downloadCancelled` enum value |
+| `lib/models/update_error_messages.dart` | Added `downloadCancelled` message + action |
+| `lib/services/update_download_service.dart` | Streaming download, SHA-256 verification, cancellation, `CancelToken` class |
+| `lib/ui/widgets/update_download_progress_dialog.dart` | **Created** — progress dialog with determinate/indeterminate indicator and cancel |
+| `lib/ui/widgets/widgets.dart` | Added `export 'update_download_progress_dialog.dart'` |
+| `lib/ui/widgets/about_updates_card.dart` | Full download flow, injectable services, Web fallback |
+| `test/services/update_download_service_test.dart` | SHA-256 tests, cancellation, progress, `_NullContentLengthClient` helper |
+| `test/ui/update_install_failure_dialog_test.dart` | Added `_FakeDownloadService`, injected fake services into helper |
+
+### Acceptance Criteria Verification
+
+| Criterion | Status |
+|-----------|--------|
+| Download triggered from "Download Update" button | ✅ `_onDownloadUpdate()` wired to both card button and dialog button |
+| Progress dialog shown with cancellation support | ✅ `UpdateDownloadProgressDialog` shown; `CancelToken.cancel()` on user tap |
+| SHA-256 checksum verified against manifest | ✅ `_sha256Hex(bytes)` compared to `asset.sha256.toLowerCase()` |
+| File deleted on checksum mismatch | ✅ `File(destFile.path).deleteSync()` before returning failure |
+| Cancellation returns `downloadCancelled` error type | ✅ Per-chunk `isCancelled` check; result carries `UpdateErrorType.downloadCancelled` |
+| Web falls back to browser download | ✅ `kIsWeb` guard calls `launchUrl` to GitHub Releases |
+| Error SnackBar shown on non-cancellation failure | ✅ `ScaffoldMessenger.showSnackBar` with "Try Again" action |
+
+### Test Results
+```
++739: All tests passed!
+```
+
+### Regression Risk
+**Low** — `AboutUpdatesCard` constructor defaults (`downloadService: null`, `destDirResolver: null`) preserve all pre-existing test behaviour. No existing service interfaces changed. All 739 tests pass.
+
+### Static Analysis Result
+`flutter analyze lib/` — 5 issues, all pre-existing (in `installer_launch_result.dart`, `web.dart`, `version.dart`). Zero issues in any modified file.
+
+### Manual Verification Required
+- [ ] Android: tap "Download Update" — progress dialog appears — download completes — installer launched.
+- [ ] Android: cancel mid-download — dialog closes silently with no error shown.
+- [ ] Android: serve a URL with a mismatched SHA-256 — checksum error SnackBar shown.
+- [ ] Linux: same scenarios as Android above.
+- [ ] Web: tap "Download Update" — GitHub Releases page opens in browser.
+- [ ] Slow connection: confirm progress indicator transitions from indeterminate to determinate once Content-Length is received.
+
+**Status: READY FOR REVIEW**

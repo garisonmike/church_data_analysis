@@ -647,12 +647,12 @@ When an update is available, users should be able to read the release notes befo
 - "Download Update" button calls into UPDATE-006.
 
 ### Acceptance Criteria
-- [ ] Release notes are rendered with bullet list and bold formatting.
-- [ ] Dialog scrolls for long release notes.
-- [ ] "Download Update" button is present and functional.
-- [ ] "Dismiss" closes dialog with no action.
-- [ ] Dialog height is capped at 75% of screen height.
-- [ ] Works correctly at all breakpoints.
+- [x] Release notes are rendered with bullet list and bold formatting.
+- [x] Dialog scrolls for long release notes.
+- [x] "Download Update" button is present and functional.
+- [x] "Dismiss" closes dialog with no action.
+- [x] Dialog height is capped at 75% of screen height.
+- [x] Works correctly at all breakpoints.
 
 ### Regression Risk
 None — new dialog only.
@@ -664,6 +664,8 @@ None — new dialog only.
 
 ### Suggested Labels
 `enhancement`, `update-system`, `ui`, `priority:P3`
+
+**Status: COMPLETE**
 
 ---
 

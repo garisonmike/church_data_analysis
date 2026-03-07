@@ -1,9 +1,30 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:church_analytics/models/models.dart';
 import 'package:church_analytics/services/update_download_result.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
+
+// ---------------------------------------------------------------------------
+// CancelToken
+// ---------------------------------------------------------------------------
+
+/// A simple cooperative cancellation token for [UpdateDownloadService].
+///
+/// Pass an instance to [UpdateDownloadService.download] and call [cancel] at
+/// any time to request early termination.  The download loop checks
+/// [isCancelled] after each received chunk.
+class CancelToken {
+  bool _isCancelled = false;
+
+  /// Signals that the download should stop at the next chunk boundary.
+  void cancel() => _isCancelled = true;
+
+  /// Whether [cancel] has been called.
+  bool get isCancelled => _isCancelled;
+}
 
 // ---------------------------------------------------------------------------
 // FreeSpaceResolver typedef
@@ -97,8 +118,9 @@ Future<int?> defaultFreeSpaceResolver(String directoryPath) async {
 /// [UpdateErrorType.unsupportedPlatform] when no URL is available (e.g. web).
 ///
 /// ## Checksum verification (UPDATE-006)
-/// SHA-256 verification against [PlatformAsset.sha256] is stubbed out in this
-/// skeleton.  Full implementation is provided by UPDATE-006.
+/// SHA-256 of the downloaded installer is computed and compared against
+/// [PlatformAsset.sha256].  A mismatch deletes the partial file and returns
+/// [UpdateErrorType.checksumMismatch].
 ///
 /// ## Usage
 /// ```dart
@@ -126,6 +148,22 @@ class UpdateDownloadService {
 
   /// Downloads the installer described by [manifest] and saves it in [destDir].
   ///
+  /// ### Progress reporting
+  /// When [onProgress] is provided, it is called after each received chunk
+  /// with a value between `0.0` and `1.0` representing the fraction downloaded.
+  /// Progress is only emitted when the server includes a non-zero
+  /// `Content-Length` header; otherwise [onProgress] is never called.
+  ///
+  /// ### Cancellation
+  /// Pass a [CancelToken] and call [CancelToken.cancel] to abort the stream
+  /// at the next chunk boundary.  The partial file is deleted and
+  /// [UpdateErrorType.downloadCancelled] is returned.
+  ///
+  /// ### SHA-256 verification (UPDATE-006)
+  /// After all bytes are received, the SHA-256 checksum is computed and
+  /// compared against [PlatformAsset.sha256].  A mismatch deletes the file
+  /// and returns [UpdateErrorType.checksumMismatch].
+  ///
   /// Returns [UpdateDownloadResult.success] with the saved file path on
   /// success, or [UpdateDownloadResult.failure] on any error.
   ///
@@ -133,6 +171,8 @@ class UpdateDownloadService {
   Future<UpdateDownloadResult> download({
     required UpdateManifest manifest,
     required Directory destDir,
+    void Function(double progress)? onProgress,
+    CancelToken? cancelToken,
   }) async {
     // Resolve the platform-appropriate download asset from the manifest.
     final asset = _resolvePlatformAsset(manifest);
@@ -171,26 +211,52 @@ class UpdateDownloadService {
         }
       }
 
-      final response = await _client.get(uri);
-      if (response.statusCode != 200) {
+      // Stream the download so we can report progress and support cancellation.
+      final request = http.Request('GET', uri);
+      final streamedResponse = await _client.send(request);
+
+      if (streamedResponse.statusCode != 200) {
         return UpdateDownloadResult.failure(
-          'Server returned HTTP ${response.statusCode} while downloading the '
-          'installer.',
+          'Server returned HTTP ${streamedResponse.statusCode} while '
+          'downloading the installer.',
           errorType: UpdateErrorType.downloadError,
         );
       }
 
-      await file.writeAsBytes(response.bodyBytes, flush: true);
+      final responseContentLength = streamedResponse.contentLength;
+      final byteBuilder = BytesBuilder(copy: false);
+      int received = 0;
 
-      // TODO(UPDATE-006): Verify SHA-256 checksum.
-      // final computed = sha256OfBytes(response.bodyBytes).toHex();
-      // if (computed != asset.sha256) {
-      //   await _deletePartial(file);
-      //   return UpdateDownloadResult.failure(
-      //     'Checksum mismatch: expected ${asset.sha256}, got $computed.',
-      //     errorType: UpdateErrorType.checksumMismatch,
-      //   );
-      // }
+      await for (final chunk in streamedResponse.stream) {
+        // Cooperative cancellation: check token at each chunk boundary.
+        if (cancelToken?.isCancelled == true) {
+          await _deletePartial(file);
+          return UpdateDownloadResult.failure(
+            'Download cancelled by user.',
+            errorType: UpdateErrorType.downloadCancelled,
+          );
+        }
+        byteBuilder.add(chunk);
+        received += chunk.length;
+        if (responseContentLength != null && responseContentLength > 0) {
+          onProgress?.call(received / responseContentLength);
+        }
+      }
+
+      final bytes = byteBuilder.takeBytes();
+      await file.writeAsBytes(bytes, flush: true);
+
+      // SHA-256 checksum verification (UPDATE-006).
+      final computed = _sha256Hex(bytes);
+      if (computed != asset.sha256.toLowerCase()) {
+        await _deletePartial(file);
+        return UpdateDownloadResult.failure(
+          'Checksum mismatch: expected ${asset.sha256}, got $computed. '
+          'The downloaded file may be corrupted or tampered with. '
+          'Please download a fresh copy from GitHub Releases.',
+          errorType: UpdateErrorType.checksumMismatch,
+        );
+      }
 
       return UpdateDownloadResult.success(file.path);
     } on UpdateSecurityException catch (e) {
@@ -281,6 +347,10 @@ class UpdateDownloadService {
     }
     return null;
   }
+
+  /// Computes the SHA-256 checksum of [bytes] and returns it as a lowercase
+  /// 64-character hex string.
+  static String _sha256Hex(Uint8List bytes) => sha256.convert(bytes).toString();
 
   /// Silently deletes [file] if it exists — best-effort partial-file cleanup.
   Future<void> _deletePartial(File file) async {

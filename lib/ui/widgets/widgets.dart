@@ -7,3 +7,4 @@ export 'profile_switcher_widget.dart';
 export 'release_notes_dialog.dart';
 export 'responsive_chart_container.dart';
 export 'time_range_selector.dart';
+export 'update_download_progress_dialog.dart';
