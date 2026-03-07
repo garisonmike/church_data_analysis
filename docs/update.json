@@ -1,16 +1,16 @@
 {
-    "version": "1.2.1",
+    "version": "1.2.2",
     "release_date": "2026-03-07",
     "min_supported_version": "1.0.0",
-    "release_notes": "## What's New\n\n- **Android Export**: Files now save to public Downloads folder\n- **Android Export**: Added Open File, Share, and Copy Path actions\n- **Android Export**: Files automatically appear in file managers\n\n## Bug Fixes\n\n- Fixed Android export file visibility and access\n- Fixed currency dropdown overflow in App Settings\n- Fixed dialog layout crash on Reports screen",
+    "release_notes": "## What's New\n\n- **Update System**: In-app update checks now work correctly\n- **CI**: Release workflow now auto-computes SHA-256 checksums and stamps update.json\n\n## Bug Fixes\n\n- Fixed currency dropdown overflow crash in App Settings\n- Fixed dialog layout crash on Reports screen\n- Fixed update.json not being attached to GitHub releases",
     "platforms": {
         "android": {
-            "download_url": "https://github.com/GarisonMike/church_data_analysis/releases/download/v1.2.1/app-release.apk",
-            "sha256": "TO_BE_CALCULATED"
+            "download_url": "https://github.com/GarisonMike/church_data_analysis/releases/download/v1.2.2/app-release.apk",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
         },
         "windows": {
-            "download_url": "https://github.com/GarisonMike/church_data_analysis/releases/download/v1.2.1/ChurchAnalytics-Windows.zip",
-            "sha256": "TO_BE_CALCULATED"
+            "download_url": "https://github.com/GarisonMike/church_data_analysis/releases/download/v1.2.2/ChurchAnalytics-Windows.zip",
+            "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
         }
     }
 }

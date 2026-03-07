@@ -124,12 +124,42 @@ jobs:
           cd release-assets
           zip -r ChurchAnalytics-Windows.zip windows
 
-      - name: Copy update manifest
-        run: cp docs/update.json release-assets/update.json
-
       - name: Extract version from tag
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
+
+      - name: Compute SHA-256 checksums
+        id: checksums
+        run: |
+          echo "apk=$(sha256sum release-assets/app-release.apk | awk '{print $1}')" >> $GITHUB_OUTPUT
+          echo "windows=$(sha256sum release-assets/ChurchAnalytics-Windows.zip | awk '{print $1}')" >> $GITHUB_OUTPUT
+
+      - name: Stamp update.json with version and checksums
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          APK_HASH: ${{ steps.checksums.outputs.apk }}
+          WIN_HASH: ${{ steps.checksums.outputs.windows }}
+        run: |
+          python3 - <<'EOF'
+          import json, os
+
+          version = os.environ['VERSION']
+          apk_hash = os.environ['APK_HASH']
+          win_hash = os.environ['WIN_HASH']
+          base_url = f'https://github.com/GarisonMike/church_data_analysis/releases/download/v{version}'
+
+          with open('docs/update.json') as f:
+              manifest = json.load(f)
+
+          manifest['version'] = version
+          manifest['platforms']['android']['download_url'] = f'{base_url}/app-release.apk'
+          manifest['platforms']['android']['sha256'] = apk_hash
+          manifest['platforms']['windows']['download_url'] = f'{base_url}/ChurchAnalytics-Windows.zip'
+          manifest['platforms']['windows']['sha256'] = win_hash
+
+          with open('release-assets/update.json', 'w') as f:
+              json.dump(manifest, f, indent=4)
+          EOF
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
