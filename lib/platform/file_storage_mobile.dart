@@ -137,22 +137,25 @@ class FileStorageImpl implements FileStorage {
     required List<String> allowedExtensions,
   }) async {
     try {
-      final result = await FilePicker.platform.saveFile(
-        dialogTitle: 'Select export location',
-        fileName: suggestedName,
-        allowedExtensions: allowedExtensions,
-        type: FileType.custom,
+      // On Android/iOS, FilePicker.saveFile() requires bytes to be provided at
+      // the time of the dialog — which we don't have yet at path-picking time.
+      // Use getDirectoryPath() instead: the user picks a folder and we compose
+      // the full save path with the suggested file name.
+      final dir = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: 'Select export folder',
+        lockParentWindow: true,
       );
-      if (result == null || result.trim().isEmpty) {
+      if (dir == null || dir.trim().isEmpty) {
         if (kDebugMode) {
           debugPrint('Save location dialog cancelled');
         }
         return null;
       }
+      final fullPath = '${dir.trimRight()}/$suggestedName';
       if (kDebugMode) {
-        debugPrint('Selected save location: $result');
+        debugPrint('Selected save location: $fullPath');
       }
-      return result;
+      return fullPath;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Error picking save location: $e');

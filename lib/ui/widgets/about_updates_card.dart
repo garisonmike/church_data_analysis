@@ -11,7 +11,7 @@ import 'package:church_analytics/ui/widgets/installer_confirmation_dialog.dart';
 import 'package:church_analytics/ui/widgets/release_notes_dialog.dart';
 import 'package:church_analytics/ui/widgets/update_download_progress_dialog.dart';
 import 'package:church_analytics/ui/widgets/update_install_failure_dialog.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:package_info_plus/package_info_plus.dart';
@@ -512,14 +512,29 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
                 ),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text(
-                    _errorType != null
-                        ? UpdateErrorMessages.messageFor(_errorType!)
-                        : (_errorMessage ?? 'An unknown error occurred.'),
-                    key: const ValueKey('error_message_text'),
-                    style: theme.textTheme.bodyMedium?.copyWith(
-                      color: theme.colorScheme.error,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _errorType != null
+                            ? UpdateErrorMessages.messageFor(_errorType!)
+                            : (_errorMessage ?? 'An unknown error occurred.'),
+                        key: const ValueKey('error_message_text'),
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.error,
+                        ),
+                      ),
+                      if (kDebugMode && _errorMessage != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Debug: $_errorMessage',
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: theme.colorScheme.error.withOpacity(0.7),
+                            fontFamily: 'monospace',
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
               ],

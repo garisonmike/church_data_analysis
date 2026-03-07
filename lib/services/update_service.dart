@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 
 import 'package:church_analytics/models/models.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
@@ -221,6 +222,7 @@ class UpdateService {
               ),
       );
     } on UpdateSecurityException catch (e) {
+      debugPrint('[UpdateService] Security error: ${e.message}');
       return _cache(
         UpdateCheckResult.failure(
           e.message,
@@ -228,6 +230,7 @@ class UpdateService {
         ),
       );
     } on UpdateManifestParseException catch (e) {
+      debugPrint('[UpdateService] Parse error: $e');
       return _cache(
         UpdateCheckResult.failure(
           e.message,
@@ -235,13 +238,17 @@ class UpdateService {
         ),
       );
     } on TimeoutException {
+      debugPrint(
+        '[UpdateService] Network timeout after ${_networkTimeout.inSeconds}s',
+      );
       return _cache(
         UpdateCheckResult.failure(
           'Update check timed out after ${_networkTimeout.inSeconds} seconds',
           errorType: UpdateErrorType.networkError,
         ),
       );
-    } catch (e) {
+    } catch (e, st) {
+      debugPrint('[UpdateService] Network error: $e\n$st');
       return _cache(
         UpdateCheckResult.failure(
           '$e',

@@ -108,19 +108,38 @@ class DefaultExportPathResolver {
     try {
       return await _resolveNative();
     } catch (e) {
-      // Fallback for unit-test environments and desktop contexts that lack
-      // a registered path_provider plugin channel.
-      final fallback = Directory('${Directory.systemTemp.path}/exports');
-      if (!await fallback.exists()) {
-        await fallback.create(recursive: true);
+      // Fallback for unit-test environments and device contexts that lack
+      // a working path_provider channel. Use the app documents directory, which
+      // is always accessible on all platforms (unlike system temp on Android,
+      // which maps to a private /data/user/... path that PathSafetyGuard rejects).
+      try {
+        final appDocs = await getApplicationDocumentsDirectory();
+        final fallback = Directory('${appDocs.path}/$appFolderName');
+        if (!await fallback.exists()) {
+          await fallback.create(recursive: true);
+        }
+        if (kDebugMode) {
+          debugPrint(
+            '[DefaultExportPathResolver] path_provider unavailable — '
+            'falling back to: ${fallback.path}',
+          );
+        }
+        return fallback.path;
+      } catch (_) {
+        // Last-resort: system temp (only reached in pure-dart unit tests where
+        // no platform channels are available at all).
+        final fallback = Directory('${Directory.systemTemp.path}/exports');
+        if (!await fallback.exists()) {
+          await fallback.create(recursive: true);
+        }
+        if (kDebugMode) {
+          debugPrint(
+            '[DefaultExportPathResolver] all path_provider calls failed — '
+            'last-resort fallback: ${fallback.path}',
+          );
+        }
+        return fallback.path;
       }
-      if (kDebugMode) {
-        debugPrint(
-          '[DefaultExportPathResolver] path_provider unavailable — '
-          'falling back to: ${fallback.path}',
-        );
-      }
-      return fallback.path;
     }
   }
 
@@ -170,6 +189,13 @@ class DefaultExportPathResolver {
 
   Future<Directory> _resolveBaseDir() async {
     if (Platform.isAndroid) {
+      // Try the well-known public Downloads directory first. This path is
+      // reliable across Android versions and OEMs without extra permissions.
+      const publicDownloads = '/storage/emulated/0/Download';
+      final publicDir = Directory(publicDownloads);
+      if (await publicDir.exists()) return publicDir;
+
+      // Fall back to the path_provider-reported external storage dirs.
       final fn = _getExternalDirs ?? getExternalStorageDirectories;
       final dirs = await fn(StorageDirectory.downloads);
       if (dirs != null && dirs.isNotEmpty) return dirs.first;
