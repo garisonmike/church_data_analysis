@@ -1,10 +1,14 @@
+import 'dart:io' show Platform;
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/app_settings.dart';
 import '../../repositories/settings_repository.dart';
+import '../../services/file_service.dart' show resolvedExportPathProvider;
 import '../../services/settings_service.dart';
 import '../widgets/about_updates_card.dart';
 import '../widgets/activity_log_card.dart';
@@ -444,6 +448,7 @@ class _ExportFolderCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final customPath = ref.watch(defaultExportPathProvider);
+    final resolvedAsync = ref.watch(resolvedExportPathProvider);
 
     return Card(
       child: Padding(
@@ -453,43 +458,49 @@ class _ExportFolderCard extends ConsumerWidget {
           children: [
             const _CardTitle('File Export'),
             const SizedBox(height: 16),
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Default Export Folder'),
-              subtitle: Text(
-                customPath ?? 'Platform default (Downloads/ChurchAnalytics/)',
-                overflow: TextOverflow.ellipsis,
-                maxLines: 2,
-              ),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  IconButton(
-                    icon: const Icon(Icons.folder_open),
-                    tooltip: 'Choose folder',
-                    onPressed: () => _pickFolder(context, ref),
-                  ),
-                  if (customPath != null)
+            // Read-only resolved path tile — shown on ALL platforms (including Web).
+            _CurrentExportPathTile(resolvedAsync: resolvedAsync),
+            // Folder picker controls — native platforms only.
+            if (!kIsWeb) ...[
+              const Divider(height: 24),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Default Export Folder'),
+                subtitle: Text(
+                  customPath ?? 'Platform default (Downloads/ChurchAnalytics/)',
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
                     IconButton(
-                      icon: const Icon(Icons.restore),
-                      tooltip: 'Reset to default',
-                      onPressed: () => ref
-                          .read(defaultExportPathProvider.notifier)
-                          .clearCustomPath(),
+                      icon: const Icon(Icons.folder_open),
+                      tooltip: 'Choose folder',
+                      onPressed: () => _pickFolder(context, ref),
                     ),
-                ],
-              ),
-            ),
-            if (customPath != null)
-              Padding(
-                padding: const EdgeInsets.only(top: 4),
-                child: Text(
-                  'Custom folder active',
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
+                    if (customPath != null)
+                      IconButton(
+                        icon: const Icon(Icons.restore),
+                        tooltip: 'Reset to default',
+                        onPressed: () => ref
+                            .read(defaultExportPathProvider.notifier)
+                            .clearCustomPath(),
+                      ),
+                  ],
                 ),
               ),
+              if (customPath != null)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Text(
+                    'Custom folder active',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.primary,
+                    ),
+                  ),
+                ),
+            ],
           ],
         ),
       ),
@@ -509,6 +520,129 @@ class _ExportFolderCard extends ConsumerWidget {
         context,
       ).showSnackBar(const SnackBar(content: Text('Export folder updated')));
     }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// _CurrentExportPathTile
+// ---------------------------------------------------------------------------
+
+/// Read-only [ListTile] showing the resolved active export directory.
+///
+/// Displayed on **all** platforms including Web.
+///
+/// - **Web:** subtitle is always "Browser Downloads".
+/// - **Native:** subtitle is the resolved absolute path from
+///   [resolvedExportPathProvider], or a loading/error placeholder.
+/// - **Desktop (Linux / Windows / macOS):** the path text is wrapped in a
+///   [SelectableText] so users can highlight and copy it; a copy [IconButton]
+///   is also shown in the trailing position for one-tap clipboard access.
+class _CurrentExportPathTile extends StatelessWidget {
+  final AsyncValue<String?> resolvedAsync;
+
+  const _CurrentExportPathTile({required this.resolvedAsync});
+
+  /// Returns `true` on Linux, Windows, and macOS (never on Web or mobile).
+  static bool get _isDesktop =>
+      !kIsWeb && (Platform.isLinux || Platform.isWindows || Platform.isMacOS);
+
+  @override
+  Widget build(BuildContext context) {
+    // On Web there is no filesystem path — display a static label.
+    if (kIsWeb) {
+      return ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: Icon(
+          Icons.download,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
+        title: const Text('Current Export Folder'),
+        subtitle: Text(
+          'Browser Downloads',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      );
+    }
+
+    return resolvedAsync.when(
+      loading: () => ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: const SizedBox(
+          width: 20,
+          height: 20,
+          child: CircularProgressIndicator(strokeWidth: 2),
+        ),
+        title: const Text('Current Export Folder'),
+        subtitle: Text(
+          'Resolving…',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+      ),
+      error: (_, __) => ListTile(
+        contentPadding: EdgeInsets.zero,
+        leading: Icon(
+          Icons.folder_off_outlined,
+          color: Theme.of(context).colorScheme.error,
+        ),
+        title: const Text('Current Export Folder'),
+        subtitle: Text(
+          'Unable to resolve path',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Theme.of(context).colorScheme.error,
+          ),
+        ),
+      ),
+      data: (path) {
+        final displayPath =
+            path ?? 'Platform default (Downloads/ChurchAnalytics/)';
+        final subtitleWidget = _isDesktop
+            ? SelectableText(
+                displayPath,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                maxLines: 2,
+              )
+            : Text(
+                displayPath,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              );
+
+        return ListTile(
+          contentPadding: EdgeInsets.zero,
+          leading: Icon(
+            Icons.folder_outlined,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+          title: const Text('Current Export Folder'),
+          subtitle: subtitleWidget,
+          // Copy-to-clipboard button on desktop when a real path is resolved.
+          trailing: (_isDesktop && path != null)
+              ? IconButton(
+                  icon: const Icon(Icons.copy, size: 18),
+                  tooltip: 'Copy path',
+                  onPressed: () {
+                    Clipboard.setData(ClipboardData(text: path));
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Path copied to clipboard'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  },
+                )
+              : null,
+        );
+      },
+    );
   }
 }
 

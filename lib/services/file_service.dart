@@ -519,3 +519,22 @@ final fileServiceProvider = Provider<FileService>((ref) {
     ),
   );
 });
+
+/// [FutureProvider] that resolves the *active* export directory path for
+/// display in the Settings UI (STORAGE-005).
+///
+/// Returns whichever path [FileService.getDefaultExportPath] would use for the
+/// next export operation — the user-override when one is set, otherwise the
+/// platform-computed default (`~/Downloads/ChurchAnalytics/` on desktop,
+/// external Downloads on Android, etc.).
+///
+/// Returns `null` on Web (blob download — no filesystem path concept).
+///
+/// Watches [defaultExportPathProvider] so the UI automatically re-resolves
+/// whenever the user changes or clears the custom export folder override.
+final resolvedExportPathProvider = FutureProvider<String?>((ref) async {
+  // Re-resolve whenever the user-override changes.
+  ref.watch(defaultExportPathProvider);
+  if (kIsWeb) return null;
+  return ref.read(fileServiceProvider).getDefaultExportPath();
+});

@@ -171,6 +171,8 @@ Low — purely additive; no changes to existing export/import logic paths.
 ### Suggested Labels
 `enhancement`, `storage`, `priority:P3`
 
+**Status: COMPLETE**
+
 ---
 
 ## [STORAGE-005] Persist and display current default export folder

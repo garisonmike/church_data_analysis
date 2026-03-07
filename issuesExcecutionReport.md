@@ -1408,3 +1408,81 @@ Low — the only breaking change to an existing file is the single-line `fileSer
 - Log 51+ operations: confirm the list cap is respected (max 50 entries visible via `getRecentEntries(50)`).
 
 **Status: READY FOR REVIEW**
+
+---
+
+## STORAGE-005 — Persist and display current default export folder
+
+**Priority:** P3
+**Executed:** 2026-03-07
+**Status:** READY FOR REVIEW
+
+### Problem
+Users had no visibility into where their exported files would be saved. The "File Export" card in Settings only appeared on non-Web platforms and only showed the user-override path (or a static fallback label), never the fully resolved platform path. There was no reactive tile showing the live resolved folder, no Web-aware display, and no selectable/copyable path text on desktop.
+
+### Solution Implemented
+
+**`lib/services/file_service.dart`** *(modified — appended `resolvedExportPathProvider`)*
+
+- `resolvedExportPathProvider` — a `FutureProvider<String?>` that:
+  - Calls `ref.watch(defaultExportPathProvider)` so it automatically re-resolves whenever the user sets or clears a custom export folder override.
+  - Returns `null` immediately on Web (no filesystem path concept).
+  - On native platforms delegates to `ref.read(fileServiceProvider).getDefaultExportPath()`, which applies the user override first and falls back to the platform-computed default (`~/Downloads/ChurchAnalytics/`, external Downloads on Android, etc.).
+
+**`lib/ui/screens/app_settings_screen.dart`** *(modified)*
+
+1. **Import additions:** `dart:io` (for `Platform.*` desktop detection), `flutter/services.dart` (for `Clipboard`/`ClipboardData`), and `file_service.dart` (for `resolvedExportPathProvider`).
+
+2. **`_ExportFolderCard` now shown on all platforms:** removed the `if (!kIsWeb)` guard so the "File Export" card renders on Web too.
+
+3. **`_ExportFolderCard.build()` refactored:**
+   - Watches `resolvedExportPathProvider` in addition to `defaultExportPathProvider`.
+   - Always renders `_CurrentExportPathTile(resolvedAsync: resolvedAsync)` at the top.
+   - The folder-picker `ListTile` + "Custom folder active" badge are wrapped in `if (!kIsWeb) ...[...]` so they remain hidden on Web.
+   - A `Divider` separates the read-only tile from the picker tile on native platforms.
+
+4. **`_CurrentExportPathTile` — new private widget:**
+   - Accepts `AsyncValue<String?> resolvedAsync` from the parent.
+   - **Web:** static tile with `Icons.download` leading icon and subtitle "Browser Downloads".
+   - **Loading:** `CircularProgressIndicator` in leading position, subtitle "Resolving…".
+   - **Error:** `Icons.folder_off_outlined` in error colour, subtitle "Unable to resolve path".
+   - **Data (native):** `Icons.folder_outlined` leading icon, subtitle = resolved path string (or "Platform default (Downloads/ChurchAnalytics/)" when `null`).
+     - On **desktop** (Linux / Windows / macOS, detected via `Platform.isLinux || Platform.isWindows || Platform.isMacOS` behind `!kIsWeb` guard): subtitle uses `SelectableText` for in-place text selection; trailing `Icons.copy` `IconButton` copies the path to clipboard via `Clipboard.setData` and shows a 2-second `SnackBar` confirmation.
+     - On **mobile** (Android / iOS): subtitle uses plain `Text` with `TextOverflow.ellipsis`; no copy button.
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `lib/services/file_service.dart` | Added `resolvedExportPathProvider` (`FutureProvider<String?>`) |
+| `lib/ui/screens/app_settings_screen.dart` | Added imports; removed `kIsWeb` guard on card; refactored `_ExportFolderCard.build()`; added `_CurrentExportPathTile` widget |
+
+### Acceptance Criteria Verification
+
+| Criterion | Status |
+|-----------|--------|
+| Settings screen shows the active export directory | ✅ `_CurrentExportPathTile` renders on all platforms |
+| Path updates immediately when user sets a custom override | ✅ `resolvedExportPathProvider` watches `defaultExportPathProvider` — re-executes on every override change |
+| Resets to platform default text when override is cleared | ✅ Clearing override triggers re-resolve — tile shows platform default |
+| Web displays "Browser Downloads" | ✅ `kIsWeb` branch returns static "Browser Downloads" label |
+| Path text is selectable/copyable on desktop | ✅ `SelectableText` + trailing `Icons.copy` button on Linux / Windows / macOS |
+
+### Test Results
+```
+41 tests (27 activity_log_service + 14 file_service) — all passed, zero regressions.
+```
+
+### Static Analysis Result
+`flutter analyze` on both modified files — **no issues found**.
+
+### Regression Risk
+Low — `resolvedExportPathProvider` is additive; revealing the card on Web is purely additive; existing non-Web picker controls are unchanged.
+
+### Manual Verification Required
+- **All platforms:** Open App Settings → confirm "File Export" card shows "Current Export Folder" tile with a resolved path.
+- **Desktop:** Confirm path text is selectable; tap copy icon → SnackBar appears → clipboard contains the path.
+- **Web:** Confirm subtitle reads "Browser Downloads"; confirm no folder-picker controls are visible.
+- **Custom override:** Set a custom folder → confirm tile path updates immediately.
+- **Clear override:** Reset to default → confirm tile reverts to the platform default path.
+
+**Status: READY FOR REVIEW**
