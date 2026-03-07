@@ -67,17 +67,7 @@ class AppSettingsScreen extends ConsumerWidget {
                               ),
                             ),
                             const SizedBox(width: 8),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(currency.name),
-                                Text(
-                                  currency.code,
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ],
-                            ),
+                            Text('${currency.name} (${currency.code})'),
                           ],
                         ),
                       );

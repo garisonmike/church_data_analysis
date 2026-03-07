@@ -492,10 +492,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Customize PDF Report'),
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        content: LayoutBuilder(
-          builder: (context, constraints) => ConstrainedBox(
+        content: Builder(
+          builder: (context) => ConstrainedBox(
             constraints: BoxConstraints(
-              maxHeight: constraints.maxHeight * 0.8,
+              maxHeight: MediaQuery.of(context).size.height * 0.7,
               maxWidth: 560,
             ),
             child: SingleChildScrollView(
@@ -578,10 +578,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Customize CSV Export'),
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        content: LayoutBuilder(
-          builder: (context, constraints) => ConstrainedBox(
+        content: Builder(
+          builder: (context) => ConstrainedBox(
             constraints: BoxConstraints(
-              maxHeight: constraints.maxHeight * 0.8,
+              maxHeight: MediaQuery.of(context).size.height * 0.7,
               maxWidth: 560,
             ),
             child: SingleChildScrollView(

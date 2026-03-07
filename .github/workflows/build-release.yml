@@ -124,6 +124,9 @@ jobs:
           cd release-assets
           zip -r ChurchAnalytics-Windows.zip windows
 
+      - name: Copy update manifest
+        run: cp docs/update.json release-assets/update.json
+
       - name: Extract version from tag
         id: version
         run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
@@ -134,15 +137,14 @@ jobs:
           files: |
             release-assets/app-release.apk
             release-assets/ChurchAnalytics-Windows.zip
+            release-assets/update.json
           body: |
             ## Church Analytics v${{ steps.version.outputs.version }}
             
             **Release Assets:**
             - Android APK (`app-release.apk`)
             - Windows Build (`ChurchAnalytics-Windows.zip`)
-            
-            **Post-Release Action Required:**
-            Upload `docs/update.json` as an additional asset to enable in-app update detection.
+            - Update manifest (`update.json`) — used by in-app update detection
             
             **Full Release Notes:**
             See `docs/update.json` for detailed release notes.
