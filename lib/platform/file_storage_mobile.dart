@@ -33,18 +33,56 @@ class FileStorageImpl implements FileStorage {
     }
   }
 
+  /// Notifies the Android media scanner about a new file so it appears in file managers.
+  ///
+  /// On Android 10+ (API 29+), files in public directories are automatically indexed.
+  /// For older versions, this triggers a media scan using am broadcast.
+  Future<void> _scanFileOnAndroid(String filePath) async {
+    if (!Platform.isAndroid) return;
+
+    try {
+      // Trigger media scan via broadcast
+      await Process.run('am', [
+        'broadcast',
+        '-a',
+        'android.intent.action.MEDIA_SCANNER_SCAN_FILE',
+        '-d',
+        'file://$filePath',
+      ]);
+      if (kDebugMode) {
+        debugPrint('Media scan triggered for: $filePath');
+      }
+    } catch (e) {
+      // Media scan is best-effort; don't fail the export if it doesn't work
+      if (kDebugMode) {
+        debugPrint('Media scan failed (non-critical): $e');
+      }
+    }
+  }
+
   Future<Directory> _getExportDirectory() async {
     try {
       Directory baseDir;
       if (Platform.isAndroid) {
-        final downloadDirs = await getExternalStorageDirectories(
-          type: StorageDirectory.downloads,
-        );
-        baseDir = (downloadDirs != null && downloadDirs.isNotEmpty)
-            ? downloadDirs.first
-            : await getApplicationDocumentsDirectory();
+        // Use public Downloads directory on Android
+        // Path: /storage/emulated/0/Download (standard Android Downloads)
+        final externalStoragePath = '/storage/emulated/0/Download';
+        final publicDownloads = Directory(externalStoragePath);
+
+        if (await publicDownloads.exists()) {
+          baseDir = publicDownloads;
+        } else {
+          // Fallback to app-specific downloads if public Downloads unavailable
+          final downloadDirs = await getExternalStorageDirectories(
+            type: StorageDirectory.downloads,
+          );
+          baseDir = (downloadDirs != null && downloadDirs.isNotEmpty)
+              ? downloadDirs.first
+              : await getApplicationDocumentsDirectory();
+        }
       } else if (Platform.isWindows || Platform.isLinux || Platform.isMacOS) {
-        baseDir = await getDownloadsDirectory() ??
+        baseDir =
+            await getDownloadsDirectory() ??
             await getApplicationDocumentsDirectory();
       } else {
         baseDir = await getApplicationDocumentsDirectory();
@@ -138,6 +176,10 @@ class FileStorageImpl implements FileStorage {
       await sanitized.parent.create(recursive: true);
       final target = await _ensureUniqueFile(sanitized);
       await target.writeAsString(content);
+
+      // Trigger media scan on Android so file appears in file managers
+      await _scanFileOnAndroid(target.path);
+
       if (kDebugMode) {
         debugPrint('File saved to: ${target.path}');
       }
@@ -165,6 +207,10 @@ class FileStorageImpl implements FileStorage {
       await sanitized.parent.create(recursive: true);
       final target = await _ensureUniqueFile(sanitized);
       await target.writeAsBytes(bytes);
+
+      // Trigger media scan on Android so file appears in file managers
+      await _scanFileOnAndroid(target.path);
+
       if (kDebugMode) {
         debugPrint('File saved to: ${target.path}');
       }

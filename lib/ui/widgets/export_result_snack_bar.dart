@@ -4,6 +4,8 @@ import 'package:church_analytics/services/file_service.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:open_file/open_file.dart';
+import 'package:share_plus/share_plus.dart';
 
 /// Maximum characters displayed for an export path before truncation.
 const _kPathMaxLength = 60;
@@ -96,8 +98,11 @@ class ExportResultSnackBar {
     final dirPath = _dirname(filePath);
     final displayPath = _truncatePath(filePath);
 
-    final canOpenFolder = _canOpenFolder && filePath.isNotEmpty;
-    final canCopyPath = _isDesktop && filePath.isNotEmpty;
+    final isAndroid = !kIsWeb && Platform.isAndroid;
+    final canOpenFile = !kIsWeb && filePath.isNotEmpty;
+    final canShare = isAndroid && filePath.isNotEmpty;
+    final canCopyPath = filePath.isNotEmpty && !kIsWeb;
+    final canOpenFolder = _isDesktop && dirPath.isNotEmpty;
 
     final snackBar = SnackBar(
       content: Row(
@@ -126,17 +131,20 @@ class ExportResultSnackBar {
                   Row(
                     children: [
                       Expanded(
-                        child: Text(
+                        child: SelectableText(
                           displayPath,
                           style: const TextStyle(
                             color: Colors.white70,
                             fontSize: 12,
                           ),
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       if (canCopyPath)
                         _CopyIconButton(text: filePath, tooltip: 'Copy path'),
+                      if (canShare) ...[
+                        const SizedBox(width: 4),
+                        _ShareIconButton(filePath: filePath),
+                      ],
                     ],
                   ),
                 ],
@@ -146,14 +154,20 @@ class ExportResultSnackBar {
         ],
       ),
       backgroundColor: Colors.green.shade700,
-      duration: const Duration(seconds: 6),
-      action: canOpenFolder
+      duration: const Duration(seconds: 8),
+      action: isAndroid && canOpenFile
           ? SnackBarAction(
-              label: 'Open folder',
+              label: 'Open File',
               textColor: Colors.white,
-              onPressed: () => _openFolder(dirPath),
+              onPressed: () => _openFile(filePath),
             )
-          : null,
+          : (canOpenFolder
+                ? SnackBarAction(
+                    label: 'Open folder',
+                    textColor: Colors.white,
+                    onPressed: () => _openFolder(dirPath),
+                  )
+                : null),
     );
 
     ScaffoldMessenger.of(context)
@@ -215,14 +229,6 @@ class ExportResultSnackBar {
   // Platform helpers
   // -------------------------------------------------------------------------
 
-  /// Whether the device supports an "Open folder" action.
-  ///
-  /// True on Android and native desktop; false on Web and iOS.
-  static bool get _canOpenFolder {
-    if (kIsWeb) return false;
-    return !Platform.isIOS;
-  }
-
   /// Whether the device is a native desktop.
   static bool get _isDesktop {
     if (kIsWeb) return false;
@@ -249,6 +255,30 @@ class ExportResultSnackBar {
     } catch (e) {
       if (kDebugMode) {
         debugPrint('[ExportResultSnackBar] Could not open folder: $e');
+      }
+    }
+  }
+
+  /// Opens the file at [filePath] using the system default application.
+  ///
+  /// Uses the open_file package to trigger the appropriate system intent.
+  static Future<void> _openFile(String filePath) async {
+    if (kIsWeb || filePath.isEmpty) return;
+    try {
+      final result = await OpenFile.open(filePath);
+      if (kDebugMode) {
+        debugPrint('[ExportResultSnackBar] Open file result: ${result.type}');
+      }
+      if (result.type != ResultType.done) {
+        if (kDebugMode) {
+          debugPrint(
+            '[ExportResultSnackBar] Could not open file: ${result.message}',
+          );
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[ExportResultSnackBar] Error opening file: $e');
       }
     }
   }
@@ -351,6 +381,43 @@ class _CopyIconButtonState extends State<_CopyIconButton> {
             color: Colors.white70,
             size: 14,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+// -------------------------------------------------------------------------
+// _ShareIconButton — small icon that shares a file.
+// -------------------------------------------------------------------------
+
+class _ShareIconButton extends StatelessWidget {
+  final String filePath;
+
+  const _ShareIconButton({required this.filePath});
+
+  Future<void> _share() async {
+    try {
+      final file = XFile(filePath);
+      await Share.shareXFiles([
+        file,
+      ], text: 'Exported file from Church Analytics');
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('[_ShareIconButton] Error sharing file: $e');
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Tooltip(
+      message: 'Share',
+      child: GestureDetector(
+        onTap: _share,
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 4),
+          child: Icon(Icons.share, color: Colors.white70, size: 14),
         ),
       ),
     );
