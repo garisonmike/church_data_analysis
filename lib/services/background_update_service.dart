@@ -37,10 +37,8 @@ const Duration kBackgroundCheckInterval = Duration(hours: 24);
 /// Inject a custom [clock] function to control time in unit tests without
 /// waiting for real wall-clock time to elapse.
 class BackgroundUpdateService {
-  BackgroundUpdateService(
-    this._prefs, {
-    DateTime Function()? clock,
-  }) : _clock = clock ?? DateTime.now;
+  BackgroundUpdateService(this._prefs, {DateTime Function()? clock})
+    : _clock = clock ?? DateTime.now;
 
   final SharedPreferences _prefs;
   final DateTime Function() _clock;

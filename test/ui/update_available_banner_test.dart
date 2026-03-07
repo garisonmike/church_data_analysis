@@ -34,8 +34,9 @@ void main() {
   // =========================================================================
 
   group('UpdateAvailableBanner — structure & keys', () {
-    testWidgets('renders the banner root with the correct ValueKey',
-        (tester) async {
+    testWidgets('renders the banner root with the correct ValueKey', (
+      tester,
+    ) async {
       await tester.pumpWidget(_buildBanner());
 
       expect(
@@ -44,8 +45,9 @@ void main() {
       );
     });
 
-    testWidgets('renders "Go to Settings" button with the correct ValueKey',
-        (tester) async {
+    testWidgets('renders "Go to Settings" button with the correct ValueKey', (
+      tester,
+    ) async {
       await tester.pumpWidget(_buildBanner());
 
       expect(
@@ -54,8 +56,9 @@ void main() {
       );
     });
 
-    testWidgets('renders dismiss button with the correct ValueKey',
-        (tester) async {
+    testWidgets('renders dismiss button with the correct ValueKey', (
+      tester,
+    ) async {
       await tester.pumpWidget(_buildBanner());
 
       expect(
@@ -76,7 +79,9 @@ void main() {
       expect(find.text('Update available: v2.5.1'), findsOneWidget);
     });
 
-    testWidgets('displays a different version string correctly', (tester) async {
+    testWidgets('displays a different version string correctly', (
+      tester,
+    ) async {
       await tester.pumpWidget(_buildBanner(version: '10.0.0'));
 
       expect(find.text('Update available: v10.0.0'), findsOneWidget);
@@ -102,9 +107,7 @@ void main() {
   group('UpdateAvailableBanner — callbacks', () {
     testWidgets('tapping dismiss × invokes onDismiss', (tester) async {
       var dismissed = false;
-      await tester.pumpWidget(
-        _buildBanner(onDismiss: () => dismissed = true),
-      );
+      await tester.pumpWidget(_buildBanner(onDismiss: () => dismissed = true));
 
       await tester.tap(
         find.byKey(const ValueKey('update_available_banner_dismiss')),
@@ -114,8 +117,9 @@ void main() {
       expect(dismissed, isTrue);
     });
 
-    testWidgets('tapping "Go to Settings" invokes onGoToSettings',
-        (tester) async {
+    testWidgets('tapping "Go to Settings" invokes onGoToSettings', (
+      tester,
+    ) async {
       var navigated = false;
       await tester.pumpWidget(
         _buildBanner(onGoToSettings: () => navigated = true),
@@ -131,9 +135,7 @@ void main() {
 
     testWidgets('onDismiss is invoked exactly once per tap', (tester) async {
       var callCount = 0;
-      await tester.pumpWidget(
-        _buildBanner(onDismiss: () => callCount++),
-      );
+      await tester.pumpWidget(_buildBanner(onDismiss: () => callCount++));
 
       await tester.tap(
         find.byKey(const ValueKey('update_available_banner_dismiss')),

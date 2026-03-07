@@ -18,7 +18,7 @@ RUN flutter build web --release
 # ─────────────────────────────────────────────────────────────────────────────
 # Stage 2 – Serve
 # ─────────────────────────────────────────────────────────────────────────────
-FROM nginx:alpine AS server
+FROM nginxinc/nginx-unprivileged:alpine AS server
 
 # Copy compiled web output from the build stage
 COPY --from=builder /app/build/web /usr/share/nginx/html
@@ -26,6 +26,6 @@ COPY --from=builder /app/build/web /usr/share/nginx/html
 # Copy customised nginx configuration
 COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
 
-EXPOSE 80
+EXPOSE 8080
 
 CMD ["nginx", "-g", "daemon off;"]

@@ -95,21 +95,23 @@ void main() {
       expect(stored, equals(_epoch.millisecondsSinceEpoch));
     });
 
-    test('overwrites an existing timestamp with the latest clock value',
-        () async {
-      final oldTime = _epoch.subtract(const Duration(hours: 48));
-      SharedPreferences.setMockInitialValues({
-        kBackgroundUpdateLastCheckKey: oldTime.millisecondsSinceEpoch,
-      });
-      final prefs = await SharedPreferences.getInstance();
-      final service = BackgroundUpdateService(prefs, clock: () => _epoch);
+    test(
+      'overwrites an existing timestamp with the latest clock value',
+      () async {
+        final oldTime = _epoch.subtract(const Duration(hours: 48));
+        SharedPreferences.setMockInitialValues({
+          kBackgroundUpdateLastCheckKey: oldTime.millisecondsSinceEpoch,
+        });
+        final prefs = await SharedPreferences.getInstance();
+        final service = BackgroundUpdateService(prefs, clock: () => _epoch);
 
-      await service.recordCheck();
+        await service.recordCheck();
 
-      final stored = prefs.getInt(kBackgroundUpdateLastCheckKey)!;
-      expect(stored, equals(_epoch.millisecondsSinceEpoch));
-      expect(stored, greaterThan(oldTime.millisecondsSinceEpoch));
-    });
+        final stored = prefs.getInt(kBackgroundUpdateLastCheckKey)!;
+        expect(stored, equals(_epoch.millisecondsSinceEpoch));
+        expect(stored, greaterThan(oldTime.millisecondsSinceEpoch));
+      },
+    );
   });
 
   // =========================================================================
@@ -117,8 +119,7 @@ void main() {
   // =========================================================================
 
   group('BackgroundUpdateService — round-trip', () {
-    test(
-        'shouldCheck() is false immediately after recordCheck() then true '
+    test('shouldCheck() is false immediately after recordCheck() then true '
         'after 24 hours', () async {
       SharedPreferences.setMockInitialValues({});
       final prefs = await SharedPreferences.getInstance();

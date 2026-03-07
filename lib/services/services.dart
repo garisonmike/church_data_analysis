@@ -1,7 +1,7 @@
 export 'activity_log_service.dart';
-export 'background_update_service.dart';
 export 'admin_profile_service.dart';
 export 'app_data_path_service.dart';
+export 'background_update_service.dart';
 export 'backup_service.dart';
 export 'chart_export_service.dart';
 export 'church_service.dart';
