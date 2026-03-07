@@ -137,14 +137,14 @@ jobs:
           body: |
             ## Church Analytics v${{ steps.version.outputs.version }}
             
-            **📦 Release Assets:**
+            **Release Assets:**
             - Android APK (`app-release.apk`)
             - Windows Build (`ChurchAnalytics-Windows.zip`)
             
-            **⚠️ Post-Release Action Required:**
+            **Post-Release Action Required:**
             Upload `docs/update.json` as an additional asset to enable in-app update detection.
             
-            **📖 Full Release Notes:**
+            **Full Release Notes:**
             See `docs/update.json` for detailed release notes.
           draft: false
           prerelease: false

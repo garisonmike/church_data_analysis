@@ -23,12 +23,12 @@ This app replaces the legacy Python CLI + matplotlib workflow with a modern, UI-
 
 ## Supported Platforms
 
-- ✅ Web
-- ✅ Android
-- ✅ iOS
-- ✅ Windows
-- ✅ macOS
-- ✅ Linux
+- Web
+- Android
+- iOS
+- Windows
+- macOS
+- Linux
 
 ## Getting Started
 

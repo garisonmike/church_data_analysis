@@ -258,9 +258,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('✓ Successfully imported: $successCount'),
+                      Text('Successfully imported: $successCount'),
                       if (skipCount > 0)
-                        Text('⚠ Skipped (duplicates): $skipCount'),
+                        Text('Skipped (duplicates): $skipCount'),
                       if (errors.isNotEmpty) ...[
                         const SizedBox(height: 16),
                         const Text(
@@ -639,8 +639,12 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                     Column(
                       children: [
                         Text(
-                          '✓',
-                          style: TextStyle(color: Colors.green, fontSize: 24),
+                          'Valid',
+                          style: TextStyle(
+                            color: Colors.green,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         Text('$validCount Valid'),
                       ],
