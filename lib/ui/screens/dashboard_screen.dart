@@ -27,12 +27,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   final List<models.WeeklyRecord> _recentRecords = [];
   Map<String, dynamic>? _summaryMetrics;
   AdminProfileService? _profileService;
+  bool _showUpdateBanner = false;
+  String? _latestUpdateVersion;
 
   @override
   void initState() {
     super.initState();
     _initializeProfileService();
     _loadData();
+    _triggerBackgroundUpdateCheck();
+  }
+
+  Future<void> _triggerBackgroundUpdateCheck() async {
+    try {
+      final result = await ref.read(backgroundUpdateCheckProvider.future);
+      if (result?.isUpdateAvailable == true && mounted) {
+        setState(() {
+          _showUpdateBanner = true;
+          _latestUpdateVersion = result!.latestVersion;
+        });
+      }
+    } catch (_) {
+      // Background check must never disrupt the dashboard
+    }
   }
 
   Future<void> _initializeProfileService() async {
@@ -169,13 +186,31 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _errorMessage != null
-          ? _buildErrorView()
-          : _recentRecords.isEmpty
-          ? _buildEmptyView()
-          : _buildDashboardContent(),
+      body: Column(
+        children: [
+          if (_showUpdateBanner && _latestUpdateVersion != null)
+            UpdateAvailableBanner(
+              version: _latestUpdateVersion!,
+              onDismiss: () => setState(() => _showUpdateBanner = false),
+              onGoToSettings: () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      ChurchSettingsScreen(churchId: widget.churchId),
+                ),
+              ),
+            ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : _errorMessage != null
+                ? _buildErrorView()
+                : _recentRecords.isEmpty
+                ? _buildEmptyView()
+                : _buildDashboardContent(),
+          ),
+        ],
+      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final result = await Navigator.push(

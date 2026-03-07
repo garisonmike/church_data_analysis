@@ -1759,4 +1759,56 @@ The "Download Update" button in `AboutUpdatesCard` called `_onInstall()` directl
 - [ ] All platforms: tap "Cancel" in confirmation dialog — install aborted, no launcher called and app stays open.
 
 **Status: READY FOR REVIEW**
+
+---
+
+## UPDATE-013 — Optional background update check
+
+### Files Created
+| File | Purpose |
+|------|---------|
+| `lib/services/background_update_service.dart` | `BackgroundUpdateService` (24h cooldown via SharedPreferences) + `backgroundUpdateServiceProvider` + `backgroundUpdateCheckProvider` (`FutureProvider<UpdateCheckResult?>`) |
+| `lib/ui/widgets/update_available_banner.dart` | Non-blocking `UpdateAvailableBanner` widget with version text, "Go to Settings" CTA, and dismiss × |
+| `test/services/background_update_service_test.dart` | 8 unit tests covering `shouldCheck()` and `recordCheck()` including round-trip boundary conditions |
+| `test/ui/update_available_banner_test.dart` | 9 widget tests covering keys, version display, and callbacks |
+
+### Files Modified
+| File | Change |
+|------|--------|
+| `lib/services/services.dart` | Added `export 'background_update_service.dart';` |
+| `lib/ui/widgets/widgets.dart` | Added `export 'update_available_banner.dart';` |
+| `lib/ui/screens/dashboard_screen.dart` | Added `_showUpdateBanner` / `_latestUpdateVersion` state fields; added `_triggerBackgroundUpdateCheck()` called from `initState()`; wrapped `body:` ternary in `Column` with `UpdateAvailableBanner` at top |
+
+### Acceptance Criteria Verification
+| AC | Implementation | Status |
+|----|----------------|--------|
+| AC1 — Background check runs at most once per 24 h | `BackgroundUpdateService.shouldCheck()` compares stored epoch ms against `kBackgroundCheckInterval` (24 h); `backgroundUpdateCheckProvider` returns `null` without a network call when cooldown has not elapsed | ✅ |
+| AC2 — No blocking UI during background check | `_triggerBackgroundUpdateCheck()` is `async`; launched from `initState()` without `await`; any exception is silently caught; dashboard renders immediately | ✅ |
+| AC3 — Banner appears if update is available | `backgroundUpdateCheckProvider` returns non-null `UpdateCheckResult`; when `result.isUpdateAvailable == true` and `mounted`, `setState` shows `UpdateAvailableBanner` at top of dashboard body | ✅ |
+
+### Key Design Decisions
+- **Injectable `clock` parameter** on `BackgroundUpdateService` enables deterministic unit tests without real wall-clock delays.
+- **`backgroundUpdateCheckProvider` returns `null`** (not an error) when the cooldown is active, so call-sites can distinguish "skipped" from "checked + up-to-date".
+- **`UpdateAvailableBanner` is a pure `StatelessWidget`** — dismiss and navigation state are owned by `DashboardScreen`, keeping the widget reusable and trivially testable.
+- **Exception guard in `_triggerBackgroundUpdateCheck()`** ensures any network failure or Riverpod error can never crash or block the dashboard.
+- **`onGoToSettings` navigates to `ChurchSettingsScreen`** which hosts the existing manual update card, satisfying the user journey without duplicating update UI.
+
+### Test Results
+```
++784: All tests passed!
+```
+(+17 new tests: 8 service unit + 9 widget)
+
+### Static Analysis Result
+`flutter analyze lib/` — 2 pre-existing issues only (`lib/database/connection/web.dart` drift deprecated warning, `lib/models/version.dart` curly braces style). Zero new issues introduced.
+
+### Manual Verification Required
+- [ ] Cold start with no stored timestamp → silent network check fires, no UI disruption.
+- [ ] Cold start within 24 h of last check → no network call made, no banner shown.
+- [ ] When update is available → `UpdateAvailableBanner` appears at top of dashboard immediately after check completes.
+- [ ] Tap "Go to Settings" in banner → navigates to Church Settings screen.
+- [ ] Tap × dismiss button → banner disappears; rest of dashboard unaffected.
+- [ ] Kill and reopen app within 24 h of banner dismiss → no duplicate check performed.
+
+**Status: COMPLETE**
 **Status: READY FOR REVIEW**
