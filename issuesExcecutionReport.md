@@ -1486,3 +1486,94 @@ Low — `resolvedExportPathProvider` is additive; revealing the card on Web is p
 - **Clear override:** Reset to default → confirm tile reverts to the platform default path.
 
 **Status: READY FOR REVIEW**
+
+---
+
+## UPDATE-005 — Release notes rendering dialog
+
+**Priority:** P3
+**Executed:** 2026-03-07
+**Status:** READY FOR REVIEW
+
+### Problem
+When an update was available, the "View Release Notes" button existed in `AboutUpdatesCard` but had an empty `onPressed: () {}` stub. Users could not read the release notes from `UpdateManifest.releaseNotes` before deciding to download. There was no rendered view of the markdown-formatted notes and no `flutter_markdown` dependency in the project.
+
+### Solution Implemented
+
+**`pubspec.yaml`** *(modified)*
+
+- Added `flutter_markdown: ^0.7.7+1` via `flutter pub add flutter_markdown`. Resolved to version `0.7.7+1`.
+
+**`lib/ui/widgets/release_notes_dialog.dart`** *(new file)*
+
+- `ReleaseNotesDialog` — a stateless `AlertDialog`-based widget with a static `show()` helper.
+  - `version` — displayed in the title as "What's new in v{version}".
+  - `releaseNotes` — rendered by `MarkdownBody` (from `flutter_markdown`) inside a `SingleChildScrollView`.
+  - Dialog content constrained to 75% of screen height via `ConstrainedBox(constraints: BoxConstraints(maxHeight: screenHeight * 0.75))`.
+  - When `releaseNotes` is empty/blank the widget shows "No release notes available." instead of an empty scroll area.
+  - `MarkdownStyleSheet.fromTheme(theme)` ensures notes follow the app's colour scheme; code blocks use a monospace font on a `surfaceContainerHighest` background.
+  - `selectable: true` on `MarkdownBody` so users can copy text from the notes on all platforms.
+  - **"Dismiss"** button (key: `release_notes_dismiss_button`) — calls `Navigator.of(context).pop()`.
+  - **"Download Update"** button (key: `release_notes_download_button`) — calls `Navigator.of(context).pop()` then invokes `onDownloadUpdate`. Hidden when `onDownloadUpdate` is `null`.
+
+**`lib/ui/widgets/widgets.dart`** *(modified)*
+
+- Added `export 'release_notes_dialog.dart';`.
+
+**`lib/ui/widgets/about_updates_card.dart`** *(modified)*
+
+- Added imports for `update_manifest.dart` and `release_notes_dialog.dart`.
+- Added `UpdateManifest? _manifest;` field to `_AboutUpdatesCardState`.
+- In `_checkForUpdates()`, the `isUpdateAvailable` branch now stores `_manifest = result.manifest;` alongside `_latestVersion`.
+- Replaced stub `onPressed: () {}` on the "View Release Notes" button with:
+  ```dart
+  onPressed: () => ReleaseNotesDialog.show(
+    context,
+    version: _latestVersion ?? '',
+    releaseNotes: _manifest?.releaseNotes ?? '',
+    onDownloadUpdate: _onInstall,
+  ),
+  ```
+  The `onDownloadUpdate` callback passes `_onInstall` which triggers the installer launch flow (UPDATE-011), keeping parity with the existing "Download Update" button in the card.
+
+### Files Modified / Created
+
+| File | Change |
+|------|--------|
+| `pubspec.yaml` | Added `flutter_markdown: ^0.7.7+1` |
+| `lib/ui/widgets/release_notes_dialog.dart` | **Created** — `ReleaseNotesDialog` widget |
+| `lib/ui/widgets/widgets.dart` | Added `export 'release_notes_dialog.dart'` |
+| `lib/ui/widgets/about_updates_card.dart` | Added manifest import + `_manifest` state; wired "View Release Notes" button |
+
+### Acceptance Criteria Verification
+
+| Criterion | Status |
+|-----------|--------|
+| Release notes rendered with bullet list and bold formatting | ✅ `MarkdownBody` from `flutter_markdown` handles all standard markdown elements |
+| Dialog scrolls for long release notes | ✅ `SingleChildScrollView` wraps `MarkdownBody`; height capped at 75% via `ConstrainedBox` |
+| "Download Update" button present and functional | ✅ Calls `_onInstall` via `onDownloadUpdate` callback; pops dialog first |
+| "Dismiss" closes dialog with no action | ✅ `Navigator.of(context).pop()` only |
+| Dialog height capped at 75% of screen height | ✅ `BoxConstraints(maxHeight: screenHeight * 0.75)` |
+| Works correctly at all breakpoints | ✅ Uses `MediaQuery.sizeOf(context)` for responsive height; `MarkdownBody` is intrinsically responsive |
+
+### Test Results
+```
+39 tests (update_service + UI suite including about_updates_card_test) — all passed, zero regressions.
+```
+
+### Static Analysis Result
+`flutter analyze` on all 3 modified/created source files — **no issues found**.
+
+### Regression Risk
+None — `ReleaseNotesDialog` is a new widget; the only change to existing code is the single `onPressed` wiring in `about_updates_card.dart` and a new state field. Existing test behaviour unchanged.
+
+### Manual Verification Required
+- Trigger an update-available state in Settings (or use a mock manifest).
+- Tap "View Release Notes" — confirm dialog opens with formatted markdown.
+- Verify bullet lists and bold text render correctly.
+- Verify dialog scrolls when notes exceed 75% of screen height.
+- Tap "Download Update" in dialog — confirm dialog closes and install flow starts.
+- Tap "Dismiss" — confirm dialog closes with no side effect.
+- Test at narrow (mobile) and wide (tablet/desktop) breakpoints.
+
+**Status: READY FOR REVIEW**

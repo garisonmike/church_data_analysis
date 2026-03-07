@@ -213,6 +213,8 @@ Low — display-only addition to Settings.
 ### Suggested Labels
 `enhancement`, `storage`, `ui`, `priority:P3`
 
+**Status: COMPLETE**
+
 ---
 
 ## [STORAGE-006] Extended success/failure message with full file path

@@ -1,8 +1,10 @@
 import 'package:church_analytics/models/update_error_messages.dart';
 import 'package:church_analytics/models/update_error_type.dart';
+import 'package:church_analytics/models/update_manifest.dart';
 import 'package:church_analytics/services/activity_log_service.dart';
 import 'package:church_analytics/services/installer_launch_service.dart';
 import 'package:church_analytics/services/update_service.dart';
+import 'package:church_analytics/ui/widgets/release_notes_dialog.dart';
 import 'package:church_analytics/ui/widgets/update_install_failure_dialog.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -81,6 +83,10 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
   UpdateErrorType? _errorType;
   DateTime? _lastChecked;
 
+  /// The most-recently fetched manifest; non-null only in the
+  /// [_CheckState.updateAvailable] state.
+  UpdateManifest? _manifest;
+
   // -------------------------------------------------------------------------
   // Lifecycle
   // -------------------------------------------------------------------------
@@ -152,6 +158,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
       } else if (result.isUpdateAvailable) {
         _state = _CheckState.updateAvailable;
         _latestVersion = result.latestVersion;
+        _manifest = result.manifest;
       } else {
         _state = _CheckState.upToDate;
         _latestVersion = result.latestVersion;
@@ -311,10 +318,15 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
               spacing: 8,
               runSpacing: 4,
               children: [
-                // Stub for UPDATE-005 — Release notes dialog
+                // Release notes dialog (UPDATE-005).
                 OutlinedButton.icon(
                   key: const ValueKey('view_release_notes_button'),
-                  onPressed: () {}, // wired up by UPDATE-005
+                  onPressed: () => ReleaseNotesDialog.show(
+                    context,
+                    version: _latestVersion ?? '',
+                    releaseNotes: _manifest?.releaseNotes ?? '',
+                    onDownloadUpdate: _onInstall,
+                  ),
                   icon: const Icon(Icons.article_outlined, size: 16),
                   label: const Text('View Release Notes'),
                 ),

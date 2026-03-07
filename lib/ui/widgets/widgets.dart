@@ -4,5 +4,6 @@ export 'church_selector_widget.dart';
 export 'export_result_snack_bar.dart';
 export 'lazy_load_chart.dart';
 export 'profile_switcher_widget.dart';
+export 'release_notes_dialog.dart';
 export 'responsive_chart_container.dart';
 export 'time_range_selector.dart';
