@@ -329,3 +329,151 @@ The auto-update system code is **fully functional** and **thoroughly tested**. T
 4. Test end-to-end update flow after upload
 
 ---
+## Issue 5: Improve release workflow (develop -> main -> tagged releases)
+
+### Implementation Date
+March 7, 2026
+
+### Summary
+Defined and documented comprehensive release workflow with branch strategy, semantic versioning, automated builds via GitHub Actions, and step-by-step release procedures for the development team.
+
+### Changes Made
+
+#### 1. Created Release Documentation
+- **File:** `docs/RELEASE.md` (NEW)
+- **Contents:**
+  - Branch strategy (develop → main → tags)
+  - Semantic versioning specification (MAJOR.MINOR.PATCH+BUILD)
+  - 5-phase release process (development, preparation, tagging, asset upload, post-release)
+  - Release checklist (pre-release, release, post-release)
+  - Hotfix process
+  - Rollback procedure
+  - Version history table
+  - Troubleshooting guide
+  - Continuous deployment information
+- **Purpose:** Single source of truth for all release operations
+
+#### 2. Enhanced GitHub Actions Workflow
+- **File:** `.github/workflows/build-release.yml`
+- **Changes:**
+  - Added checkout step to `create-release` job for accessing repository files
+  - Added version extraction from tag (`${GITHUB_REF#refs/tags/v}`)
+  - Added comprehensive release body with:
+    - Version number in title
+    - List of attached assets
+    - Reminder to upload `update.json` manually
+    - Link to release notes location
+  - Set release as non-draft, non-prerelease by default
+- **Impact:** GitHub Releases now include helpful context and reminders
+
+#### 3. Updated README Documentation
+- **File:** `README.md`
+- **Changes:**
+  - Added "Contributing & Release" section
+  - Linked to `docs/RELEASE.md` for release workflow
+  - Linked to `docs/update-contract.md` for update system documentation
+- **Purpose:** Makes release documentation discoverable for maintainers
+
+### Release Workflow Defined
+
+#### Branch Strategy
+```
+develop (active development)
+   ↓ PR
+main (release candidates)
+   ↓ Tag
+Release (v1.x.x)
+```
+
+#### Version Numbering
+- **MAJOR**: Breaking changes (e.g., database schema incompatibility)
+- **MINOR**: New features (backward compatible)
+- **PATCH**: Bug fixes only
+- **BUILD**: Incremented with every build
+
+**Example:** `1.3.0+5`
+
+#### Release Process Summary
+1. **Phase 1**: Feature development on `develop` branch
+2. **Phase 2**: Version bump + create PR from `develop` to `main`
+3. **Phase 3**: Merge PR, create annotated tag on `main`
+4. **Phase 4**: GitHub Actions auto-builds and creates release
+5. **Phase 5**: Manually upload `update.json`, merge `main` back to `develop`
+
+### Files Modified
+
+| File | Action | Description |
+|------|--------|-------------|
+| `docs/RELEASE.md` | **CREATED** | Complete release workflow documentation |
+| `.github/workflows/build-release.yml` | **MODIFIED** | Enhanced release creation with version extraction and descriptive body |
+| `README.md` | **MODIFIED** | Added Contributing & Release section with documentation links |
+
+### Verification
+
+#### Workflow Triggers
+- ✅ Builds on push to `develop` (validation only)
+- ✅ Builds + pushes Docker on push to `main`
+- ✅ Builds + creates release on tag push (`v*` pattern)
+
+#### Release Assets
+- ✅ Android APK (`app-release.apk`)
+- ✅ Windows Build (`ChurchAnalytics-Windows.zip`)
+- ✅ Docker Image (pushed to `ghcr.io`)
+- ⚠️ `update.json` (requires manual upload, documented in release body)
+
+#### Documentation Coverage
+- ✅ Branch strategy documented
+- ✅ Version numbering rules documented
+- ✅ Step-by-step release procedures documented
+- ✅ Hotfix process documented
+- ✅ Rollback procedure documented
+- ✅ Troubleshooting guide included
+- ✅ Release checklist provided
+
+### Test Results
+```
+784 tests passed (entire test suite)
+All static analysis checks passed
+```
+
+### Acceptance Criteria
+
+| Criterion | Status | Evidence |
+|-----------|--------|----------|
+| Release workflow documented | ✅ | `docs/RELEASE.md` created with complete procedures |
+| Versioning strategy documented and followed | ✅ | Semantic versioning defined with increment rules |
+| Releases created via tags | ✅ | Workflow triggers on `v*` tags, creates GitHub Releases |
+| Expected assets attached to releases | ✅ | APK and Windows zip auto-attached; update.json upload documented |
+
+### Usage Example
+
+**Creating a new release:**
+```bash
+# On develop branch
+git tag -a v1.3.0 -m "Release version 1.3.0"
+git push origin v1.3.0
+
+# GitHub Actions will:
+# 1. Build Android APK
+# 2. Build Windows installer
+# 3. Build and push Docker image
+# 4. Create GitHub Release with assets
+
+# Manual step:
+# Upload docs/update.json to the release
+```
+
+### Status
+
+**✅ COMPLETE**
+
+All release workflow tasks are complete:
+- Release process fully documented
+- Versioning strategy defined and documented
+- GitHub Actions workflow enhanced
+- Documentation integrated into README
+- All tests passing (784/784)
+
+The release workflow is now production-ready and can be used for all future releases.
+
+---

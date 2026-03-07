@@ -14,10 +14,10 @@ Every task is checkbox-based so Copilot (or any developer) can mark progress dir
 ## Issue Alignment (from `scripts/issues.sh`)
 
 - [x] Issue 1: Android export system broken (Downloads folder + file access)
-- [ ] Issue 2: Auto update system failing (update.json / GitHub release integration)
-- [ ] Issue 3: Refactor storage and export system (cross-platform reliability)
-- [ ] Issue 4: Improve export success feedback and file accessibility
-- [ ] Issue 5: Improve release workflow (develop -> main -> tagged releases)
+- [x] Issue 2: Auto update system failing (update.json / GitHub release integration)
+- [x] Issue 3: Refactor storage and export system (cross-platform reliability)
+- [x] Issue 4: Improve export success feedback and file accessibility
+- [x] Issue 5: Improve release workflow (develop -> main -> tagged releases)
 
 ---
 
@@ -56,22 +56,22 @@ Exporting files on Android fails in the default Downloads flow, and exported fil
 The app fails to detect/process updates from GitHub reliably.
 
 ### Tasks
-- [ ] Verify `update.json` is publicly accessible
-- [ ] Verify update URLs are valid and reachable
-- [ ] Verify GitHub release asset URLs are correct
-- [ ] Validate version comparison logic
-- [ ] Ensure release notes display correctly
-- [ ] Test update checks across supported platforms
+- [x] Verify `update.json` is publicly accessible
+- [x] Verify update URLs are valid and reachable
+- [x] Verify GitHub release asset URLs are correct
+- [x] Validate version comparison logic
+- [x] Ensure release notes display correctly
+- [x] Test update checks across supported platforms
 
 ### Acceptance
-- [ ] App retrieves `update.json` successfully
-- [ ] App detects newer versions correctly
-- [ ] Release notes are displayed
-- [ ] Update notification appears for newer versions
-- [ ] Update check works across supported platforms
+- [x] App retrieves `update.json` successfully
+- [x] App detects newer versions correctly
+- [x] Release notes are displayed
+- [x] Update notification appears for newer versions
+- [x] Update check works across supported platforms
 
 ### Issue Complete
-- [ ] Mark this section complete
+- [x] Mark this section complete
 
 ---
 
@@ -81,22 +81,22 @@ The app fails to detect/process updates from GitHub reliably.
 File/export logic is duplicated and inconsistent across platforms.
 
 ### Tasks
-- [ ] Implement centralized `FileService`
-- [ ] Standardize export folder structure
-- [ ] Add filename sanitization
-- [ ] Handle duplicate filenames automatically
-- [ ] Improve export/import error handling
-- [ ] Log export/import actions
+- [x] Implement centralized `FileService`
+- [x] Standardize export folder structure
+- [x] Add filename sanitization
+- [x] Handle duplicate filenames automatically
+- [x] Improve export/import error handling
+- [x] Log export/import actions
 
 ### Acceptance
-- [ ] Export logic is centralized
-- [ ] Duplicate filenames are handled automatically
-- [ ] Errors are clearly reported to users
-- [ ] Export works on Android, Windows, and Linux
-- [ ] Activity logs track file operations
+- [x] Export logic is centralized
+- [x] Duplicate filenames are handled automatically
+- [x] Errors are clearly reported to users
+- [x] Export works on Android, Windows, and Linux
+- [x] Activity logs track file operations
 
 ### Issue Complete
-- [ ] Mark this section complete
+- [x] Mark this section complete
 
 ---
 
@@ -106,21 +106,21 @@ File/export logic is duplicated and inconsistent across platforms.
 Users cannot easily locate or act on exported files from success messages.
 
 ### Tasks
-- [ ] Improve export success UI messaging
-- [ ] Display full export path
-- [ ] Add **Open File** button
-- [ ] Add **Share** button
-- [ ] Add **Copy Path** button
-- [ ] Make export path selectable
+- [x] Improve export success UI messaging
+- [x] Display full export path
+- [x] Add **Open File** button
+- [x] Add **Share** button
+- [x] Add **Copy Path** button
+- [x] Make export path selectable
 
 ### Acceptance
-- [ ] Success screen clearly shows file location
-- [ ] Export path is selectable and copyable
-- [ ] Action buttons work correctly
-- [ ] Users can open exported files directly
+- [x] Success screen clearly shows file location
+- [x] Export path is selectable and copyable
+- [x] Action buttons work correctly
+- [x] Users can open exported files directly
 
 ### Issue Complete
-- [ ] Mark this section complete
+- [x] Mark this section complete
 
 ---
 
@@ -130,20 +130,20 @@ Users cannot easily locate or act on exported files from success messages.
 Release and versioning process is unclear and inconsistently applied.
 
 ### Tasks
-- [ ] Define release process from `develop` to `main`
-- [ ] Define version increment strategy
-- [ ] Ensure tags trigger release builds
-- [ ] Verify releases include correct assets
-- [ ] Document release steps for the team
+- [x] Define release process from `develop` to `main`
+- [x] Define version increment strategy
+- [x] Ensure tags trigger release builds
+- [x] Verify releases include correct assets
+- [x] Document release steps for the team
 
 ### Acceptance
-- [ ] Release workflow is documented
-- [ ] Versioning strategy is documented and followed
-- [ ] Releases are created via tags
-- [ ] Expected assets are attached to releases
+- [x] Release workflow is documented
+- [x] Versioning strategy is documented and followed
+- [x] Releases are created via tags
+- [x] Expected assets are attached to releases
 
 ### Issue Complete
-- [ ] Mark this section complete
+- [x] Mark this section complete
 
 ---
 

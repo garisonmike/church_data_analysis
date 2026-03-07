@@ -166,6 +166,24 @@ const bool _kDemoMode = false;
 
 Change this flag to `true` during development/testing to explore the app with pre-populated data.
 
+## Contributing & Release
+
+### Release Process
+
+For maintainers: see [**docs/RELEASE.md**](docs/RELEASE.md) for the complete release workflow, including:
+
+- Branch strategy (develop → main → tagged releases)
+- Version numbering (semantic versioning)
+- Release checklist and procedures
+- Hotfix and rollback processes
+
+### Update System
+
+The app includes an in-app update system. See [**docs/update-contract.md**](docs/update-contract.md) for:
+
+- Update manifest schema (`update.json`)
+- Trust model and security considerations
+- URL requirements and CORS configuration
 
 ## Legacy Reference
 
