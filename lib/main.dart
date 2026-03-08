@@ -21,6 +21,7 @@ import 'ui/screens/import_screen.dart';
 import 'ui/screens/not_found_screen.dart';
 import 'ui/screens/profile_selection_screen.dart';
 import 'ui/screens/startup_gate_screen.dart';
+import 'ui/screens/first_launch_backup_import_screen.dart';
 import 'ui/screens/weekly_entry_screen.dart';
 
 void main() async {
@@ -194,6 +195,11 @@ class ChurchAnalyticsApp extends ConsumerWidget {
           case '/app-settings':
             return MaterialPageRoute(
               builder: (context) => const AppSettingsScreen(),
+            );
+          case '/restore-backup':
+            return MaterialPageRoute(
+              builder: (context) =>
+                  const FirstLaunchBackupImportScreen(),
             );
           default:
             return MaterialPageRoute(

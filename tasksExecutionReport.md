@@ -702,3 +702,178 @@ Manual Verification Required:
 
 Status: READY FOR REVIEW
 ==================================================
+
+==================================================
+ISSUE COMPLETION REPORT
+Issue ID: Issue 7 — First Launch Backup Import
+Files Modified:
+  - lib/ui/screens/first_launch_backup_import_screen.dart (created)
+  - lib/ui/screens/church_selection_screen.dart (modified — added Import Backup button)
+  - lib/main.dart (modified — added /restore-backup route)
+  - lib/ui/screens/screens.dart (modified — added barrel export)
+  - tasks.md (acceptance criteria marked complete)
+
+Implementation Summary:
+  7.1 — Modified ChurchSelectionScreen: in the empty-state branch (no churches
+        found), an OutlinedButton.icon labelled "Import Backup" was added below
+        the existing "Create Church" ElevatedButton.icon. The button navigates
+        to '/restore-backup' via Navigator.of(context).pushNamed(). Widget key
+        'import_backup_button' is assigned for testability.
+
+  7.2 — Created lib/ui/screens/first_launch_backup_import_screen.dart
+        (FirstLaunchBackupImportScreen extends ConsumerStatefulWidget).
+        The screen drives a 5-state machine (_RestoreState: idle, validating,
+        restoring, success, error).
+
+        File selection flow:
+          • FileService.pickFile(['json']) opens the platform file picker.
+          • BackupService.validateBackup() checks JSON structure and required
+            fields before displaying a preview.
+          • A _BackupPreviewCard shows filename plus BackupMetadata (version,
+            app version, created date, church/admin/record counts).
+          • The "Restore" button is only shown when a valid file is loaded.
+
+        Restore flow:
+          • Re-validates the file (TOCTOU guard) before writing to the DB.
+          • Inserts churches via ChurchRepository.createChurch(); builds
+            Map<int,int> churchIdMap (old ID → new auto-generated ID).
+          • Inserts admin users via AdminUserRepository.createUser() with
+            churchId remapped through churchIdMap; builds adminIdMap.
+          • Inserts weekly records via WeeklyRecordRepository.createRecord()
+            with churchId and createdByAdminId remapped through their
+            respective maps.
+          • On success shows a _StatusCard, waits 2 s, then calls
+            Navigator.pushReplacementNamed('/') so StartupGateScreen picks
+            up the newly-restored data.
+
+        Widget keys assigned: pick_backup_file_button, restore_backup_button,
+        backup_preview_card, restore_success_card, restore_error_card.
+
+  7.3 — Restore validation is enforced at two points:
+          • Before preview: BackupService.validateBackup() must return true
+            or the error state is raised with a user-friendly message.
+          • Before write: re-validation is called inside _restoreBackup() to
+            prevent TOCTOU issues.
+        Corrupted or empty files are rejected without touching the database.
+
+  Type safety fix:
+        The app_database.dart import was aliased as 'db' to prevent name
+        collision between Drift-generated DB entities (AdminUser, WeeklyRecord)
+        and the application model types from lib/models/models.dart.
+        models.dart was added as an explicit import in the new screen.
+
+  Route:
+        Added case '/restore-backup' to the onGenerateRoute switch in
+        lib/main.dart, returning MaterialPageRoute wrapping
+        FirstLaunchBackupImportScreen.
+
+Static Analysis:
+  flutter analyze on all four modified/created files: No issues found.
+
+Test Results:
+  792 tests passed, 2 pre-existing failures in test/ui/graph_center_screen_test.dart
+  (Advanced Charts text not found — confirmed present on the prior commit before
+  this issue's changes, unrelated to Issue 7).
+
+Status: COMPLETE
+==================================================
+
+==================================================
+ISSUE COMPLETION REPORT
+Issue ID: Issue 7 — First Launch Backup Import (Revision 2)
+Files Modified:
+  - lib/ui/screens/first_launch_backup_import_screen.dart (created)
+  - lib/ui/screens/church_selection_screen.dart (modified)
+  - lib/main.dart (modified)
+  - lib/ui/screens/screens.dart (modified)
+
+Implementation Summary:
+  7.1 — ChurchSelectionScreen empty-state branch now shows two options:
+        an existing ElevatedButton.icon "Create Church" and a new
+        OutlinedButton.icon "Import Backup" (key: import_backup_button)
+        that calls Navigator.of(context).pushNamed('/restore-backup').
+        Users are never forced to create an account before importing.
+
+  7.2 — FirstLaunchBackupImportScreen (ConsumerStatefulWidget) created at
+        lib/ui/screens/first_launch_backup_import_screen.dart.
+        State machine: idle → validating → restoring → success | error.
+        - FileService.pickFile(['json']) opens the platform file picker.
+        - BackupService.validateBackup() checks the JSON structure before
+          showing any preview UI.
+        - BackupService.readBackup() parses the file; a _BackupPreviewCard
+          shows filename and BackupMetadata (date, app version, church/
+          admin/record counts) so the user can confirm the restore.
+        - The "Restore This Backup" button is only shown after a valid
+          file is loaded.
+        - Restore inserts churches via ChurchRepository.createChurch(),
+          building Map<int,int> churchIdMap (old DB id → new id).
+          Admin users are inserted via AdminUserRepository.createUser()
+          with churchId remapped; adminIdMap is built similarly.
+          Weekly records are inserted via WeeklyRecordRepository
+          .createRecord() with churchId and createdByAdminId remapped
+          through their respective maps, preserving FK integrity.
+        - On success: 2 s pause, then pushReplacementNamed('/').
+        Widget keys: pick_backup_file_button, restore_backup_button,
+        backup_preview_card, restore_success_card, restore_error_card.
+
+  7.3 — Validation enforced at two points:
+        (a) Before showing preview: validateBackup() called; invalid
+            files set error state with a clear user-facing message and
+            no database access occurs.
+        (b) Before writing to DB: re-validation called inside
+            _restoreBackup() as a TOCTOU guard. Any failure at this
+            stage also sets error state without touching the database.
+        Corrupted or structurally invalid backups are fully rejected.
+
+  Type safety: app_database.dart aliased as 'db' to avoid name
+  collision with Drift-generated AdminUser / WeeklyRecord entities
+  vs. the application model types from lib/models/models.dart.
+
+  Route: case '/restore-backup' added to onGenerateRoute in main.dart.
+  Barrel: first_launch_backup_import_screen.dart exported from screens.dart.
+
+Acceptance Criteria Verification:
+  [x] import backup available on first launch
+      → "Import Backup" OutlinedButton added to ChurchSelectionScreen
+        empty-state (the first-launch screen). Routes to the new screen.
+  [x] users can restore data before account creation
+      → The restore screen requires no existing account. It inserts
+        churches, admins, and records directly into the database via
+        repositories, then routes to '/' where StartupGateScreen detects
+        the restored data.
+  [x] restore process handles invalid backups safely
+      → validateBackup() called before preview and before DB write.
+        Corrupted/invalid files are rejected with error messages; the
+        database is never touched on a validation failure.
+
+Regression Risk:
+  Low. Changes are additive:
+  - ChurchSelectionScreen only gains a button in the empty-state branch.
+  - main.dart only gains one new route case.
+  - screens.dart only gains one export.
+  - The new screen is isolated and reached only via '/restore-backup'.
+  Existing tests: 792 passed; 2 pre-existing failures in
+  test/ui/graph_center_screen_test.dart (Advanced Charts text finder)
+  confirmed present before this issue's changes — unrelated.
+
+Static Analysis Result:
+  flutter analyze lib/ui/screens/first_launch_backup_import_screen.dart
+                  lib/ui/screens/church_selection_screen.dart
+                  lib/main.dart lib/ui/screens/screens.dart
+  → No issues found.
+
+Manual Verification Required:
+  - Install on a clean Android device / emulator (no existing data).
+  - Confirm ChurchSelectionScreen shows both "Create Church" and
+    "Import Backup" buttons.
+  - Tap "Import Backup" → confirm FirstLaunchBackupImportScreen opens.
+  - Select a valid .json backup → confirm preview card shows correct
+    metadata (date, counts).
+  - Tap "Restore This Backup" → confirm success banner, then app
+    navigates to the main flow with restored data.
+  - Repeat with a corrupted / non-backup .json file → confirm error
+    card is shown and no data is written.
+  - Confirm "Create Church" flow still works normally (regression).
+
+Status: READY FOR REVIEW
+==================================================
