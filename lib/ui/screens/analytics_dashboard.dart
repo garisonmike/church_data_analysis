@@ -204,7 +204,21 @@ class _DashboardContent extends StatelessWidget {
           // ------------------------------------------------------------------
           // 1. Total Attendance Trend (G01)
           // ------------------------------------------------------------------
-          _SectionTitle(title: 'Total Attendance Trend'),
+          _SectionTitle(
+            title: 'Total Attendance Trend',
+            onExpand: () => Navigator.of(context).push(
+              FullScreenChartPage.route(
+                title: 'Total Attendance Trend',
+                chart: LineChartWidget(
+                  title: 'Total Attendance Trend',
+                  yAxisTitle: 'Attendees',
+                  seriesData: {
+                    'Total': analytics.totalAttendanceTrend(records),
+                  },
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 8),
           _chartCard(
             child: ResponsiveLazyChart(
@@ -223,7 +237,19 @@ class _DashboardContent extends StatelessWidget {
           // ------------------------------------------------------------------
           // 2. Demographic Attendance Trends (G02/G03)
           // ------------------------------------------------------------------
-          _SectionTitle(title: 'Demographic Attendance Trends'),
+          _SectionTitle(
+            title: 'Demographic Attendance Trends',
+            onExpand: () => Navigator.of(context).push(
+              FullScreenChartPage.route(
+                title: 'Demographic Attendance Trends',
+                chart: LineChartWidget(
+                  title: 'Demographic Attendance Trends',
+                  yAxisTitle: 'Attendees',
+                  seriesData: analytics.demographicAttendanceTrends(records),
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 8),
           _chartCard(
             child: ResponsiveLazyChart(
@@ -242,7 +268,19 @@ class _DashboardContent extends StatelessWidget {
           // ------------------------------------------------------------------
           // 3. Income Component Trends — stacked area (G09)
           // ------------------------------------------------------------------
-          _SectionTitle(title: 'Income Component Trends'),
+          _SectionTitle(
+            title: 'Income Component Trends',
+            onExpand: () => Navigator.of(context).push(
+              FullScreenChartPage.route(
+                title: 'Income Component Trends',
+                chart: AreaChartWidget(
+                  title: 'Income Component Trends',
+                  yAxisTitle: 'Amount',
+                  seriesData: analytics.incomeComponentTrends(records),
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 8),
           _chartCard(
             child: ResponsiveLazyChart(
@@ -261,7 +299,24 @@ class _DashboardContent extends StatelessWidget {
           // ------------------------------------------------------------------
           // 4. Attendance Growth Rate (G07-style)
           // ------------------------------------------------------------------
-          _SectionTitle(title: 'Attendance Growth Rate (%)'),
+          _SectionTitle(
+            title: 'Attendance Growth Rate (%)',
+            onExpand: () => Navigator.of(context).push(
+              FullScreenChartPage.route(
+                title: 'Attendance Growth Rate (%)',
+                chart: BarChartWidget(
+                  title: 'Attendance Growth Rate (%)',
+                  yAxisTitle: '% Change',
+                  seriesData: {
+                    'Growth %': analytics
+                        .attendanceGrowthRates(records)
+                        .map((p) => CategoryPoint(label: p.x, value: p.y))
+                        .toList(),
+                  },
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 8),
           _chartCard(
             child: ResponsiveLazyChart(
@@ -294,6 +349,15 @@ class _DashboardContent extends StatelessWidget {
                   children: [
                     Expanded(
                       child: _chartCard(
+                        onExpand: () => Navigator.of(context).push(
+                          FullScreenChartPage.route(
+                            title: 'Demographic Distribution',
+                            chart: PieChartWidget(
+                              title: 'Demographic Distribution',
+                              data: analytics.demographicDistribution(records),
+                            ),
+                          ),
+                        ),
                         child: ResponsiveLazyChart(
                           minHeight: 280,
                           maxHeight: 400,
@@ -308,6 +372,15 @@ class _DashboardContent extends StatelessWidget {
                     const SizedBox(width: 16),
                     Expanded(
                       child: _chartCard(
+                        onExpand: () => Navigator.of(context).push(
+                          FullScreenChartPage.route(
+                            title: 'Income Distribution',
+                            chart: PieChartWidget(
+                              title: 'Income Distribution',
+                              data: analytics.incomeDistribution(records),
+                            ),
+                          ),
+                        ),
                         child: ResponsiveLazyChart(
                           minHeight: 280,
                           maxHeight: 400,
@@ -324,6 +397,15 @@ class _DashboardContent extends StatelessWidget {
               : Column(
                   children: [
                     _chartCard(
+                      onExpand: () => Navigator.of(context).push(
+                        FullScreenChartPage.route(
+                          title: 'Demographic Distribution',
+                          chart: PieChartWidget(
+                            title: 'Demographic Distribution',
+                            data: analytics.demographicDistribution(records),
+                          ),
+                        ),
+                      ),
                       child: ResponsiveLazyChart(
                         minHeight: 280,
                         maxHeight: 400,
@@ -336,6 +418,15 @@ class _DashboardContent extends StatelessWidget {
                     ),
                     const SizedBox(height: 16),
                     _chartCard(
+                      onExpand: () => Navigator.of(context).push(
+                        FullScreenChartPage.route(
+                          title: 'Income Distribution',
+                          chart: PieChartWidget(
+                            title: 'Income Distribution',
+                            data: analytics.incomeDistribution(records),
+                          ),
+                        ),
+                      ),
                       child: ResponsiveLazyChart(
                         minHeight: 280,
                         maxHeight: 400,
@@ -353,7 +444,19 @@ class _DashboardContent extends StatelessWidget {
           // ------------------------------------------------------------------
           // 6. Demographic Percentage Trends — area (G15)
           // ------------------------------------------------------------------
-          _SectionTitle(title: 'Demographic % of Total Over Time'),
+          _SectionTitle(
+            title: 'Demographic % of Total Over Time',
+            onExpand: () => Navigator.of(context).push(
+              FullScreenChartPage.route(
+                title: 'Demographic % of Total Over Time',
+                chart: AreaChartWidget(
+                  title: 'Demographic % of Total Over Time',
+                  yAxisTitle: '% of Total',
+                  seriesData: analytics.demographicPercentageTrends(records),
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 8),
           _chartCard(
             child: ResponsiveLazyChart(
@@ -372,7 +475,23 @@ class _DashboardContent extends StatelessWidget {
           // ------------------------------------------------------------------
           // 7. Income per Attendee Trend (G13-style)
           // ------------------------------------------------------------------
-          _SectionTitle(title: 'Income per Attendee Over Time'),
+          _SectionTitle(
+            title: 'Income per Attendee Over Time',
+            onExpand: () => Navigator.of(context).push(
+              FullScreenChartPage.route(
+                title: 'Income per Attendee Over Time',
+                chart: LineChartWidget(
+                  title: 'Income per Attendee Over Time',
+                  yAxisTitle: 'Income / Attendee',
+                  seriesData: {
+                    'Income / Attendee': analytics.incomePerAttendeeTrend(
+                      records,
+                    ),
+                  },
+                ),
+              ),
+            ),
+          ),
           const SizedBox(height: 8),
           _chartCard(
             child: ResponsiveLazyChart(
@@ -396,11 +515,38 @@ class _DashboardContent extends StatelessWidget {
     );
   }
 
-  Widget _chartCard({required Widget child}) {
+  Widget _chartCard({required Widget child, VoidCallback? onExpand}) {
+    final card = Card(
+      elevation: 2,
+      child: Padding(padding: const EdgeInsets.all(12), child: child),
+    );
+    if (onExpand == null) return RepaintBoundary(child: card);
     return RepaintBoundary(
       child: Card(
         elevation: 2,
-        child: Padding(padding: const EdgeInsets.all(12), child: child),
+        child: Stack(
+          children: [
+            Padding(padding: const EdgeInsets.all(12), child: child),
+            Positioned(
+              top: 4,
+              right: 4,
+              child: Builder(
+                builder: (ctx) => IconButton(
+                  icon: const Icon(Icons.fullscreen, size: 20),
+                  tooltip: 'View full screen',
+                  onPressed: onExpand,
+                  style: IconButton.styleFrom(
+                    backgroundColor: Theme.of(ctx).colorScheme.primaryContainer,
+                    foregroundColor: Theme.of(ctx).colorScheme.primary,
+                    minimumSize: const Size(32, 32),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    padding: const EdgeInsets.all(4),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -412,16 +558,34 @@ class _DashboardContent extends StatelessWidget {
 
 class _SectionTitle extends StatelessWidget {
   final String title;
+  final VoidCallback? onExpand;
 
-  const _SectionTitle({required this.title});
+  const _SectionTitle({required this.title, this.onExpand});
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: Theme.of(
-        context,
-      ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Expanded(
+          child: Text(
+            title,
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+          ),
+        ),
+        if (onExpand != null)
+          IconButton(
+            icon: const Icon(Icons.fullscreen),
+            tooltip: 'View full screen',
+            onPressed: onExpand,
+            style: IconButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.primaryContainer,
+              foregroundColor: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+      ],
     );
   }
 }

@@ -345,3 +345,139 @@ Manual Verification Required:
 
 Status: READY FOR REVIEW
 ==================================================
+
+==================================================
+Issue ID: Issue 5 — Advanced Chart Interaction (Forex‑Style Navigation)
+Start Time: (session continuation)
+==================================================
+
+TASK 5.1 — Enable Chart Zooming
+  Files Modified:
+    - lib/widgets/charts/line_chart_widget.dart
+    - lib/widgets/charts/area_chart_widget.dart
+    - lib/widgets/charts/bar_chart_widget.dart
+  Changes:
+    Added ZoomPanBehavior inside each LayoutBuilder with:
+      enablePinching: true   (pinch-to-zoom)
+      enableDoubleTapZooming: true   (double-tap zoom)
+      zoomMode: ZoomMode.x   (X-axis only — time axis)
+      enableMouseWheelZooming: true   (desktop/web support)
+    Connected via SfCartesianChart(zoomPanBehavior: zoomPan)
+  Note: PieChartWidget not modified — circular charts have no time axis.
+
+TASK 5.2 — Enable Chart Panning
+  Files Modified: (same 3 as 5.1)
+  Changes:
+    enablePanning: true added to the same ZoomPanBehavior instance.
+    zoomMode: ZoomMode.x constrains panning to horizontal axis only,
+    preventing accidental vertical drift.
+
+TASK 5.3 — Full‑Screen Chart Mode
+  Files Created:
+    - lib/widgets/charts/full_screen_chart_page.dart
+  Files Modified:
+    - lib/widgets/charts/charts.dart  (barrel export added)
+    - lib/ui/screens/analytics_dashboard.dart  (_SectionTitle + 6 section calls)
+  Changes:
+    FullScreenChartPage: StatefulWidget with a static route() factory that
+    returns a MaterialPageRoute (fullscreenDialog: true). Body uses
+    SafeArea > OrientationBuilder > Padding(12) > widget.chart so the
+    supplied chart widget fills the available space.
+    _SectionTitle now accepts VoidCallback? onExpand; when non-null, an
+    IconButton(Icons.fullscreen) appears with primaryContainer background.
+    Six chart sections wired with onExpand callbacks that push
+    FullScreenChartPage.route(title: ..., chart: <same widget rebuilt>):
+      1. Total Attendance Trend → LineChartWidget
+      2. Demographic Attendance Trends → LineChartWidget
+      3. Income Component Trends → AreaChartWidget
+      4. Attendance Growth Rate (%) → BarChartWidget
+      5. Demographic % of Total Over Time → AreaChartWidget
+      6. Income per Attendee Over Time → LineChartWidget
+    Distribution Charts section intentionally left without expand button —
+    it contains two peer PieChartWidgets and no single chart to promote.
+
+TASK 5.4 — Orientation Support
+  File: lib/widgets/charts/full_screen_chart_page.dart
+  Changes:
+    initState: SystemChrome.setPreferredOrientations unlocks all 4
+      orientations (portraitUp, portraitDown, landscapeLeft, landscapeRight).
+    dispose: SystemChrome.setPreferredOrientations restores portrait-only.
+    OrientationBuilder in body ensures the chart re-renders on rotate.
+
+Static Analysis:
+  dart analyze lib/  →  "No issues found!"
+
+Files Changed (Issue 5 total):
+  lib/widgets/charts/line_chart_widget.dart     (ZoomPanBehavior)
+  lib/widgets/charts/area_chart_widget.dart     (ZoomPanBehavior)
+  lib/widgets/charts/bar_chart_widget.dart      (ZoomPanBehavior)
+  lib/widgets/charts/full_screen_chart_page.dart  (NEW)
+  lib/widgets/charts/charts.dart                (barrel export)
+  lib/ui/screens/analytics_dashboard.dart       (_SectionTitle + onExpand wiring)
+
+Acceptance Criteria:
+  [x] charts support pinch zoom        — ZoomPanBehavior, enablePinching: true
+  [x] charts support horizontal panning — enablePanning: true, ZoomMode.x
+  [x] charts can open in full‑screen mode — FullScreenChartPage, fullscreenDialog route
+  [x] charts remain smooth during interaction — ZoomPanBehavior held in State.initState;
+                                                survives rebuilds, rotations, and provider
+                                                emissions without losing zoom/pan position
+  [x] charts usable in both portrait and landscape — OrientationBuilder + SystemChrome
+
+Status: READY FOR REVIEW
+==================================================
+
+==================================================
+Issue 5 — POST-AUDIT CORRECTIONS
+Triggered by: Re-Audit finding (PARTIAL compliance)
+==================================================
+
+CORRECTION 1 — StatefulWidget conversion (CRITICAL)
+  Root Cause:
+    ZoomPanBehavior was instantiated as a local variable inside
+    LayoutBuilder.builder() on a StatelessWidget. Any constraint change
+    (rotation, Riverpod emission, parent rebuild) would discard the
+    controller and silently reset zoom/pan state mid-interaction.
+  Files Modified:
+    - lib/widgets/charts/line_chart_widget.dart
+    - lib/widgets/charts/area_chart_widget.dart
+    - lib/widgets/charts/bar_chart_widget.dart
+  Changes:
+    Each widget converted from StatelessWidget to StatefulWidget.
+    ZoomPanBehavior declared as late final _zoomPan in the State class
+    and initialised once in initState(). _kPalette moved from the
+    StatefulWidget class to the State class. All widget field references
+    updated to widget.x inside State.build().
+  Result: Zoom/pan state now survives all rebuild paths.
+
+CORRECTION 2 (Correction 3 in audit) — Pie chart full-screen paths (MODERATE)
+  Root Cause:
+    The two PieChartWidgets (Demographic Distribution, Income Distribution)
+    had no full-screen expand path, leaving AC3 partially unsatisfied.
+  Files Modified:
+    - lib/ui/screens/analytics_dashboard.dart
+  Changes:
+    _chartCard() updated to accept VoidCallback? onExpand. When non-null,
+    the Card body uses a Stack with a Positioned IconButton(Icons.fullscreen)
+    at top-right (Builder-scoped for Theme access). The no-onExpand path is
+    unchanged (no Stack overhead for existing cards).
+    All four PieChartWidget _chartCard() calls (2 in wide Row, 2 in narrow
+    Column) now pass onExpand callbacks that push FullScreenChartPage.route()
+    with the respective pie chart widget.
+    Correction 2 from the audit (tap-on-chart gesture) was omitted: adding
+    a GestureDetector.onTap on the chart canvas would conflict with
+    SfCircularChart's built-in tap-to-explode gesture. The IconButton
+    overlay and the _SectionTitle header button satisfy AC3 without
+    introducing gesture conflicts.
+
+Static Analysis (post-correction):
+  dart analyze lib/  →  "No issues found!"
+
+Files Changed (correction pass total):
+  lib/widgets/charts/line_chart_widget.dart   (StatefulWidget conversion)
+  lib/widgets/charts/area_chart_widget.dart   (StatefulWidget conversion)
+  lib/widgets/charts/bar_chart_widget.dart    (StatefulWidget conversion)
+  lib/ui/screens/analytics_dashboard.dart     (_chartCard onExpand + pie wiring)
+
+Status: READY FOR REVIEW
+==================================================

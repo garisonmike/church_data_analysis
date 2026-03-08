@@ -7,7 +7,7 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 ///
 /// Renders smooth spline series over a date-time X axis with professional
 /// styling, interactive tooltips, and selection highlight.
-class LineChartWidget extends StatelessWidget {
+class LineChartWidget extends StatefulWidget {
   /// Series data: map of series name → data points.
   final Map<String, List<TimeSeriesPoint>> seriesData;
 
@@ -20,6 +20,19 @@ class LineChartWidget extends StatelessWidget {
   /// Fallback height when the widget is not inside a height-constrained parent.
   final double height;
 
+  const LineChartWidget({
+    super.key,
+    required this.seriesData,
+    required this.title,
+    this.yAxisTitle = '',
+    this.height = 300,
+  });
+
+  @override
+  State<LineChartWidget> createState() => _LineChartWidgetState();
+}
+
+class _LineChartWidgetState extends State<LineChartWidget> {
   // Professional colour palette — cycles when there are more series than colours.
   static const List<Color> _kPalette = [
     Color(0xFF1565C0), // blue
@@ -32,17 +45,23 @@ class LineChartWidget extends StatelessWidget {
     Color(0xFF4527A0), // deep-purple
   ];
 
-  const LineChartWidget({
-    super.key,
-    required this.seriesData,
-    required this.title,
-    this.yAxisTitle = '',
-    this.height = 300,
-  });
+  late final ZoomPanBehavior _zoomPan;
+
+  @override
+  void initState() {
+    super.initState();
+    _zoomPan = ZoomPanBehavior(
+      enablePinching: true,
+      enableDoubleTapZooming: true,
+      enablePanning: true,
+      zoomMode: ZoomMode.x,
+      enableMouseWheelZooming: true,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final entries = seriesData.entries.toList();
+    final entries = widget.seriesData.entries.toList();
     final series = <SplineSeries<TimeSeriesPoint, DateTime>>[];
     for (int i = 0; i < entries.length; i++) {
       final entry = entries[i];
@@ -74,11 +93,14 @@ class LineChartWidget extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         return SizedBox(
-          height: constraints.hasBoundedHeight ? constraints.maxHeight : height,
+          height: constraints.hasBoundedHeight
+              ? constraints.maxHeight
+              : widget.height,
           child: SfCartesianChart(
+            zoomPanBehavior: _zoomPan,
             palette: _kPalette,
             title: ChartTitle(
-              text: title,
+              text: widget.title,
               textStyle: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
@@ -106,7 +128,7 @@ class LineChartWidget extends StatelessWidget {
               ),
             ),
             primaryYAxis: NumericAxis(
-              title: AxisTitle(text: yAxisTitle),
+              title: AxisTitle(text: widget.yAxisTitle),
               numberFormat: NumberFormat.compact(),
               labelStyle: const TextStyle(fontSize: 10),
             ),

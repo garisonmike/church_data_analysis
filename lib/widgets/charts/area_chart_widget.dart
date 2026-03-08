@@ -7,7 +7,7 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 ///
 /// Renders spline-area series with professional styling, interactive
 /// tooltips, selection highlight, and responsive height.
-class AreaChartWidget extends StatelessWidget {
+class AreaChartWidget extends StatefulWidget {
   /// Series data: map of series name → data points.
   final Map<String, List<TimeSeriesPoint>> seriesData;
 
@@ -20,6 +20,19 @@ class AreaChartWidget extends StatelessWidget {
   /// Fallback height when not inside a height-constrained parent.
   final double height;
 
+  const AreaChartWidget({
+    super.key,
+    required this.seriesData,
+    required this.title,
+    this.yAxisTitle = '',
+    this.height = 300,
+  });
+
+  @override
+  State<AreaChartWidget> createState() => _AreaChartWidgetState();
+}
+
+class _AreaChartWidgetState extends State<AreaChartWidget> {
   static const List<Color> _kPalette = [
     Color(0xFF1565C0),
     Color(0xFF00796B),
@@ -31,17 +44,23 @@ class AreaChartWidget extends StatelessWidget {
     Color(0xFF4527A0),
   ];
 
-  const AreaChartWidget({
-    super.key,
-    required this.seriesData,
-    required this.title,
-    this.yAxisTitle = '',
-    this.height = 300,
-  });
+  late final ZoomPanBehavior _zoomPan;
+
+  @override
+  void initState() {
+    super.initState();
+    _zoomPan = ZoomPanBehavior(
+      enablePinching: true,
+      enableDoubleTapZooming: true,
+      enablePanning: true,
+      zoomMode: ZoomMode.x,
+      enableMouseWheelZooming: true,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
-    final entries = seriesData.entries.toList();
+    final entries = widget.seriesData.entries.toList();
     final series = <SplineAreaSeries<TimeSeriesPoint, DateTime>>[];
     for (int i = 0; i < entries.length; i++) {
       final entry = entries[i];
@@ -66,11 +85,14 @@ class AreaChartWidget extends StatelessWidget {
     return LayoutBuilder(
       builder: (context, constraints) {
         return SizedBox(
-          height: constraints.hasBoundedHeight ? constraints.maxHeight : height,
+          height: constraints.hasBoundedHeight
+              ? constraints.maxHeight
+              : widget.height,
           child: SfCartesianChart(
+            zoomPanBehavior: _zoomPan,
             palette: _kPalette,
             title: ChartTitle(
-              text: title,
+              text: widget.title,
               textStyle: const TextStyle(
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
@@ -98,7 +120,7 @@ class AreaChartWidget extends StatelessWidget {
               ),
             ),
             primaryYAxis: NumericAxis(
-              title: AxisTitle(text: yAxisTitle),
+              title: AxisTitle(text: widget.yAxisTitle),
               numberFormat: NumberFormat.compact(),
               labelStyle: const TextStyle(fontSize: 10),
             ),
