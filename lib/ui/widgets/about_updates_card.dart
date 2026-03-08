@@ -169,7 +169,11 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
     );
 
     if (result.isError && mounted) {
-      await UpdateInstallFailureDialog.show(context, errorDetail: result.error);
+      await UpdateInstallFailureDialog.show(
+        context,
+        errorDetail: result.error,
+        apkPath: installerPath,
+      );
     } else if (result.hint != null && mounted) {
       // Linux (and any future platform) where the user must take a follow-up
       // action after extraction (AC3 / AC6 — UPDATE-007).

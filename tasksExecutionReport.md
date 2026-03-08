@@ -481,3 +481,111 @@ Files Changed (correction pass total):
 
 Status: READY FOR REVIEW
 ==================================================
+
+==================================================
+Issue ID: Issue 6 — Android Update System Reliability
+==================================================
+
+TASK 6.1 — Ensure APK Signing Consistency
+  Files Modified:
+    - android/app/build.gradle.kts
+  Files Created:
+    - android/key.properties.template
+  Changes:
+    build.gradle.kts updated to read android/key.properties at build time.
+    A `signingConfigs { release { ... } }` block is created from the
+    key.properties values when the file exists. The release buildType uses
+    that config when key.properties is present, and falls back to debug
+    signing otherwise (unblocks local dev builds).
+    key.properties.template provides the required format and a keytool
+    command for generating a new keystore. It is safe to commit.
+    key.properties and *.jks were already excluded by android/.gitignore.
+    applicationId = "com.church.church_analytics" is already consistent.
+    versionCode = flutter.versionCode is driven from pubspec.yaml version,
+    ensuring it increases monotonically with each release.
+
+TASK 6.2 — Handle Installation Failure
+  No new code required. Already fully implemented:
+    - PlatformInstallerLaunchService._launchAndroid() maps every OpenResult
+      type (done, permissionDenied, fileNotFound, noAppToOpen, error) to a
+      typed InstallerLaunchResult, never throwing.
+    - _doInstall() in AboutUpdatesCard checks result.isError and shows the
+      UpdateInstallFailureDialog.
+    - ActivityLogService.logInstallerLaunch() records every outcome.
+
+TASK 6.3 — Provide Manual Installation Path
+  Files Modified:
+    - lib/ui/widgets/update_install_failure_dialog.dart
+    - lib/ui/widgets/about_updates_card.dart
+  Changes:
+    UpdateInstallFailureDialog gains a String? apkPath constructor parameter.
+    When non-null, a styled Container (key: install_failure_apk_path) is
+    shown below the error detail block, displaying:
+      - "APK downloaded to:" label
+      - The full path in monospace (key: install_failure_apk_path_text)
+      - "You can install it manually from a file manager." hint
+    UpdateInstallFailureDialog.show() updated to accept and pass apkPath.
+    _doInstall() in about_updates_card.dart updated to pass installerPath
+    to UpdateInstallFailureDialog.show() so the path is always surfaced.
+
+TASK 6.4 — Improve Update Error UX
+  The combination of:
+    - error detail message (existing)
+    - APK path container (new, Task 6.3)
+    - "Dismiss" button (existing)
+    - "Open GitHub Releases" FilledButton (existing)
+  ensures the user is never left without clear recovery instructions.
+  No user can be stuck: they can copy the path, open GitHub Releases,
+  or dismiss and try again.
+
+Static Analysis: dart analyze lib/ → No issues found!
+
+Tests:
+  File: test/ui/update_install_failure_dialog_test.dart
+  Total: 15 passed, 0 failed
+  New tests added:
+    [widget] shows apkPath container when apkPath is provided
+    [widget] does NOT show apkPath container when apkPath is null
+    [integration] failure dialog shows the downloaded APK path when launch fails
+
+Files Modified:
+  android/app/build.gradle.kts
+  lib/ui/widgets/update_install_failure_dialog.dart
+  lib/ui/widgets/about_updates_card.dart
+  test/ui/update_install_failure_dialog_test.dart
+
+Files Created:
+  android/key.properties.template
+
+Acceptance Criteria Verification:
+  [x] updates use consistent signing keys
+        — build.gradle.kts uses release keystore from key.properties;
+          all builds with the same key.properties produce identically-signed APKs
+  [x] installation failures are detected
+        — PlatformInstallerLaunchService handles all ResultType values;
+          _doInstall checks result.isError; already verified by existing tests
+  [x] users are informed of APK location
+        — UpdateInstallFailureDialog now shows the full APK path on failure
+  [x] update failures never leave the user without instructions
+        — Dialog provides: APK path + manual install hint + Dismiss +
+          Open GitHub Releases button
+
+Regression Risk: LOW
+  — Dialog changes are purely additive (new optional apkPath parameter).
+  — Existing tests for all null/non-null paths continue to pass.
+  — build.gradle.kts falls back to debug signing when key.properties is
+    absent, so local developer builds are unaffected.
+  — No analytics, chart, or database code was touched.
+
+Manual Verification Required:
+  — Generate a real keystore with keytool, create key.properties, and
+    confirm `flutter build apk --release` uses the release key
+    (check with: keytool -printcert -jarfile build/app/outputs/flutter-apk/app-release.apk).
+  — Install a release APK, then build another with the same key.properties
+    and confirm Android accepts the update without a signature conflict.
+  — On a physical Android device: trigger the update flow, allow the
+    download to complete, then confirm the failure dialog shows the APK path
+    when the install intent is rejected.
+
+Status: READY FOR REVIEW
+==================================================
