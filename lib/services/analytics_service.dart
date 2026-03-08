@@ -307,6 +307,491 @@ class AnalyticsService {
   }
 
   // ---------------------------------------------------------------------------
+  // Pie: Adult vs Young / Regular vs Special
+  // ---------------------------------------------------------------------------
+
+  /// Returns an Adults (Men+Women) vs Young (Youth+Children) distribution.
+  ///
+  /// Mirrors: `plot_pie_charts` — "Adult vs Young Attendance" pie.
+  List<DistributionPoint> adultVsYoungDistribution(List<WeeklyRecord> records) {
+    if (records.isEmpty) return [];
+    final adults = records.fold<double>(0, (s, r) => s + r.men + r.women);
+    final young = records.fold<double>(0, (s, r) => s + r.youth + r.children);
+    final total = adults + young;
+    if (total == 0) return [];
+    return [
+      DistributionPoint(
+        label: 'Adults',
+        value: adults,
+        percentage: adults / total * 100,
+      ),
+      DistributionPoint(
+        label: 'Young',
+        value: young,
+        percentage: young / total * 100,
+      ),
+    ];
+  }
+
+  /// Returns Regular income (Tithe+Offerings) vs Special Collections distribution.
+  ///
+  /// Mirrors: `plot_pie_charts` — "Regular vs Special Income" pie.
+  List<DistributionPoint> regularVsSpecialIncomeDistribution(
+    List<WeeklyRecord> records,
+  ) {
+    if (records.isEmpty) return [];
+    final regular = records.fold<double>(
+      0,
+      (s, r) => s + r.tithe + r.offerings,
+    );
+    final special = records.fold<double>(
+      0,
+      (s, r) => s + r.emergencyCollection + r.plannedCollection,
+    );
+    final total = regular + special;
+    if (total == 0) return [];
+    return [
+      DistributionPoint(
+        label: 'Regular',
+        value: regular,
+        percentage: regular / total * 100,
+      ),
+      DistributionPoint(
+        label: 'Special',
+        value: special,
+        percentage: special / total * 100,
+      ),
+    ];
+  }
+
+  // ---------------------------------------------------------------------------
+  // Time-series: Home church & regular income
+  // ---------------------------------------------------------------------------
+
+  /// Returns weekly home church attendance as a time series.
+  ///
+  /// Mirrors: `plot_home_church_comparison`, `ds2_plot_attendance_trends`.
+  List<TimeSeriesPoint> homeChurchTrend(List<WeeklyRecord> records) {
+    return records
+        .map(
+          (r) => TimeSeriesPoint(
+            x: r.weekStartDate,
+            y: r.sundayHomeChurch.toDouble(),
+          ),
+        )
+        .toList();
+  }
+
+  /// Returns weekly regular income (Tithe + Offerings) as a time series.
+  ///
+  /// Derived column: `REGULAR_INCOME = TITHE + OFFERINGS`
+  /// Mirrors: `plot_dual_axis_trends` — "Home Church vs Regular Income".
+  List<TimeSeriesPoint> regularIncomeTrend(List<WeeklyRecord> records) {
+    return records
+        .map(
+          (r) => TimeSeriesPoint(x: r.weekStartDate, y: r.tithe + r.offerings),
+        )
+        .toList();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Grouped bar: Adult / Young / Regular income per week
+  // ---------------------------------------------------------------------------
+
+  /// Returns weekly adult attendance (Men + Women) as [CategoryPoint] list.
+  ///
+  /// Derived column: `ADULT_ATTENDANCE = MEN + WOMEN`
+  /// Mirrors: `plot_grouped_bar_comparison` — "Adult vs Young Attendance".
+  List<CategoryPoint> adultAttendancePerWeek(List<WeeklyRecord> records) {
+    return records
+        .map(
+          (r) => CategoryPoint(
+            label: _formatDate(r.weekStartDate),
+            value: (r.men + r.women).toDouble(),
+          ),
+        )
+        .toList();
+  }
+
+  /// Returns weekly young attendance (Youth + Children) as [CategoryPoint] list.
+  ///
+  /// Derived column: `YOUNG_ATTENDANCE = YOUTH + CHILDREN`
+  List<CategoryPoint> youngAttendancePerWeek(List<WeeklyRecord> records) {
+    return records
+        .map(
+          (r) => CategoryPoint(
+            label: _formatDate(r.weekStartDate),
+            value: (r.youth + r.children).toDouble(),
+          ),
+        )
+        .toList();
+  }
+
+  /// Returns weekly regular income (Tithe + Offerings) as [CategoryPoint] list.
+  ///
+  /// Mirrors: `plot_grouped_bar_comparison` — "Regular vs Total Income".
+  List<CategoryPoint> regularIncomePerWeek(List<WeeklyRecord> records) {
+    return records
+        .map(
+          (r) => CategoryPoint(
+            label: _formatDate(r.weekStartDate),
+            value: r.tithe + r.offerings,
+          ),
+        )
+        .toList();
+  }
+
+  /// Returns weekly home church attendance as [CategoryPoint] list.
+  ///
+  /// Mirrors: `plot_home_church_comparison` bar charts.
+  List<CategoryPoint> homeChurchPerWeek(List<WeeklyRecord> records) {
+    return records
+        .map(
+          (r) => CategoryPoint(
+            label: _formatDate(r.weekStartDate),
+            value: r.sundayHomeChurch.toDouble(),
+          ),
+        )
+        .toList();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Per-capita metrics per week
+  // ---------------------------------------------------------------------------
+
+  /// Returns weekly tithe-per-attendee as [CategoryPoint] list.
+  ///
+  /// Derived column: `TITHE_PER_ATTENDEE = TITHE / TOTAL_ATTENDANCE`
+  /// Mirrors: `plot_per_capita_analysis` — "Tithe Per Attendee".
+  List<CategoryPoint> tithePerAttendeePerWeek(List<WeeklyRecord> records) {
+    return records.map((r) {
+      final att = r.totalAttendance;
+      return CategoryPoint(
+        label: _formatDate(r.weekStartDate),
+        value: att > 0 ? r.tithe / att : 0.0,
+      );
+    }).toList();
+  }
+
+  /// Returns weekly offerings-per-attendee as [CategoryPoint] list.
+  ///
+  /// Derived column: `OFFERINGS_PER_ATTENDEE = OFFERINGS / TOTAL_ATTENDANCE`
+  List<CategoryPoint> offeringsPerAttendeePerWeek(List<WeeklyRecord> records) {
+    return records.map((r) {
+      final att = r.totalAttendance;
+      return CategoryPoint(
+        label: _formatDate(r.weekStartDate),
+        value: att > 0 ? r.offerings / att : 0.0,
+      );
+    }).toList();
+  }
+
+  /// Returns weekly regular-income-per-adult as [CategoryPoint] list.
+  ///
+  /// Derived column: `REGULAR_INCOME_PER_ADULT = REGULAR_INCOME / ADULT_ATTENDANCE`
+  /// Mirrors: `plot_per_capita_analysis` — "Regular Income Per Adult".
+  List<CategoryPoint> regularIncomePerAdultPerWeek(List<WeeklyRecord> records) {
+    return records.map((r) {
+      final adults = r.men + r.women;
+      return CategoryPoint(
+        label: _formatDate(r.weekStartDate),
+        value: adults > 0 ? (r.tithe + r.offerings) / adults : 0.0,
+      );
+    }).toList();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Ratio trends
+  // ---------------------------------------------------------------------------
+
+  /// Returns weekly Men:Women attendance ratio as a time series.
+  ///
+  /// Derived column: `MEN_WOMEN_RATIO = MEN / WOMEN`
+  /// Mirrors: `plot_ratio_analysis`, `ds2_plot_ratios`.
+  List<TimeSeriesPoint> menWomenRatioTrend(List<WeeklyRecord> records) {
+    return records.map((r) {
+      final ratio = r.women > 0 ? r.men / r.women : 0.0;
+      return TimeSeriesPoint(x: r.weekStartDate, y: ratio);
+    }).toList();
+  }
+
+  /// Returns weekly Adult:Young attendance ratio as a time series.
+  ///
+  /// Derived column: `ADULT_YOUNG_RATIO = ADULT_ATTENDANCE / YOUNG_ATTENDANCE`
+  List<TimeSeriesPoint> adultYoungRatioTrend(List<WeeklyRecord> records) {
+    return records.map((r) {
+      final young = r.youth + r.children;
+      final adult = r.men + r.women;
+      final ratio = young > 0 ? adult / young : 0.0;
+      return TimeSeriesPoint(x: r.weekStartDate, y: ratio);
+    }).toList();
+  }
+
+  /// Returns weekly Tithe:Offerings ratio as a time series.
+  ///
+  /// Derived column: `TITHE_OFFERINGS_RATIO = TITHE / OFFERINGS`
+  List<TimeSeriesPoint> titheOfferingsRatioTrend(List<WeeklyRecord> records) {
+    return records.map((r) {
+      final ratio = r.offerings > 0 ? r.tithe / r.offerings : 0.0;
+      return TimeSeriesPoint(x: r.weekStartDate, y: ratio);
+    }).toList();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Percentage composition trends
+  // ---------------------------------------------------------------------------
+
+  /// Returns weekly demographic percentage trends (0–100 scale).
+  ///
+  /// Keys: "Men%", "Women%", "Youth%", "Children%".
+  /// Derived columns: `MEN_PCT`, `WOMEN_PCT`, `YOUTH_PCT`, `CHILDREN_PCT`.
+  /// Mirrors: `plot_percentage_analysis` — "Individual Percentage Trends".
+  Map<String, List<TimeSeriesPoint>> demographicPercentageTrends(
+    List<WeeklyRecord> records,
+  ) {
+    final menPct = <TimeSeriesPoint>[];
+    final womenPct = <TimeSeriesPoint>[];
+    final youthPct = <TimeSeriesPoint>[];
+    final childrenPct = <TimeSeriesPoint>[];
+
+    for (final r in records) {
+      final total = r.men + r.women + r.youth + r.children;
+      if (total == 0) continue;
+      menPct.add(TimeSeriesPoint(x: r.weekStartDate, y: r.men / total * 100));
+      womenPct.add(
+        TimeSeriesPoint(x: r.weekStartDate, y: r.women / total * 100),
+      );
+      youthPct.add(
+        TimeSeriesPoint(x: r.weekStartDate, y: r.youth / total * 100),
+      );
+      childrenPct.add(
+        TimeSeriesPoint(x: r.weekStartDate, y: r.children / total * 100),
+      );
+    }
+
+    return {
+      'Men%': menPct,
+      'Women%': womenPct,
+      'Youth%': youthPct,
+      'Children%': childrenPct,
+    };
+  }
+
+  /// Returns the average percentage share for each demographic group.
+  ///
+  /// Mirrors: `plot_percentage_analysis` — "Average Percentage by Category" bar.
+  List<CategoryPoint> averageDemographicPercentages(
+    List<WeeklyRecord> records,
+  ) {
+    if (records.isEmpty) return [];
+
+    double sumMen = 0, sumWomen = 0, sumYouth = 0, sumChildren = 0;
+    int count = 0;
+
+    for (final r in records) {
+      final total = r.men + r.women + r.youth + r.children;
+      if (total == 0) continue;
+      sumMen += r.men / total * 100;
+      sumWomen += r.women / total * 100;
+      sumYouth += r.youth / total * 100;
+      sumChildren += r.children / total * 100;
+      count++;
+    }
+
+    if (count == 0) return [];
+
+    return [
+      CategoryPoint(label: 'Men', value: sumMen / count),
+      CategoryPoint(label: 'Women', value: sumWomen / count),
+      CategoryPoint(label: 'Youth', value: sumYouth / count),
+      CategoryPoint(label: 'Children', value: sumChildren / count),
+    ];
+  }
+
+  // ---------------------------------------------------------------------------
+  // Income growth rate
+  // ---------------------------------------------------------------------------
+
+  /// Returns week-over-week total income growth rate (%) for each record.
+  ///
+  /// First record is excluded (no previous value).
+  /// Derived column: `INCOME_GROWTH = TOTAL_INCOME.pct_change() × 100`
+  List<ChartPoint> incomeGrowthRates(List<WeeklyRecord> records) {
+    if (records.length < 2) return [];
+    final result = <ChartPoint>[];
+    for (int i = 1; i < records.length; i++) {
+      final prev = records[i - 1].totalIncome;
+      final curr = records[i].totalIncome;
+      final growth = prev > 0 ? ((curr - prev) / prev) * 100.0 : 0.0;
+      result.add(
+        ChartPoint(x: _formatDate(records[i].weekStartDate), y: growth),
+      );
+    }
+    return result;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Stacked area: Income components
+  // ---------------------------------------------------------------------------
+
+  /// Returns each income component as a time series for stacked area rendering.
+  ///
+  /// Keys: "Tithe", "Offerings", "Emergency", "Planned".
+  /// Mirrors: `plot_stacked_area` — "Income Composition Over Time".
+  Map<String, List<TimeSeriesPoint>> incomeComponentTrends(
+    List<WeeklyRecord> records,
+  ) {
+    return {
+      'Tithe': records
+          .map((r) => TimeSeriesPoint(x: r.weekStartDate, y: r.tithe))
+          .toList(),
+      'Offerings': records
+          .map((r) => TimeSeriesPoint(x: r.weekStartDate, y: r.offerings))
+          .toList(),
+      'Emergency': records
+          .map(
+            (r) =>
+                TimeSeriesPoint(x: r.weekStartDate, y: r.emergencyCollection),
+          )
+          .toList(),
+      'Planned': records
+          .map(
+            (r) => TimeSeriesPoint(x: r.weekStartDate, y: r.plannedCollection),
+          )
+          .toList(),
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Target achievement (Dataset 2 style)
+  // ---------------------------------------------------------------------------
+
+  /// Returns per-metric target achievement percentage averaged across all records.
+  ///
+  /// [targets] maps metric name → target value (e.g. `{'Men': 900, 'Tithe': 1050000}`).
+  /// Returns a [CategoryPoint] per metric where value = average achievement %.
+  ///
+  /// Mirrors: `ds2_plot_target_gauge` — "Overall Average Target Achievement".
+  List<CategoryPoint> overallTargetAchievement(
+    List<WeeklyRecord> records,
+    Map<String, double> targets,
+  ) {
+    if (records.isEmpty || targets.isEmpty) return [];
+
+    final sums = <String, double>{};
+    for (final r in records) {
+      final actuals = {
+        'Men': r.men.toDouble(),
+        'Women': r.women.toDouble(),
+        'Youth': r.youth.toDouble(),
+        'Children': r.children.toDouble(),
+        'Total Attendance': r.totalAttendance.toDouble(),
+        'Home Church': r.sundayHomeChurch.toDouble(),
+        'Tithe': r.tithe,
+        'Offerings': r.offerings,
+      };
+      actuals.forEach((key, value) {
+        if (targets.containsKey(key)) {
+          sums[key] = (sums[key] ?? 0) + value;
+        }
+      });
+    }
+
+    return targets.entries.map((e) {
+      final total = sums[e.key] ?? 0;
+      final avg = total / records.length;
+      final pct = e.value > 0 ? avg / e.value * 100 : 0.0;
+      return CategoryPoint(label: e.key, value: pct);
+    }).toList();
+  }
+
+  /// Returns per-week target achievement % for each metric as a map.
+  ///
+  /// Keys are metric names; values are one [CategoryPoint] per week
+  /// (label = formatted date, value = achievement %).
+  ///
+  /// Mirrors: `ds2_plot_target_gauge` — left panel (grouped bar per week).
+  Map<String, List<CategoryPoint>> targetAchievementPerWeek(
+    List<WeeklyRecord> records,
+    Map<String, double> targets,
+  ) {
+    if (records.isEmpty || targets.isEmpty) return {};
+
+    final result = <String, List<CategoryPoint>>{};
+
+    for (final r in records) {
+      final label = _formatDate(r.weekStartDate);
+      final actuals = {
+        'Men': r.men.toDouble(),
+        'Women': r.women.toDouble(),
+        'Youth': r.youth.toDouble(),
+        'Children': r.children.toDouble(),
+        'Total Attendance': r.totalAttendance.toDouble(),
+        'Home Church': r.sundayHomeChurch.toDouble(),
+        'Tithe': r.tithe,
+        'Offerings': r.offerings,
+      };
+      actuals.forEach((key, value) {
+        if (targets.containsKey(key)) {
+          final target = targets[key]!;
+          final pct = target > 0 ? value / target * 100 : 0.0;
+          result
+              .putIfAbsent(key, () => [])
+              .add(CategoryPoint(label: label, value: pct));
+        }
+      });
+    }
+
+    return result;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Distribution histogram data
+  // ---------------------------------------------------------------------------
+
+  /// Returns value-frequency pairs for a histogram of a specific metric.
+  ///
+  /// Values are bucketed into [bucketCount] equal-width bins.
+  /// Returns a list of [CategoryPoint] where label = bin range, value = count.
+  ///
+  /// Mirrors: `plot_distribution_analysis`.
+  List<CategoryPoint> distributionHistogram(
+    List<double> values, {
+    int bucketCount = 6,
+  }) {
+    if (values.isEmpty || bucketCount <= 0) return [];
+
+    final minVal = values.reduce((a, b) => a < b ? a : b);
+    final maxVal = values.reduce((a, b) => a > b ? a : b);
+    final range = maxVal - minVal;
+
+    if (range == 0) {
+      return [
+        CategoryPoint(
+          label: minVal.toStringAsFixed(0),
+          value: values.length.toDouble(),
+        ),
+      ];
+    }
+
+    final bucketWidth = range / bucketCount;
+    final counts = List<double>.filled(bucketCount, 0);
+
+    for (final v in values) {
+      int idx = ((v - minVal) / bucketWidth).floor();
+      if (idx >= bucketCount) idx = bucketCount - 1;
+      counts[idx]++;
+    }
+
+    return List.generate(bucketCount, (i) {
+      final low = minVal + i * bucketWidth;
+      final high = low + bucketWidth;
+      final label = '${low.toStringAsFixed(0)}–${high.toStringAsFixed(0)}';
+      return CategoryPoint(label: label, value: counts[i]);
+    });
+  }
+
+  // ---------------------------------------------------------------------------
   // Helper
   // ---------------------------------------------------------------------------
 
