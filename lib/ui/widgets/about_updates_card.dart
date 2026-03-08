@@ -64,9 +64,8 @@ enum _CheckState {
 class AboutUpdatesCard extends ConsumerStatefulWidget {
   /// Installer launch service injected for testability.
   ///
-  /// Defaults to [NoOpInstallerLaunchService], which always returns a failure
-  /// so the recovery path (UPDATE-011) is exercised until UPDATE-007 provides
-  /// real platform implementations.
+  /// Defaults to [NoOpInstallerLaunchService] for tests.  In production,
+  /// [AppSettingsScreen] passes [PlatformInstallerLaunchService].
   final InstallerLaunchService launchService;
 
   /// Activity-log service injected for testability.
