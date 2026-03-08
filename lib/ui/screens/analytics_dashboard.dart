@@ -397,9 +397,11 @@ class _DashboardContent extends StatelessWidget {
   }
 
   Widget _chartCard({required Widget child}) {
-    return Card(
-      elevation: 2,
-      child: Padding(padding: const EdgeInsets.all(12), child: child),
+    return RepaintBoundary(
+      child: Card(
+        elevation: 2,
+        child: Padding(padding: const EdgeInsets.all(12), child: child),
+      ),
     );
   }
 }

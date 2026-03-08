@@ -1,11 +1,12 @@
 import 'package:church_analytics/models/charts/time_series_point.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
 /// A reusable area chart widget backed by Syncfusion.
 ///
-/// Accepts one or more named [TimeSeriesPoint] series and renders them as
-/// spline area series — matching the filled trend lines in `data.py`.
+/// Renders spline-area series with professional styling, interactive
+/// tooltips, selection highlight, and responsive height.
 class AreaChartWidget extends StatelessWidget {
   /// Series data: map of series name → data points.
   final Map<String, List<TimeSeriesPoint>> seriesData;
@@ -16,8 +17,19 @@ class AreaChartWidget extends StatelessWidget {
   /// Y-axis label.
   final String yAxisTitle;
 
-  /// Height of the chart. Defaults to 300.
+  /// Fallback height when not inside a height-constrained parent.
   final double height;
+
+  static const List<Color> _kPalette = [
+    Color(0xFF1565C0),
+    Color(0xFF00796B),
+    Color(0xFFE65100),
+    Color(0xFF6A1B9A),
+    Color(0xFFC62828),
+    Color(0xFF2E7D32),
+    Color(0xFF00838F),
+    Color(0xFF4527A0),
+  ];
 
   const AreaChartWidget({
     super.key,
@@ -29,27 +41,72 @@ class AreaChartWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final series = seriesData.entries.map((entry) {
-      return SplineAreaSeries<TimeSeriesPoint, DateTime>(
-        name: entry.key,
-        dataSource: entry.value,
-        xValueMapper: (point, _) => point.x,
-        yValueMapper: (point, _) => point.y,
-        opacity: 0.4,
-        enableTooltip: true,
+    final entries = seriesData.entries.toList();
+    final series = <SplineAreaSeries<TimeSeriesPoint, DateTime>>[];
+    for (int i = 0; i < entries.length; i++) {
+      final entry = entries[i];
+      final color = _kPalette[i % _kPalette.length];
+      series.add(
+        SplineAreaSeries<TimeSeriesPoint, DateTime>(
+          name: entry.key,
+          dataSource: entry.value,
+          xValueMapper: (point, _) => point.x,
+          yValueMapper: (point, _) => point.y,
+          color: color,
+          borderColor: color,
+          borderWidth: 2,
+          opacity: 0.35,
+          selectionBehavior: SelectionBehavior(enable: true),
+          animationDuration: 800,
+          enableTooltip: true,
+        ),
       );
-    }).toList();
+    }
 
-    return SizedBox(
-      height: height,
-      child: SfCartesianChart(
-        title: ChartTitle(text: title),
-        legend: const Legend(isVisible: true),
-        tooltipBehavior: TooltipBehavior(enable: true),
-        primaryXAxis: const DateTimeAxis(),
-        primaryYAxis: NumericAxis(title: AxisTitle(text: yAxisTitle)),
-        series: series,
-      ),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        return SizedBox(
+          height: constraints.hasBoundedHeight ? constraints.maxHeight : height,
+          child: SfCartesianChart(
+            palette: _kPalette,
+            title: ChartTitle(
+              text: title,
+              textStyle: const TextStyle(
+                fontWeight: FontWeight.w600,
+                fontSize: 13,
+              ),
+            ),
+            legend: const Legend(
+              isVisible: true,
+              position: LegendPosition.bottom,
+              overflowMode: LegendItemOverflowMode.wrap,
+            ),
+            tooltipBehavior: TooltipBehavior(
+              enable: true,
+              format: 'series.name : point.y',
+              duration: 2000,
+            ),
+            primaryXAxis: DateTimeAxis(
+              dateFormat: DateFormat.MMMd(),
+              intervalType: DateTimeIntervalType.auto,
+              maximumLabels: 8,
+              labelRotation: -45,
+              labelStyle: const TextStyle(fontSize: 10),
+              majorGridLines: const MajorGridLines(
+                width: 0.5,
+                dashArray: <double>[4, 4],
+              ),
+            ),
+            primaryYAxis: NumericAxis(
+              title: AxisTitle(text: yAxisTitle),
+              numberFormat: NumberFormat.compact(),
+              labelStyle: const TextStyle(fontSize: 10),
+            ),
+            plotAreaBorderWidth: 0,
+            series: series,
+          ),
+        );
+      },
     );
   }
 }
