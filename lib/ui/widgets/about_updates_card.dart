@@ -337,9 +337,23 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ----------------------------------------------------------------
-            // Section heading
+            // Section heading with app icon
             // ----------------------------------------------------------------
-            Text('About & Updates', style: theme.textTheme.titleLarge),
+            Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(
+                    'assets/images/icon.jpeg',
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text('About & Updates', style: theme.textTheme.titleLarge),
+              ],
+            ),
             const SizedBox(height: 16),
 
             // ----------------------------------------------------------------
