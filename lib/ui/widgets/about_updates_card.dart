@@ -1,4 +1,4 @@
-import 'dart:io' show Directory;
+import 'dart:io' show Directory, Platform;
 
 import 'package:church_analytics/models/update_error_messages.dart';
 import 'package:church_analytics/models/update_error_type.dart';
@@ -259,7 +259,8 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
     );
 
     try {
-      final destDir = await (widget.destDirResolver ?? getTemporaryDirectory)();
+      final destDir =
+          await (widget.destDirResolver ?? _resolveDownloadDirectory)();
       final service = widget.downloadService ?? UpdateDownloadService();
       final result = await service.download(
         manifest: manifest,
@@ -294,6 +295,28 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
       popDialog();
       progressNotifier.dispose();
     }
+  }
+
+  /// Returns the best writable directory for the downloaded APK.
+  ///
+  /// On Android the app's external-storage directory (e.g.
+  /// `/storage/emulated/0/Android/data/com.church.church_analytics/files`)
+  /// is used when available. Unlike the internal cache directory, this path
+  /// is accessible to the user via the Files app, so they can manually
+  /// install the APK if automatic installation fails (Issue 6 — 6.3).
+  ///
+  /// On every other platform, or when external storage is not available, the
+  /// system temporary directory is used as the fallback.
+  static Future<Directory> _resolveDownloadDirectory() async {
+    if (!kIsWeb && Platform.isAndroid) {
+      try {
+        final external = await getExternalStorageDirectory();
+        if (external != null) return external;
+      } catch (_) {
+        // Ignore — fall through to temp.
+      }
+    }
+    return getTemporaryDirectory();
   }
 
   Future<void> _checkForUpdates() async {

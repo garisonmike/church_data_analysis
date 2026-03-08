@@ -589,3 +589,116 @@ Manual Verification Required:
 
 Status: READY FOR REVIEW
 ==================================================
+
+==================================================
+ISSUE COMPLETION REPORT
+Issue ID: Issue 6 — Android Update System Reliability (Revision 2)
+Files Modified:
+  - lib/platform/platform_installer_launch_service.dart
+  - lib/ui/widgets/about_updates_card.dart
+  - test/platform/platform_installer_launch_service_test.dart
+Implementation Summary:
+  TASK 6.1 — APK Signing Consistency
+    Already fully implemented in android/app/build.gradle.kts and
+    android/key.properties.template by the previous execution.
+    No further changes required.
+
+  TASK 6.2 — Handle Installation Failure (specific Android error codes)
+    Added static method _parseAndroidInstallError(String message) to
+    PlatformInstallerLaunchService. The method maps known Android Package
+    Manager error codes to human-readable, actionable messages:
+
+    | Android error code                             | User action shown           |
+    |------------------------------------------------|-----------------------------|
+    | INSTALL_FAILED_UPDATE_INCOMPATIBLE             | Backup → Uninstall → Reinstall |
+    | INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES | Same as above               |
+    | Strings containing "signature" / "certificate" | Same as above               |
+    | INSTALL_FAILED_VERSION_DOWNGRADE               | Cannot downgrade notice     |
+    | INSTALL_FAILED_CONFLICTING_PROVIDER            | Uninstall first             |
+    | Strings containing "conflict"                  | Same as above               |
+    | Any other non-empty string                     | Passed through unchanged    |
+    | Empty string                                   | Generic fallback            |
+
+    The previous execution reported "no new code required" for Task 6.2, but
+    the raw result.message from Android (e.g.
+    "INSTALL_FAILED_UPDATE_INCOMPATIBLE") was being shown verbatim to users
+    without actionable instructions. This revision addresses that gap.
+
+  TASK 6.3 — Provide Manual Installation Path (accessible APK path)
+    Added static helper _resolveDownloadDirectory() to
+    _AboutUpdatesCardState. On Android, it calls getExternalStorageDirectory()
+    (path: /storage/emulated/0/Android/data/com.church.church_analytics/files)
+    which is accessible via the Files by Google app and similar file managers.
+    On all other platforms, or when external storage is unavailable,
+    getTemporaryDirectory() is used as the fallback.
+    _onDownloadUpdate() updated to call _resolveDownloadDirectory() instead
+    of getTemporaryDirectory() directly.
+    The APK path shown in UpdateInstallFailureDialog now points to an
+    accessible location the user can navigate to with a file manager.
+
+  TASK 6.4 — Improve Update Error UX
+    Satisfied by the combination of:
+      - Specific, actionable error messages from _parseAndroidInstallError
+      - APK path in an accessible location (external storage on Android)
+      - APK path displayed in UpdateInstallFailureDialog (prior revision)
+      - Manual install steps + "Open GitHub Releases" button (prior revision)
+
+Acceptance Criteria Verification:
+  [x] updates use consistent signing keys
+        — build.gradle.kts already enforces release keystore from
+          key.properties; applicationId and versionCode are consistent.
+          No new changes required for this criterion.
+  [x] installation failures are detected
+        — _parseAndroidInstallError() now detects signature mismatch,
+          version downgrade, and package conflict by parsing the Android
+          error code string returned in OpenResult.message. All 6 new
+          tests pass covering each recognised code and the fallbacks.
+  [x] users are informed of APK location
+        — _resolveDownloadDirectory() saves the APK to external storage
+          on Android (/storage/emulated/0/Android/data/.../files/), a
+          path accessible via the Files app. UpdateInstallFailureDialog
+          displays this path when auto-install fails.
+  [x] update failures never leave the user without instructions
+        — Every failure path in _launchAndroid() returns a human-readable
+          InstallerLaunchResult.failure with recovery steps. The calling
+          code shows UpdateInstallFailureDialog (with apkPath, manual
+          install instructions, and GitHub Releases link) on any error.
+
+Regression Risk: LOW
+  — _parseAndroidInstallError is a pure string mapper; no I/O or state.
+  — _resolveDownloadDirectory falls back to getTemporaryDirectory() so
+    existing behaviour on non-Android platforms is unchanged.
+  — No analytics, chart, or database code was touched.
+  — The existing test "returns failure with non-empty message on generic
+    error" still passes; new test "returns raw message for unrecognised
+    non-empty error" verifies unchanged passthrough for unknown codes.
+
+Static Analysis Result:
+  flutter analyze lib/platform/platform_installer_launch_service.dart
+                  lib/ui/widgets/about_updates_card.dart
+  → No issues found! (ran in 3.0s)
+
+Tests:
+  File: test/platform/platform_installer_launch_service_test.dart
+  Total: 28 passed, 0 failed (previously 22; +6 new tests)
+  New tests added (all in "Android — specific installation failure detection"):
+    [unit] returns signature-mismatch guidance for INSTALL_FAILED_UPDATE_INCOMPATIBLE
+    [unit] returns signature-mismatch guidance for INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES
+    [unit] returns version-downgrade message for INSTALL_FAILED_VERSION_DOWNGRADE
+    [unit] returns conflict message for INSTALL_FAILED_CONFLICTING_PROVIDER
+    [unit] returns generic fallback for unrecognised empty error
+    [unit] returns raw message for unrecognised non-empty error
+
+Manual Verification Required:
+  — On a physical Android device: install a signed APK, then attempt to
+    install a differently-signed APK via the update flow and confirm the
+    dialog shows "signed with a different key" guidance rather than the
+    raw "INSTALL_FAILED_UPDATE_INCOMPATIBLE" string.
+  — Confirm the download path in the failure dialog shows a path under
+    /storage/emulated/0/Android/data/com.church.church_analytics/files/
+    and that the file is accessible via the Files app.
+  — Confirm version-downgrade and package-conflict messages appear correctly
+    by injecting those error code strings via the overridePlatform test hook.
+
+Status: READY FOR REVIEW
+==================================================
