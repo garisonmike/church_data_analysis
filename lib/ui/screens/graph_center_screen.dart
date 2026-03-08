@@ -41,6 +41,15 @@ class _GraphCenterScreenState extends ConsumerState<GraphCenterScreen> {
     super.initState();
     _allCharts = [
       ChartItem(
+        title: 'Analytics Dashboard',
+        description:
+            'All core graphs: attendance, income, demographics, and distributions',
+        icon: Icons.analytics,
+        color: Colors.indigo,
+        category: ChartCategory.all,
+        screenBuilder: (churchId) => AnalyticsDashboard(churchId: churchId),
+      ),
+      ChartItem(
         title: 'Attendance Charts',
         description: 'Weekly trends, demographics, distribution, and growth',
         icon: Icons.bar_chart,

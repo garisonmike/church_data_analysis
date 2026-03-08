@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'services/settings_service.dart';
 import 'services/theme_service.dart';
 import 'ui/screens/advanced_charts_screen.dart';
+import 'ui/screens/analytics_dashboard.dart';
 import 'ui/screens/app_settings_screen.dart';
 import 'ui/screens/attendance_charts_screen.dart';
 import 'ui/screens/church_selection_screen.dart';
@@ -134,6 +135,15 @@ class ChurchAnalyticsApp extends ConsumerWidget {
             }
             return MaterialPageRoute(
               builder: (context) => GraphCenterScreen(churchId: churchId),
+            );
+          case '/analytics':
+            if (churchId == null) {
+              return MaterialPageRoute(
+                builder: (context) => const StartupGateScreen(),
+              );
+            }
+            return MaterialPageRoute(
+              builder: (context) => AnalyticsDashboard(churchId: churchId),
             );
           case '/charts/advanced':
             if (churchId == null) {

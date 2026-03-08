@@ -88,7 +88,91 @@ Status: READY FOR REVIEW
 
 ==================================================
 ISSUE COMPLETION REPORT
-Issue ID: Issue 2 — Python Graph Parity
+Issue ID: Issue 3 — Dashboard Graph Implementation
+Files Modified:
+  - lib/ui/screens/analytics_dashboard.dart (created)
+  - lib/ui/screens/screens.dart (added export)
+  - lib/main.dart (added import + /analytics route)
+  - lib/ui/screens/graph_center_screen.dart (added Analytics Dashboard ChartItem)
+
+Implementation Summary:
+  3.1 — Created lib/ui/screens/analytics_dashboard.dart following the project
+        screen convention (lib/ui/screens/ not lib/screens/).
+        The screen is a ConsumerWidget that:
+        • watches weeklyRecordsForChurchProvider(churchId) for real database data
+        • watches chartTimeRangeProvider for the shared time range selection
+        • renders an AppBar with adaptive time-range selector (popup on narrow,
+          inline selector on medium/wide screens)
+        • provides loading, error (with retry), and empty states
+
+  3.2 — Core graphs implemented on the dashboard using AnalyticsService +
+        Syncfusion chart widgets from lib/widgets/charts/:
+        • Total Attendance Trend — LineChartWidget, single series (G01)
+        • Demographic Attendance Trends — LineChartWidget, 5 series:
+          Men / Women / Youth / Children / HomeChurch (G02/G03)
+        • Income Component Trends — AreaChartWidget, 4-series stacked:
+          Tithe / Offerings / Emergency / Planned (G09)
+        • Attendance Growth Rate (%) — BarChartWidget, single series;
+          ChartPoint list converted to CategoryPoint for widget compatibility
+          (G07-style)
+        • Demographic Distribution — PieChartWidget (G10)
+        • Income Distribution — PieChartWidget (G10)
+        • Demographic % of Total Over Time — AreaChartWidget (G15)
+        • Income per Attendee Over Time — LineChartWidget (G13-style)
+        All charts use real WeeklyRecord data via AnalyticsService. No mock
+        data. No analytics logic in the UI layer.
+
+  3.3 — Responsive layout:
+        • All charts wrapped in ResponsiveLazyChart (lazy loading + responsive
+          height: min/max clamped, mobile-adjusted by the container internally)
+        • Distribution pie charts (demographic & income) render side-by-side in
+          a Row(Expanded…) on wide screens (≥840 px) and stacked in a Column
+          on narrow/medium screens (<840 px). This handles phone portrait,
+          phone landscape, and tablet breakpoints.
+        • SingleChildScrollView with 16 px padding throughout.
+        • Time range selector adapts: popup menu on <480 px; compact inline
+          selector on 480–840 px and >840 px (matches existing screen pattern).
+
+  Additional changes:
+        • Exported from lib/ui/screens/screens.dart barrel.
+        • Named route /analytics registered in main.dart (requires int churchId
+          argument; redirects to StartupGateScreen if null).
+        • Analytics Dashboard added as first ChartItem in GraphCenterScreen
+          (category: all) so users can discover it from the Chart Center.
+
+Acceptance Criteria Verification:
+  [x] dashboard screen implemented
+        → lib/ui/screens/analytics_dashboard.dart created; exported and routed.
+  [x] graphs visible and readable
+        → 8 charts across all major analytics categories render via Syncfusion;
+          section titles, chart legends, and axis labels are present.
+  [x] layout responsive
+        → ResponsiveLazyChart adapts heights; distribution pies switch between
+          Row (wide) and Column (narrow); AppBar time-range selector switches
+          between popup and inline based on screen width.
+  [x] charts update from real data
+        → All charts consume weeklyRecordsForChurchProvider(churchId) which
+          queries the Drift SQLite database; time range selection is respected.
+
+Regression Risk: LOW
+  — No existing screens, widgets, models, or services were modified.
+  — main.dart gained one new import and one new route case; existing routes
+    are untouched.
+  — screens.dart gained one export prepended to the list.
+  — graph_center_screen.dart gained one new ChartItem at position 0; existing
+    items are unchanged.
+
+Static Analysis Result: PASS — `dart analyze lib/` → No issues found.
+
+Manual Verification Required:
+  — Run on a device/emulator and navigate to /analytics with a valid churchId
+    to confirm Syncfusion charts render correctly at runtime.
+  — Verify ChartPoint → CategoryPoint conversion in the growth rate bar chart
+    produces correct labels (week start dates formatted as strings).
+  — Confirm lazy loading works smoothly when scrolling through all 8 charts.
+
+Status: READY FOR REVIEW
+==================================================
 Files Modified:
   - docs/python_graph_reference.md (created)
   - lib/services/analytics_service.dart (extended)
