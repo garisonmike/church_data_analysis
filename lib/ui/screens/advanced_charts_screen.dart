@@ -106,6 +106,19 @@ class _AdvancedContent extends StatelessWidget {
           aspectRatio: 16 / 9,
           child: _OutliersChart(records: sorted),
         ),
+        const SizedBox(height: 16),
+
+        // G-43: All Ratios Comparison — Grouped Bar
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: BarChartWidget(
+            seriesData: analytics.allRatiosPerWeek(sorted),
+            title: 'All Ratios Comparison Per Week',
+            yAxisTitle: 'Ratio',
+          ),
+        ),
         const SizedBox(height: 32),
       ],
     );

@@ -108,7 +108,7 @@ class PerformanceMonitor {
     if (!kDebugMode) return;
 
     final summary = getSummary();
-    debugPrint('📊 Performance Summary:');
+    debugPrint('Performance Summary:');
     debugPrint('=' * 60);
 
     for (final entry in summary.entries) {

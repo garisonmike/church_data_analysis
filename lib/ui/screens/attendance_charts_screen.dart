@@ -28,7 +28,8 @@ class AttendanceChartsScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
-            onPressed: () => ref.invalidate(weeklyRecordsForChurchProvider(churchId)),
+            onPressed: () =>
+                ref.invalidate(weeklyRecordsForChurchProvider(churchId)),
           ),
         ],
       ),
@@ -36,10 +37,12 @@ class AttendanceChartsScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => _ErrorView(
           message: error.toString(),
-          onRetry: () => ref.invalidate(weeklyRecordsForChurchProvider(churchId)),
+          onRetry: () =>
+              ref.invalidate(weeklyRecordsForChurchProvider(churchId)),
         ),
-        data: (records) =>
-            records.isEmpty ? const _EmptyView() : _AttendanceContent(records: records),
+        data: (records) => records.isEmpty
+            ? const _EmptyView()
+            : _AttendanceContent(records: records),
       ),
     );
   }
@@ -55,16 +58,23 @@ class _AttendanceContent extends StatelessWidget {
     final sorted = List<WeeklyRecord>.from(records)
       ..sort((a, b) => a.weekStartDate.compareTo(b.weekStartDate));
 
-    double avg(double Function(WeeklyRecord r) fn) =>
-        sorted.isEmpty ? 0 : sorted.map(fn).reduce((a, b) => a + b) / sorted.length;
+    double avg(double Function(WeeklyRecord r) fn) => sorted.isEmpty
+        ? 0
+        : sorted.map(fn).reduce((a, b) => a + b) / sorted.length;
 
     final categoryData = {
       'Average': [
         CategoryPoint(label: 'Men', value: avg((r) => r.men.toDouble())),
         CategoryPoint(label: 'Women', value: avg((r) => r.women.toDouble())),
         CategoryPoint(label: 'Youth', value: avg((r) => r.youth.toDouble())),
-        CategoryPoint(label: 'Children', value: avg((r) => r.children.toDouble())),
-        CategoryPoint(label: 'Home Church', value: avg((r) => r.sundayHomeChurch.toDouble())),
+        CategoryPoint(
+          label: 'Children',
+          value: avg((r) => r.children.toDouble()),
+        ),
+        CategoryPoint(
+          label: 'Home Church',
+          value: avg((r) => r.sundayHomeChurch.toDouble()),
+        ),
       ],
     };
 
@@ -79,7 +89,9 @@ class _AttendanceContent extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       children: [
         ResponsiveChartContainer(
-          minHeight: 220, maxHeight: 380, aspectRatio: 16 / 9,
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
           child: BarChartWidget(
             seriesData: categoryData,
             title: 'Average Attendance by Category',
@@ -88,16 +100,22 @@ class _AttendanceContent extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         ResponsiveLazyChart(
-          minHeight: 220, maxHeight: 380, aspectRatio: 16 / 9,
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
           child: LineChartWidget(
-            seriesData: {'Total Attendance': analytics.totalAttendanceTrend(sorted)},
+            seriesData: {
+              'Total Attendance': analytics.totalAttendanceTrend(sorted),
+            },
             title: 'Total Attendance Trend',
             yAxisTitle: 'Attendance',
           ),
         ),
         const SizedBox(height: 16),
         ResponsiveLazyChart(
-          minHeight: 260, maxHeight: 420, aspectRatio: 16 / 10,
+          minHeight: 260,
+          maxHeight: 420,
+          aspectRatio: 16 / 10,
           child: PieChartWidget(
             data: analytics.demographicDistribution(sorted),
             title: 'Attendance Distribution',
@@ -105,11 +123,57 @@ class _AttendanceContent extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         ResponsiveLazyChart(
-          minHeight: 220, maxHeight: 380, aspectRatio: 16 / 9,
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
           child: BarChartWidget(
             seriesData: growthData,
             title: 'Attendance Growth Rate (%)',
             yAxisTitle: 'Growth %',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // G-30: Adult vs Young Per Week
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: BarChartWidget(
+            seriesData: {
+              'Adults': analytics.adultAttendancePerWeek(sorted),
+              'Young': analytics.youngAttendancePerWeek(sorted),
+            },
+            title: 'Adult vs Young Attendance Per Week',
+            yAxisTitle: 'Attendance',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // G-45: Individual Demographic % Lines
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: LineChartWidget(
+            seriesData: analytics.demographicPercentageTrends(sorted),
+            title: 'Demographic % Trends',
+            yAxisTitle: 'Percentage (%)',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // G-46: Average Demographic % Bar
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: BarChartWidget(
+            seriesData: {
+              'Average %': analytics.averageDemographicPercentages(sorted),
+            },
+            title: 'Average Demographic Percentage',
+            yAxisTitle: 'Percentage (%)',
           ),
         ),
         const SizedBox(height: 32),
@@ -133,11 +197,17 @@ class _ErrorView extends StatelessWidget {
           children: [
             const Icon(Icons.error_outline, size: 64, color: Colors.red),
             const SizedBox(height: 16),
-            Text(message, textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.red)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red),
+            ),
             const SizedBox(height: 16),
-            ElevatedButton.icon(onPressed: onRetry,
-                icon: const Icon(Icons.refresh), label: const Text('Retry')),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
           ],
         ),
       ),
@@ -158,8 +228,10 @@ class _EmptyView extends StatelessWidget {
           const SizedBox(height: 16),
           const Text('No data yet', style: TextStyle(fontSize: 18)),
           const SizedBox(height: 8),
-          Text('Add weekly records to see attendance charts.',
-              style: TextStyle(color: Colors.grey[600])),
+          Text(
+            'Add weekly records to see attendance charts.',
+            style: TextStyle(color: Colors.grey[600]),
+          ),
         ],
       ),
     );

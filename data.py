@@ -339,7 +339,7 @@ def create_statistics_table():
     
     stats_table = pd.DataFrame(stats_data)
     stats_table.to_csv('church_analysis/dataset1/statistics_summary.csv', index=False)
-    print("\n✓ Saved: dataset1/statistics_summary.csv")
+    print("\nSaved: dataset1/statistics_summary.csv")
     
     return stats_table
 
@@ -379,7 +379,7 @@ def plot_attendance_overview():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset1/attendance_income_overview.png', dpi=150, bbox_inches='tight')
     plt.show()
-    print("✓ Saved: dataset1/attendance_income_overview.png")
+    print("Saved: dataset1/attendance_income_overview.png")
 
 
 def plot_demographics_weekly():
@@ -419,7 +419,7 @@ def plot_demographics_weekly():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset1/demographics_weekly.png', dpi=150)
     plt.show()
-    print("✓ Saved: dataset1/demographics_weekly.png")
+    print("Saved: dataset1/demographics_weekly.png")
 
 
 def plot_attendance_income_trends():
@@ -468,7 +468,7 @@ def plot_attendance_income_trends():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset1/attendance_income_trends.png', dpi=150)
     plt.show()
-    print("✓ Saved: dataset1/attendance_income_trends.png")
+    print("Saved: dataset1/attendance_income_trends.png")
 
 
 def plot_demographic_comparison():
@@ -501,7 +501,7 @@ def plot_demographic_comparison():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset1/demographic_comparison.png', dpi=150)
     plt.show()
-    print("✓ Saved: dataset1/demographic_comparison.png")
+    print("Saved: dataset1/demographic_comparison.png")
 
 
 def plot_financial_weekly():
@@ -533,7 +533,7 @@ def plot_financial_weekly():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset1/financial_weekly.png', dpi=150)
     plt.show()
-    print("✓ Saved: dataset1/financial_weekly.png")
+    print("Saved: dataset1/financial_weekly.png")
 
 
 def plot_home_church_comparison():
@@ -564,7 +564,7 @@ def plot_home_church_comparison():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset1/home_church_comparison.png', dpi=150)
     plt.show()
-    print("✓ Saved: dataset1/home_church_comparison.png")
+    print("Saved: dataset1/home_church_comparison.png")
 
 def plot_time_series_all():
     """All variables over time"""
@@ -641,7 +641,7 @@ def plot_time_series_all():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset1/time_series_all.png', dpi=150)
     plt.show()
-    print("✓ Saved: dataset1/time_series_all.png")
+    print("Saved: dataset1/time_series_all.png")
 
 def plot_distribution_analysis():
     """Distribution analysis for all variables"""
@@ -672,7 +672,7 @@ def plot_distribution_analysis():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset1/distribution_analysis.png', dpi=150)
     plt.show()
-    print("✓ Saved: dataset1/distribution_analysis.png")
+    print("Saved: dataset1/distribution_analysis.png")
 
 def plot_box_plots():
     """Box plots for all variables"""
@@ -709,7 +709,7 @@ def plot_box_plots():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset1/box_plots.png', dpi=150)
     plt.show()
-    print("✓ Saved: dataset1/box_plots.png")
+    print("Saved: dataset1/box_plots.png")
 
 def plot_violin_plots():
     """Violin plots for distributions"""
@@ -741,7 +741,7 @@ def plot_violin_plots():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset1/violin_plots.png', dpi=150)
     plt.show()
-    print("✓ Saved: dataset1/violin_plots.png")
+    print("Saved: dataset1/violin_plots.png")
 
 def plot_stacked_area():
     """Stacked area charts"""
@@ -775,7 +775,7 @@ def plot_stacked_area():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset1/stacked_area.png', dpi=150)
     plt.show()
-    print("✓ Saved: dataset1/stacked_area.png")
+    print("Saved: dataset1/stacked_area.png")
 
 def plot_pie_charts():
     """Comprehensive pie charts"""
@@ -818,7 +818,7 @@ def plot_pie_charts():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset1/pie_charts.png', dpi=150)
     plt.show()
-    print("✓ Saved: dataset1/pie_charts.png")
+    print("Saved: dataset1/pie_charts.png")
 
 def plot_grouped_bar_comparison():
     """Grouped bar charts for comparisons"""
@@ -876,7 +876,7 @@ def plot_grouped_bar_comparison():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset1/grouped_bar_comparison.png', dpi=150)
     plt.show()
-    print("✓ Saved: dataset1/grouped_bar_comparison.png")
+    print("Saved: dataset1/grouped_bar_comparison.png")
 
 def plot_dual_axis_trends():
     """Dual axis charts showing variable trends over time"""
@@ -938,7 +938,7 @@ def plot_dual_axis_trends():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset1/dual_axis_trends.png', dpi=150)
     plt.show()
-    print("✓ Saved: dataset1/dual_axis_trends.png")
+    print("Saved: dataset1/dual_axis_trends.png")
 
 def plot_per_capita_analysis():
     """Per capita metrics analysis"""
@@ -995,7 +995,7 @@ def plot_per_capita_analysis():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset1/per_capita_analysis.png', dpi=150)
     plt.show()
-    print("✓ Saved: dataset1/per_capita_analysis.png")
+    print("Saved: dataset1/per_capita_analysis.png")
 
 def plot_ratio_analysis():
     """Ratio metrics analysis"""
@@ -1048,7 +1048,7 @@ def plot_ratio_analysis():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset1/ratio_analysis.png', dpi=150)
     plt.show()
-    print("✓ Saved: dataset1/ratio_analysis.png")
+    print("Saved: dataset1/ratio_analysis.png")
 
 def plot_percentage_analysis():
     """Percentage composition analysis"""
@@ -1107,7 +1107,7 @@ def plot_percentage_analysis():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset1/percentage_analysis.png', dpi=150)
     plt.show()
-    print("✓ Saved: dataset1/percentage_analysis.png")
+    print("Saved: dataset1/percentage_analysis.png")
 
 def plot_comprehensive_dashboard():
     """Create comprehensive summary dashboard"""
@@ -1225,21 +1225,21 @@ def plot_comprehensive_dashboard():
     plt.suptitle('CHURCH DATA COMPREHENSIVE DASHBOARD', fontsize=16, fontweight='bold', y=0.98)
     plt.savefig('church_analysis/dataset1/comprehensive_dashboard.png', dpi=150, bbox_inches='tight')
     plt.show()
-    print("✓ Saved: dataset1/comprehensive_dashboard.png")
+    print("Saved: dataset1/comprehensive_dashboard.png")
 
 def save_all_tables():
     """Save all computed data tables to CSV"""
     
     # Main data with all computations
     df.to_csv('church_analysis/dataset1/complete_data.csv', index=False)
-    print("✓ Saved: dataset1/complete_data.csv")
+    print("Saved: dataset1/complete_data.csv")
     
     # Correlation matrix
     corr_vars = ['MEN', 'WOMEN', 'YOUTH', 'CHILDREN', 'SUNDAY_HOME_CHURCH',
                  'TOTAL_ATTENDANCE', 'TITHE', 'OFFERINGS', 'TOTAL_INCOME']
     corr_matrix = df[corr_vars].corr()
     corr_matrix.to_csv('church_analysis/dataset1/correlation_matrix.csv')
-    print("✓ Saved: dataset1/correlation_matrix.csv")
+    print("Saved: dataset1/correlation_matrix.csv")
     
     # Summary statistics
     create_statistics_table()
@@ -1248,23 +1248,23 @@ def save_all_tables():
     per_capita_df = df[['SATURDAY', 'INCOME_PER_ATTENDEE', 'TITHE_PER_ATTENDEE', 
                         'OFFERINGS_PER_ATTENDEE', 'REGULAR_INCOME_PER_ADULT']].copy()
     per_capita_df.to_csv('church_analysis/dataset1/per_capita_metrics.csv', index=False)
-    print("✓ Saved: dataset1/per_capita_metrics.csv")
+    print("Saved: dataset1/per_capita_metrics.csv")
     
     # Ratios
     ratios_df = df[['SATURDAY', 'MEN_WOMEN_RATIO', 'ADULT_YOUNG_RATIO', 
                     'TITHE_OFFERINGS_RATIO']].copy()
     ratios_df.to_csv('church_analysis/dataset1/ratio_metrics.csv', index=False)
-    print("✓ Saved: dataset1/ratio_metrics.csv")
+    print("Saved: dataset1/ratio_metrics.csv")
     
     # Growth metrics
     growth_df = df[['SATURDAY', 'ATTENDANCE_GROWTH', 'INCOME_GROWTH', 'TITHE_GROWTH']].copy()
     growth_df.to_csv('church_analysis/dataset1/growth_metrics.csv', index=False)
-    print("✓ Saved: dataset1/growth_metrics.csv")
+    print("Saved: dataset1/growth_metrics.csv")
     
     # Percentages
     pct_df = df[['SATURDAY', 'MEN_PCT', 'WOMEN_PCT', 'YOUTH_PCT', 'CHILDREN_PCT']].copy()
     pct_df.to_csv('church_analysis/dataset1/percentage_composition.csv', index=False)
-    print("✓ Saved: dataset1/percentage_composition.csv")
+    print("Saved: dataset1/percentage_composition.csv")
 
 # ============================================
 # MAIN EXECUTION
@@ -1408,7 +1408,7 @@ def ds2_plot_correlation_heatmap():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset2/correlation_target_heatmaps.png', dpi=150, bbox_inches='tight')
     plt.show()
-    print("✓ Saved: dataset2/correlation_target_heatmaps.png")
+    print("Saved: dataset2/correlation_target_heatmaps.png")
 
 def ds2_plot_attendance_trends():
     """Dataset 2 attendance trends and correlations"""
@@ -1496,7 +1496,7 @@ def ds2_plot_attendance_trends():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset2/attendance_trends.png', dpi=150, bbox_inches='tight')
     plt.show()
-    print("✓ Saved: dataset2/attendance_trends.png")
+    print("Saved: dataset2/attendance_trends.png")
 
 def ds2_plot_financial_analysis():
     """Dataset 2 financial analysis with targets"""
@@ -1586,7 +1586,7 @@ def ds2_plot_financial_analysis():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset2/financial_analysis.png', dpi=150, bbox_inches='tight')
     plt.show()
-    print("✓ Saved: dataset2/financial_analysis.png")
+    print("Saved: dataset2/financial_analysis.png")
 
 def ds2_plot_target_gauge():
     """Target achievement radar and gauge chart"""
@@ -1632,7 +1632,7 @@ def ds2_plot_target_gauge():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset2/target_achievement.png', dpi=150, bbox_inches='tight')
     plt.show()
-    print("✓ Saved: dataset2/target_achievement.png")
+    print("Saved: dataset2/target_achievement.png")
 
 def ds2_plot_correlation_scatter_grid():
     """Dataset 2 all pairwise scatter plots with regression"""
@@ -1665,7 +1665,7 @@ def ds2_plot_correlation_scatter_grid():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset2/pairwise_scatter.png', dpi=150, bbox_inches='tight')
     plt.show()
-    print("✓ Saved: dataset2/pairwise_scatter.png")
+    print("Saved: dataset2/pairwise_scatter.png")
 
 def ds2_plot_ratios():
     """Dataset 2 ratio analysis"""
@@ -1716,7 +1716,7 @@ def ds2_plot_ratios():
     plt.tight_layout()
     plt.savefig('church_analysis/dataset2/ratio_analysis.png', dpi=150, bbox_inches='tight')
     plt.show()
-    print("✓ Saved: dataset2/ratio_analysis.png")
+    print("Saved: dataset2/ratio_analysis.png")
 
 def ds2_plot_target_bar_charts():
     """Bar charts: each Dataset 2 parameter per Saturday vs target"""
@@ -1875,12 +1875,12 @@ def ds2_plot_target_bar_charts():
 def ds2_save_tables():
     """Save Dataset 2 CSV tables"""
     df2.to_csv('church_analysis/dataset2/complete_data.csv', index=False)
-    print("✓ Saved: dataset2/complete_data.csv")
+    print("Saved: dataset2/complete_data.csv")
 
     corr_vars2 = ['MEN','WOMEN','YOUTH','CHILDREN','HOME_CHURCH',
                   'TOTAL_ATTENDANCE','TITHE','OFFERINGS','TOTAL_INCOME']
     df2[corr_vars2].corr().to_csv('church_analysis/dataset2/correlation_matrix.csv')
-    print("✓ Saved: dataset2/correlation_matrix.csv")
+    print("Saved: dataset2/correlation_matrix.csv")
 
     # Target gap table
     gap_rows = []
@@ -1898,7 +1898,7 @@ def ds2_save_tables():
             'Gap_from_Target_Avg': df2[metric].mean() - targets2[metric]
         })
     pd.DataFrame(gap_rows).to_csv('church_analysis/dataset2/target_gap_analysis.csv', index=False)
-    print("✓ Saved: dataset2/target_gap_analysis.csv")
+    print("Saved: dataset2/target_gap_analysis.csv")
 
 def generate_ds2_all():
     """Generate all Dataset 2 analysis"""
@@ -1975,7 +1975,7 @@ def compute_combined_statistics():
     cmp_df['Change_Pct'] = ((cmp_df['Dataset2_Avg'] - cmp_df['Dataset1_Avg']) /
                              cmp_df['Dataset1_Avg'].abs()) * 100
     cmp_df.to_csv('church_analysis/combined/cross_dataset_comparison.csv', index=False)
-    print("\n✓ Saved: combined/cross_dataset_comparison.csv")
+    print("\nSaved: combined/cross_dataset_comparison.csv")
     return cmp_df
 
 def combined_plot_avg_comparison():
@@ -2044,7 +2044,7 @@ def combined_plot_avg_comparison():
     plt.tight_layout()
     plt.savefig('church_analysis/combined/avg_comparison.png', dpi=150, bbox_inches='tight')
     plt.show()
-    print("✓ Saved: combined/avg_comparison.png")
+    print("Saved: combined/avg_comparison.png")
 
 def combined_plot_change_waterfall():
     """Change % from DS1 to DS2 waterfall chart"""
@@ -2080,7 +2080,7 @@ def combined_plot_change_waterfall():
     plt.tight_layout()
     plt.savefig('church_analysis/combined/change_analysis.png', dpi=150, bbox_inches='tight')
     plt.show()
-    print("✓ Saved: combined/change_analysis.png")
+    print("Saved: combined/change_analysis.png")
 
 def combined_plot_correlation_overlay():
     """Overlay correlation heatmaps side by side"""
@@ -2104,13 +2104,13 @@ def combined_plot_correlation_overlay():
              ha='center', fontsize=10, style='italic')
 
     diff_corr.to_csv('church_analysis/combined/correlation_difference.csv')
-    print("✓ Saved: combined/correlation_difference.csv")
+    print("Saved: combined/correlation_difference.csv")
 
     plt.suptitle('Cross-Dataset Correlation Comparison', fontsize=14, fontweight='bold')
     plt.tight_layout()
     plt.savefig('church_analysis/combined/correlation_overlay.png', dpi=150, bbox_inches='tight')
     plt.show()
-    print("✓ Saved: combined/correlation_overlay.png")
+    print("Saved: combined/correlation_overlay.png")
 
 def combined_plot_attendance_vs_income_both():
     """Attendance vs Income scatter both datasets on one chart"""
@@ -2157,7 +2157,7 @@ def combined_plot_attendance_vs_income_both():
     plt.tight_layout()
     plt.savefig('church_analysis/combined/scatter_overlay.png', dpi=150, bbox_inches='tight')
     plt.show()
-    print("✓ Saved: combined/scatter_overlay.png")
+    print("Saved: combined/scatter_overlay.png")
 
 def combined_plot_per_capita_comparison():
     """Per capita comparison between datasets"""
@@ -2183,7 +2183,7 @@ def combined_plot_per_capita_comparison():
     plt.tight_layout()
     plt.savefig('church_analysis/combined/per_capita_comparison.png', dpi=150, bbox_inches='tight')
     plt.show()
-    print("✓ Saved: combined/per_capita_comparison.png")
+    print("Saved: combined/per_capita_comparison.png")
 
 def combined_plot_ds2_vs_targets_and_ds1_benchmark():
     """DS2 actuals vs targets AND DS1 averages as a 3-way comparison"""
@@ -2233,7 +2233,7 @@ def combined_plot_ds2_vs_targets_and_ds1_benchmark():
     plt.tight_layout()
     plt.savefig('church_analysis/combined/threeway_comparison.png', dpi=150, bbox_inches='tight')
     plt.show()
-    print("✓ Saved: combined/threeway_comparison.png")
+    print("Saved: combined/threeway_comparison.png")
 
 def combined_plot_master_dashboard():
     """Master combined dashboard"""
@@ -2346,7 +2346,7 @@ def combined_plot_master_dashboard():
                  fontsize=16, fontweight='bold', y=1.01)
     plt.savefig('church_analysis/combined/master_dashboard.png', dpi=150, bbox_inches='tight')
     plt.show()
-    print("✓ Saved: combined/master_dashboard.png")
+    print("Saved: combined/master_dashboard.png")
 
 def generate_combined_all():
     """Generate all combined/cross-dataset analysis"""

@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:church_analytics/models/charts/charts.dart';
 import 'package:church_analytics/models/weekly_record.dart';
 
@@ -969,6 +971,523 @@ class AnalyticsService {
       }
     }
     return {'Normal': normal, 'Outliers': outliers};
+  }
+
+  // ---------------------------------------------------------------------------
+  // G-03: Single metric per week with mean
+  // ---------------------------------------------------------------------------
+
+  /// Returns a single metric's weekly values plus its mean.
+  ///
+  /// [field] is one of: MEN, WOMEN, YOUTH, CHILDREN, TITHE, OFFERINGS,
+  /// TOTAL_INCOME, SUNDAY_HOME_CHURCH.
+  /// Mirrors: `plot_demographics_weekly` — individual bar + mean line.
+  ({List<CategoryPoint> points, double mean}) singleMetricPerWeek(
+    List<WeeklyRecord> records,
+    String field,
+  ) {
+    final points = records.map((r) {
+      return CategoryPoint(
+        label: _formatDate(r.weekStartDate),
+        value: _fieldValue(r, field),
+      );
+    }).toList();
+    final mean = points.isEmpty
+        ? 0.0
+        : points.map((p) => p.value).reduce((a, b) => a + b) / points.length;
+    return (points: points, mean: mean);
+  }
+
+  // ---------------------------------------------------------------------------
+  // G-04/G-07/G-12/G-14: Linear regression trend lines
+  // ---------------------------------------------------------------------------
+
+  /// Computes a linear regression line from time series data.
+  ///
+  /// Returns two [TimeSeriesPoint]s (start and end) defining the best-fit line.
+  /// Mirrors the regression overlays in `plot_time_series_all`.
+  List<TimeSeriesPoint> linearRegressionSeries(List<TimeSeriesPoint> data) {
+    if (data.length < 2) return [];
+    final sorted = List<TimeSeriesPoint>.from(data)
+      ..sort((a, b) => a.x.compareTo(b.x));
+    final n = sorted.length.toDouble();
+    final baseMs = sorted.first.x.millisecondsSinceEpoch.toDouble();
+    double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+    for (final pt in sorted) {
+      final x = (pt.x.millisecondsSinceEpoch - baseMs) / 86400000.0;
+      sumX += x;
+      sumY += pt.y;
+      sumXY += x * pt.y;
+      sumX2 += x * x;
+    }
+    final denom = n * sumX2 - sumX * sumX;
+    if (denom == 0) return [];
+    final slope = (n * sumXY - sumX * sumY) / denom;
+    final intercept = (sumY - slope * sumX) / n;
+
+    return sorted.map((pt) {
+      final x = (pt.x.millisecondsSinceEpoch - baseMs) / 86400000.0;
+      return TimeSeriesPoint(x: pt.x, y: slope * x + intercept);
+    }).toList();
+  }
+
+  /// Attendance trend regression line. Mirrors G-04, G-12.
+  List<TimeSeriesPoint> attendanceTrendLine(List<WeeklyRecord> records) {
+    return linearRegressionSeries(totalAttendanceTrend(records));
+  }
+
+  /// Income trend regression line. Mirrors G-07, G-14.
+  List<TimeSeriesPoint> incomeTrendLine(List<WeeklyRecord> records) {
+    return linearRegressionSeries(totalIncomeTrend(records));
+  }
+
+  // ---------------------------------------------------------------------------
+  // G-08: Pairwise demographic comparisons
+  // ---------------------------------------------------------------------------
+
+  /// Returns two demographic series per week for side-by-side comparison.
+  ///
+  /// Mirrors: `plot_demographic_comparison` — 6 pair charts.
+  Map<String, List<CategoryPoint>> demographicPairPerWeek(
+    List<WeeklyRecord> records,
+    String fieldA,
+    String fieldB,
+  ) {
+    return {
+      fieldA: records
+          .map(
+            (r) => CategoryPoint(
+              label: _formatDate(r.weekStartDate),
+              value: _fieldValue(r, fieldA),
+            ),
+          )
+          .toList(),
+      fieldB: records
+          .map(
+            (r) => CategoryPoint(
+              label: _formatDate(r.weekStartDate),
+              value: _fieldValue(r, fieldB),
+            ),
+          )
+          .toList(),
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // G-09/G-31: Total income per week (CategoryPoint)
+  // ---------------------------------------------------------------------------
+
+  /// Returns weekly total income as [CategoryPoint] list for bar charts.
+  List<CategoryPoint> totalIncomePerWeek(List<WeeklyRecord> records) {
+    return records
+        .map(
+          (r) => CategoryPoint(
+            label: _formatDate(r.weekStartDate),
+            value: r.totalIncome,
+          ),
+        )
+        .toList();
+  }
+
+  // ---------------------------------------------------------------------------
+  // G-10: Home church vs any metric
+  // ---------------------------------------------------------------------------
+
+  /// Returns two arbitrary metrics per week for side-by-side comparison.
+  ///
+  /// Mirrors: `plot_home_church_comparison` — home church vs each variable.
+  Map<String, List<CategoryPoint>> metricPairPerWeek(
+    List<WeeklyRecord> records,
+    String fieldA,
+    String fieldB,
+  ) {
+    return demographicPairPerWeek(records, fieldA, fieldB);
+  }
+
+  // ---------------------------------------------------------------------------
+  // G-33/G-34: Individual demographic time series
+  // ---------------------------------------------------------------------------
+
+  /// Returns a single demographic field as time series.
+  List<TimeSeriesPoint> demographicTrend(
+    List<WeeklyRecord> records,
+    String field,
+  ) {
+    return records
+        .map(
+          (r) => TimeSeriesPoint(x: r.weekStartDate, y: _fieldValue(r, field)),
+        )
+        .toList();
+  }
+
+  // ---------------------------------------------------------------------------
+  // G-18/G-19/G-20/G-21/G-47: Box plot statistics
+  // ---------------------------------------------------------------------------
+
+  /// Returns raw values per field for box-and-whisker rendering.
+  ///
+  /// Syncfusion's BoxAndWhiskerSeries computes quartiles internally,
+  /// so we provide all raw values for each field.
+  /// Mirrors: `plot_box_plots`, `plot_violin_plots`.
+  List<BoxPlotPoint> boxPlotStats(
+    List<WeeklyRecord> records,
+    List<String> fields,
+  ) {
+    return fields.map((field) {
+      final values = records.map((r) => _fieldValue(r, field)).toList();
+      return BoxPlotPoint(label: field, values: values);
+    }).toList();
+  }
+
+  // ---------------------------------------------------------------------------
+  // G-43: All ratios as CategoryPoint for grouped bar
+  // ---------------------------------------------------------------------------
+
+  /// Returns all three ratio series per week as CategoryPoints.
+  ///
+  /// Mirrors: `plot_ratio_analysis` — "All Ratios Comparison" grouped bar.
+  Map<String, List<CategoryPoint>> allRatiosPerWeek(
+    List<WeeklyRecord> records,
+  ) {
+    return {
+      'Men:Women': records.map((r) {
+        final ratio = r.women > 0 ? r.men / r.women : 0.0;
+        return CategoryPoint(label: _formatDate(r.weekStartDate), value: ratio);
+      }).toList(),
+      'Adult:Young': records.map((r) {
+        final young = r.youth + r.children;
+        final adult = r.men + r.women;
+        final ratio = young > 0 ? adult / young : 0.0;
+        return CategoryPoint(label: _formatDate(r.weekStartDate), value: ratio);
+      }).toList(),
+      'Tithe:Offerings': records.map((r) {
+        final ratio = r.offerings > 0 ? r.tithe / r.offerings : 0.0;
+        return CategoryPoint(label: _formatDate(r.weekStartDate), value: ratio);
+      }).toList(),
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // G-52/G-53/G-58: Scatter correlations between two fields
+  // ---------------------------------------------------------------------------
+
+  /// Returns scatter data for correlation between two arbitrary fields.
+  List<ScatterPoint> fieldCorrelationScatter(
+    List<WeeklyRecord> records,
+    String fieldX,
+    String fieldY,
+  ) {
+    return records
+        .map(
+          (r) => ScatterPoint(
+            x: _fieldValue(r, fieldX),
+            y: _fieldValue(r, fieldY),
+            label: _formatDate(r.weekStartDate),
+          ),
+        )
+        .toList();
+  }
+
+  // ---------------------------------------------------------------------------
+  // G-73: Correlation matrix (heatmap)
+  // ---------------------------------------------------------------------------
+
+  /// Computes Pearson correlation matrix for given fields.
+  ///
+  /// Returns a flat list of [HeatmapPoint] with xLabel/yLabel = field names
+  /// and value = Pearson r coefficient (−1 to +1).
+  /// Mirrors: `ds2_plot_correlation_heatmap`.
+  List<HeatmapPoint> correlationMatrix(
+    List<WeeklyRecord> records,
+    List<String> fields,
+  ) {
+    final result = <HeatmapPoint>[];
+    for (final fieldX in fields) {
+      final xVals = records.map((r) => _fieldValue(r, fieldX)).toList();
+      for (final fieldY in fields) {
+        final yVals = records.map((r) => _fieldValue(r, fieldY)).toList();
+        final r = _pearsonR(xVals, yVals);
+        result.add(HeatmapPoint(xLabel: fieldX, yLabel: fieldY, value: r));
+      }
+    }
+    return result;
+  }
+
+  // ---------------------------------------------------------------------------
+  // G-74: Target achievement heatmap
+  // ---------------------------------------------------------------------------
+
+  /// Returns heatmap data for target achievement % per week per metric.
+  List<HeatmapPoint> targetAchievementHeatmap(
+    List<WeeklyRecord> records,
+    Map<String, double> targets,
+  ) {
+    final result = <HeatmapPoint>[];
+    for (final r in records) {
+      final weekLabel = _formatDate(r.weekStartDate);
+      final actuals = {
+        'Men': r.men.toDouble(),
+        'Women': r.women.toDouble(),
+        'Youth': r.youth.toDouble(),
+        'Children': r.children.toDouble(),
+        'Total Att': r.totalAttendance.toDouble(),
+        'Home Church': r.sundayHomeChurch.toDouble(),
+        'Tithe': r.tithe,
+        'Offerings': r.offerings,
+      };
+      for (final entry in actuals.entries) {
+        if (targets.containsKey(entry.key)) {
+          final pct = targets[entry.key]! > 0
+              ? entry.value / targets[entry.key]! * 100
+              : 0.0;
+          result.add(
+            HeatmapPoint(xLabel: entry.key, yLabel: weekLabel, value: pct),
+          );
+        }
+      }
+    }
+    return result;
+  }
+
+  // ---------------------------------------------------------------------------
+  // G-75/G-80: Cross-dataset averages
+  // ---------------------------------------------------------------------------
+
+  /// Computes average values for all key metrics across given records.
+  ///
+  /// Returns a map of metric name → average value.
+  /// Mirrors: `combined_plot_avg_comparison`.
+  Map<String, double> datasetAverages(List<WeeklyRecord> records) {
+    if (records.isEmpty) return {};
+    final n = records.length.toDouble();
+    return {
+      'Men': records.fold(0.0, (s, r) => s + r.men) / n,
+      'Women': records.fold(0.0, (s, r) => s + r.women) / n,
+      'Youth': records.fold(0.0, (s, r) => s + r.youth) / n,
+      'Children': records.fold(0.0, (s, r) => s + r.children) / n,
+      'Total Attendance':
+          records.fold(0.0, (s, r) => s + r.totalAttendance) / n,
+      'Home Church': records.fold(0.0, (s, r) => s + r.sundayHomeChurch) / n,
+      'Tithe': records.fold(0.0, (s, r) => s + r.tithe) / n,
+      'Offerings': records.fold(0.0, (s, r) => s + r.offerings) / n,
+      'Total Income': records.fold(0.0, (s, r) => s + r.totalIncome) / n,
+      'Income/Att':
+          records.fold(0.0, (s, r) {
+            final att = r.totalAttendance;
+            return s + (att > 0 ? r.totalIncome / att : 0.0);
+          }) /
+          n,
+      'Tithe/Att':
+          records.fold(0.0, (s, r) {
+            final att = r.totalAttendance;
+            return s + (att > 0 ? r.tithe / att : 0.0);
+          }) /
+          n,
+      'Offerings/Att':
+          records.fold(0.0, (s, r) {
+            final att = r.totalAttendance;
+            return s + (att > 0 ? r.offerings / att : 0.0);
+          }) /
+          n,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // G-76: Cross-dataset change percentage
+  // ---------------------------------------------------------------------------
+
+  /// Computes % change from ds1 averages to ds2 averages.
+  ///
+  /// Returns [CategoryPoint] list with color flag (green >0, red <0).
+  /// Mirrors: `combined_plot_change_waterfall`.
+  List<CategoryPoint> crossDatasetChangePercent(
+    List<WeeklyRecord> ds1Records,
+    List<WeeklyRecord> ds2Records,
+  ) {
+    final avg1 = datasetAverages(ds1Records);
+    final avg2 = datasetAverages(ds2Records);
+    final result = <CategoryPoint>[];
+    for (final key in avg1.keys) {
+      final v1 = avg1[key] ?? 0;
+      final v2 = avg2[key] ?? 0;
+      final change = v1 != 0 ? ((v2 - v1) / v1) * 100 : 0.0;
+      result.add(
+        CategoryPoint(
+          label: key,
+          value: change,
+          color: change >= 0 ? 0xFF2E7D32 : 0xFFC62828,
+        ),
+      );
+    }
+    return result;
+  }
+
+  // ---------------------------------------------------------------------------
+  // G-78/G-79: Scatter overlay for both datasets
+  // ---------------------------------------------------------------------------
+
+  /// Returns scatter data for total attendance vs total income.
+  /// Identical to [attendanceVsIncomeScatter] but named for cross-dataset use.
+  Map<String, List<ScatterPoint>> attendanceVsIncomeScatterBoth(
+    List<WeeklyRecord> ds1Records,
+    List<WeeklyRecord> ds2Records,
+  ) {
+    return {
+      'Dataset 1': attendanceVsIncomeScatter(ds1Records),
+      'Dataset 2': attendanceVsIncomeScatter(ds2Records),
+    };
+  }
+
+  /// Returns scatter data for tithe vs offerings from both datasets.
+  Map<String, List<ScatterPoint>> titheVsOfferingsScatterBoth(
+    List<WeeklyRecord> ds1Records,
+    List<WeeklyRecord> ds2Records,
+  ) {
+    return {
+      'Dataset 1': fieldCorrelationScatter(ds1Records, 'TITHE', 'OFFERINGS'),
+      'Dataset 2': fieldCorrelationScatter(ds2Records, 'TITHE', 'OFFERINGS'),
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // G-81/G-82: Three-way comparison (DS1 avg / DS2 avg / Target)
+  // ---------------------------------------------------------------------------
+
+  /// Returns three-way comparison data for attendance metrics.
+  ///
+  /// Series: "DS1 Average", "DS2 Average", "Target".
+  /// Mirrors: `combined_plot_ds2_vs_targets_and_ds1_benchmark`.
+  Map<String, List<CategoryPoint>> threeWayComparisonAttendance(
+    List<WeeklyRecord> ds1Records,
+    List<WeeklyRecord> ds2Records,
+    Map<String, double> targets,
+  ) {
+    final avg1 = datasetAverages(ds1Records);
+    final avg2 = datasetAverages(ds2Records);
+    final fields = [
+      'Men',
+      'Women',
+      'Youth',
+      'Children',
+      'Total Attendance',
+      'Home Church',
+    ];
+    return {
+      'DS1 Average': fields
+          .map((f) => CategoryPoint(label: f, value: avg1[f] ?? 0))
+          .toList(),
+      'DS2 Average': fields
+          .map((f) => CategoryPoint(label: f, value: avg2[f] ?? 0))
+          .toList(),
+      'Target': fields
+          .map((f) => CategoryPoint(label: f, value: targets[f] ?? 0))
+          .toList(),
+    };
+  }
+
+  /// Returns three-way comparison data for financial metrics.
+  Map<String, List<CategoryPoint>> threeWayComparisonFinancial(
+    List<WeeklyRecord> ds1Records,
+    List<WeeklyRecord> ds2Records,
+    Map<String, double> targets,
+  ) {
+    final avg1 = datasetAverages(ds1Records);
+    final avg2 = datasetAverages(ds2Records);
+    final fields = ['Tithe', 'Offerings', 'Total Income'];
+    return {
+      'DS1 Average': fields
+          .map((f) => CategoryPoint(label: f, value: avg1[f] ?? 0))
+          .toList(),
+      'DS2 Average': fields
+          .map((f) => CategoryPoint(label: f, value: avg2[f] ?? 0))
+          .toList(),
+      'Target': fields
+          .map((f) => CategoryPoint(label: f, value: targets[f] ?? 0))
+          .toList(),
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // G-83: Cross-dataset summary statistics
+  // ---------------------------------------------------------------------------
+
+  /// Computes summary statistics for cross-dataset comparison.
+  Map<String, dynamic> crossDatasetSummaryStats(
+    List<WeeklyRecord> ds1Records,
+    List<WeeklyRecord> ds2Records,
+  ) {
+    final avg1 = datasetAverages(ds1Records);
+    final avg2 = datasetAverages(ds2Records);
+    final changes = <String, double>{};
+    for (final key in avg1.keys) {
+      final v1 = avg1[key] ?? 0;
+      final v2 = avg2[key] ?? 0;
+      changes[key] = v1 != 0 ? ((v2 - v1) / v1) * 100 : 0.0;
+    }
+    return {
+      'ds1Averages': avg1,
+      'ds2Averages': avg2,
+      'changePercent': changes,
+      'ds1Count': ds1Records.length,
+      'ds2Count': ds2Records.length,
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Helpers
+  // ---------------------------------------------------------------------------
+
+  /// Extracts a numeric field value from a [WeeklyRecord] by field name.
+  double _fieldValue(WeeklyRecord r, String field) {
+    switch (field.toUpperCase()) {
+      case 'MEN':
+        return r.men.toDouble();
+      case 'WOMEN':
+        return r.women.toDouble();
+      case 'YOUTH':
+        return r.youth.toDouble();
+      case 'CHILDREN':
+        return r.children.toDouble();
+      case 'SUNDAY_HOME_CHURCH':
+      case 'HOME_CHURCH':
+      case 'HOME CHURCH':
+        return r.sundayHomeChurch.toDouble();
+      case 'TOTAL_ATTENDANCE':
+      case 'TOTAL ATTENDANCE':
+        return r.totalAttendance.toDouble();
+      case 'TITHE':
+        return r.tithe;
+      case 'OFFERINGS':
+        return r.offerings;
+      case 'TOTAL_INCOME':
+      case 'TOTAL INCOME':
+        return r.totalIncome;
+      case 'EMERGENCY_COLLECTION':
+        return r.emergencyCollection;
+      case 'PLANNED_COLLECTION':
+        return r.plannedCollection;
+      default:
+        return 0.0;
+    }
+  }
+
+  /// Computes Pearson correlation coefficient between two value lists.
+  double _pearsonR(List<double> xs, List<double> ys) {
+    if (xs.length != ys.length || xs.length < 2) return 0;
+    final n = xs.length.toDouble();
+    final sumX = xs.fold(0.0, (a, b) => a + b);
+    final sumY = ys.fold(0.0, (a, b) => a + b);
+    double sumXY = 0, sumX2 = 0, sumY2 = 0;
+    for (int i = 0; i < xs.length; i++) {
+      sumXY += xs[i] * ys[i];
+      sumX2 += xs[i] * xs[i];
+      sumY2 += ys[i] * ys[i];
+    }
+    final num = n * sumXY - sumX * sumY;
+    final den = math.sqrt(
+      (n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY),
+    );
+    return den == 0 ? 0 : num / den;
   }
 
   // ---------------------------------------------------------------------------

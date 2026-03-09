@@ -91,6 +91,42 @@ class _GraphCenterScreenState extends ConsumerState<GraphCenterScreen> {
         screenBuilder: (churchId) =>
             CustomGraphBuilderScreen(churchId: churchId),
       ),
+      ChartItem(
+        title: 'Detailed Metrics',
+        description:
+            'Individual metric bars, pairwise demographics, and home church comparisons',
+        icon: Icons.view_list,
+        color: Colors.blueGrey,
+        category: ChartCategory.attendance,
+        screenBuilder: (churchId) => DetailedMetricsScreen(churchId: churchId),
+      ),
+      ChartItem(
+        title: 'Distributions',
+        description:
+            'Histograms, box plots, and variability analysis for all metrics',
+        icon: Icons.equalizer,
+        color: Colors.amber.shade800,
+        category: ChartCategory.analysis,
+        screenBuilder: (churchId) => DistributionScreen(churchId: churchId),
+      ),
+      ChartItem(
+        title: 'Target Analysis',
+        description:
+            'DS2 targets, achievement gauges, scatter correlations, and heatmaps',
+        icon: Icons.track_changes,
+        color: Colors.red.shade700,
+        category: ChartCategory.analysis,
+        screenBuilder: (churchId) => TargetAnalysisScreen(churchId: churchId),
+      ),
+      ChartItem(
+        title: 'Cross-Dataset Comparison',
+        description:
+            'Compare averages, per-capita, correlation matrices, and three-way benchmarks',
+        icon: Icons.compare_arrows,
+        color: Colors.cyan.shade800,
+        category: ChartCategory.advanced,
+        screenBuilder: (churchId) => CrossDatasetScreen(churchId: churchId),
+      ),
     ];
   }
 

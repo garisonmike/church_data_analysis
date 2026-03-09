@@ -108,13 +108,13 @@ https://github.com/GarisonMike/church_data_analysis/releases/latest/download/upd
 
 The update system implements **integrity verification** but does not currently implement **source authenticity verification**. Understanding this distinction is critical:
 
-#### What We Verify ✓
+#### What We Verify
 
 1. **Transport Security**: All URLs MUST use HTTPS to prevent man-in-the-middle attacks during manifest and installer downloads
 2. **File Integrity**: Downloaded installers are verified against their SHA-256 checksum to detect corruption or modification after publication
 3. **Schema Validation**: The manifest structure is validated to prevent crashes from malformed data
 
-#### What We Do NOT Verify ✗
+#### What We Do NOT Verify
 
 1. **Manifest Authenticity**: The `update.json` file itself is not cryptographically signed or verified
 2. **Source Identity**: We do not verify that the manifest or installers came from the legitimate publisher
@@ -159,14 +159,14 @@ These risks are typical for self-hosted update systems without separate signing 
 All update-related URLs MUST use the `https://` scheme. HTTP URLs are explicitly rejected.
 
 **Rejected URL Examples:**
-- `http://github.com/...` ❌
-- `ftp://example.com/...` ❌
-- `file:///tmp/update.json` ❌
-- `//example.com/update.json` ❌
+- `http://github.com/...` (invalid)
+- `ftp://example.com/...` (invalid)
+- `file:///tmp/update.json` (invalid)
+- `//example.com/update.json` (invalid)
 
 **Accepted URL Examples:**
-- `https://github.com/GarisonMike/church_data_analysis/releases/latest/download/update.json` ✓
-- `https://github.com/GarisonMike/church_data_analysis/releases/download/v1.2.0/app-release.apk` ✓
+- `https://github.com/GarisonMike/church_data_analysis/releases/latest/download/update.json`
+- `https://github.com/GarisonMike/church_data_analysis/releases/download/v1.2.0/app-release.apk`
 
 ### Implementation
 
@@ -279,7 +279,7 @@ GitHub Releases automatically provides these headers for publicly accessible ass
 
 Web browsers and CDNs may cache `update.json`, preventing update detection. Two strategies are available:
 
-#### Strategy 1: Query Parameter Versioning (Recommended) ✅ Implemented
+#### Strategy 1: Query Parameter Versioning (Recommended) Implemented
 
 A `cb` (cache-buster) query parameter containing the current epoch in
 milliseconds is appended to the manifest URL immediately before every HTTP GET:

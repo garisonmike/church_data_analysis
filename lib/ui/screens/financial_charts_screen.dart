@@ -1,3 +1,4 @@
+import 'package:church_analytics/models/charts/time_series_point.dart';
 import 'package:church_analytics/models/weekly_record.dart';
 import 'package:church_analytics/services/analytics_service.dart';
 import 'package:church_analytics/services/weekly_records_provider.dart';
@@ -27,7 +28,8 @@ class FinancialChartsScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
-            onPressed: () => ref.invalidate(weeklyRecordsForChurchProvider(churchId)),
+            onPressed: () =>
+                ref.invalidate(weeklyRecordsForChurchProvider(churchId)),
           ),
         ],
       ),
@@ -35,10 +37,12 @@ class FinancialChartsScreen extends ConsumerWidget {
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (error, _) => _ErrorView(
           message: error.toString(),
-          onRetry: () => ref.invalidate(weeklyRecordsForChurchProvider(churchId)),
+          onRetry: () =>
+              ref.invalidate(weeklyRecordsForChurchProvider(churchId)),
         ),
-        data: (records) =>
-            records.isEmpty ? const _EmptyView() : _FinancialContent(records: records),
+        data: (records) => records.isEmpty
+            ? const _EmptyView()
+            : _FinancialContent(records: records),
       ),
     );
   }
@@ -59,7 +63,9 @@ class _FinancialContent extends StatelessWidget {
       children: [
         // 1. Tithe vs Offerings Trend
         ResponsiveChartContainer(
-          minHeight: 220, maxHeight: 380, aspectRatio: 16 / 9,
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
           child: LineChartWidget(
             seriesData: {
               'Tithe': analytics.titheTrend(sorted),
@@ -73,7 +79,9 @@ class _FinancialContent extends StatelessWidget {
 
         // 2. Income Composition (stacked area)
         ResponsiveLazyChart(
-          minHeight: 220, maxHeight: 380, aspectRatio: 16 / 9,
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
           child: StackedAreaChartWidget(
             seriesData: analytics.titheOfferingsComposition(sorted),
             title: 'Income Composition Over Time',
@@ -84,7 +92,9 @@ class _FinancialContent extends StatelessWidget {
 
         // 3. Income Distribution Pie
         ResponsiveLazyChart(
-          minHeight: 260, maxHeight: 420, aspectRatio: 16 / 10,
+          minHeight: 260,
+          maxHeight: 420,
+          aspectRatio: 16 / 10,
           child: PieChartWidget(
             data: analytics.incomeDistribution(sorted),
             title: 'Income Distribution',
@@ -94,13 +104,139 @@ class _FinancialContent extends StatelessWidget {
 
         // 4. Income vs Attendance (dual axis)
         ResponsiveLazyChart(
-          minHeight: 220, maxHeight: 380, aspectRatio: 16 / 9,
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
           child: DualAxisChartWidget(
             primarySeries: analytics.attendanceTrendSeries(sorted),
             secondarySeries: analytics.incomeTrendSeries(sorted),
             title: 'Income vs Attendance',
             primaryAxisTitle: 'Attendance',
             secondaryAxisTitle: 'Income',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // G-09: Financial Pairwise Comparisons
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: BarChartWidget(
+            seriesData: analytics.demographicPairPerWeek(
+              sorted,
+              'TITHE',
+              'OFFERINGS',
+            ),
+            title: 'Tithe vs Offerings Per Week',
+            yAxisTitle: 'Amount',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: BarChartWidget(
+            seriesData: analytics.demographicPairPerWeek(
+              sorted,
+              'TITHE',
+              'TOTAL_INCOME',
+            ),
+            title: 'Tithe vs Total Income Per Week',
+            yAxisTitle: 'Amount',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: BarChartWidget(
+            seriesData: analytics.demographicPairPerWeek(
+              sorted,
+              'OFFERINGS',
+              'TOTAL_INCOME',
+            ),
+            title: 'Offerings vs Total Income Per Week',
+            yAxisTitle: 'Amount',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // G-31: Regular vs Total Income Per Week
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: BarChartWidget(
+            seriesData: {
+              'Regular Income': analytics.regularIncomePerWeek(sorted),
+              'Total Income': analytics.totalIncomePerWeek(sorted),
+            },
+            title: 'Regular vs Total Income Per Week',
+            yAxisTitle: 'Amount',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // G-37: Tithe Per Attendee Per Week
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: BarChartWidget(
+            seriesData: {
+              'Tithe/Attendee': analytics.tithePerAttendeePerWeek(sorted),
+            },
+            title: 'Tithe Per Attendee Per Week',
+            yAxisTitle: 'Amount',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // G-38: Regular Income Per Adult Per Week
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: BarChartWidget(
+            seriesData: {
+              'Income/Adult': analytics.regularIncomePerAdultPerWeek(sorted),
+            },
+            title: 'Regular Income Per Adult Per Week',
+            yAxisTitle: 'Amount',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // G-39: All Per-Capita Metrics Combined
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: LineChartWidget(
+            seriesData: {
+              'Income/Att': analytics.incomePerAttendeeTrend(sorted),
+              'Tithe/Att': sorted.map((r) {
+                final att = r.totalAttendance;
+                return TimeSeriesPoint(
+                  x: r.weekStartDate,
+                  y: att > 0 ? r.tithe / att : 0.0,
+                );
+              }).toList(),
+              'Offerings/Att': sorted.map((r) {
+                final att = r.totalAttendance;
+                return TimeSeriesPoint(
+                  x: r.weekStartDate,
+                  y: att > 0 ? r.offerings / att : 0.0,
+                );
+              }).toList(),
+            },
+            title: 'All Per-Capita Metrics',
+            yAxisTitle: 'Amount',
           ),
         ),
         const SizedBox(height: 32),
@@ -124,11 +260,17 @@ class _ErrorView extends StatelessWidget {
           children: [
             const Icon(Icons.error_outline, size: 64, color: Colors.red),
             const SizedBox(height: 16),
-            Text(message, textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.red)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red),
+            ),
             const SizedBox(height: 16),
-            ElevatedButton.icon(onPressed: onRetry,
-                icon: const Icon(Icons.refresh), label: const Text('Retry')),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
           ],
         ),
       ),
@@ -149,8 +291,10 @@ class _EmptyView extends StatelessWidget {
           const SizedBox(height: 16),
           const Text('No data yet', style: TextStyle(fontSize: 18)),
           const SizedBox(height: 8),
-          Text('Add weekly records to see financial charts.',
-              style: TextStyle(color: Colors.grey[600])),
+          Text(
+            'Add weekly records to see financial charts.',
+            style: TextStyle(color: Colors.grey[600]),
+          ),
         ],
       ),
     );

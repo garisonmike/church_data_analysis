@@ -652,7 +652,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                     Column(
                       children: [
                         Text(
-                          '✗',
+                          'X',
                           style: TextStyle(color: Colors.red, fontSize: 24),
                         ),
                         Text('$errorCount Invalid'),
