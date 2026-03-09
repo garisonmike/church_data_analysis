@@ -7,6 +7,7 @@ import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/app_settings.dart';
+import '../../platform/platform_installer_launch_service.dart';
 import '../../repositories/settings_repository.dart';
 import '../../services/file_service.dart' show resolvedExportPathProvider;
 import '../../services/settings_service.dart';
@@ -298,7 +299,7 @@ class AppSettingsScreen extends ConsumerWidget {
           const SizedBox(height: 16),
 
           // About & Updates Card
-          const AboutUpdatesCard(),
+          AboutUpdatesCard(launchService: PlatformInstallerLaunchService()),
 
           const SizedBox(height: 32),
         ],

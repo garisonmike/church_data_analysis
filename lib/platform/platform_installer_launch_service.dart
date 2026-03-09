@@ -152,12 +152,66 @@ class PlatformInstallerLaunchService implements InstallerLaunchService {
         );
       case ResultType.error:
         return InstallerLaunchResult.failure(
-          result.message.isNotEmpty
-              ? result.message
-              : 'The installer could not be opened on this device. '
-                    'Please try again or install manually from GitHub Releases.',
+          _parseAndroidInstallError(result.message),
         );
     }
+  }
+
+  /// Maps known Android Package Manager error codes in [message] to
+  /// human-readable, actionable guidance.
+  ///
+  /// Android's Package Installer may surface these strings when the install
+  /// intent returns a failure result:
+  ///
+  /// | Android error code | Cause |
+  /// |---|---|
+  /// | INSTALL_FAILED_UPDATE_INCOMPATIBLE | APK signed with a different key |
+  /// | INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES | Certificate mismatch |
+  /// | INSTALL_FAILED_VERSION_DOWNGRADE | Installed version is newer |
+  /// | INSTALL_FAILED_CONFLICTING_PROVIDER | Content-provider namespace clash |
+  ///
+  /// If [message] does not match any known pattern, the raw [message] is
+  /// returned unchanged (or a generic fallback when [message] is empty).
+  static String _parseAndroidInstallError(String message) {
+    final lower = message.toLowerCase();
+
+    // Signature / certificate mismatch — most common cause of update failure
+    // when the APK was signed with a different keystore than the installed copy.
+    if (lower.contains('update_incompatible') ||
+        lower.contains('inconsistent_certificates') ||
+        lower.contains('signature') ||
+        lower.contains('certificate')) {
+      return 'Installation failed: the APK is signed with a different key '
+          'than the version currently installed on this device.\n\n'
+          'To fix this:\n'
+          '1. Create a backup of your data (Settings → Backup)\n'
+          '2. Uninstall the current version of Church Analytics\n'
+          '3. Install the downloaded APK (shown below)\n\n'
+          'Your data will be restored after re-importing the backup.';
+    }
+
+    // Version downgrade — Android never allows installing an older versionCode.
+    if (lower.contains('version_downgrade')) {
+      return 'Installation failed: the downloaded APK has a lower version '
+          'number than the version already installed.\n\n'
+          'Version downgrades are not permitted by Android. '
+          'Please download the latest release from GitHub.';
+    }
+
+    // Content-provider namespace conflict (rare; usually affects side-loaded
+    // builds that share a component with another installed app).
+    if (lower.contains('conflicting_provider') || lower.contains('conflict')) {
+      return 'Installation failed: a package conflict was detected. '
+          'Please uninstall the current version of Church Analytics first, '
+          'then install the downloaded APK.';
+    }
+
+    // Generic fallback — return the raw Android error when recognised,
+    // or a human-friendly default when the message is empty.
+    return message.isNotEmpty
+        ? message
+        : 'The installer could not be opened on this device. '
+              'Please try again or install manually from GitHub Releases.';
   }
 
   /// Windows: the release is a ZIP archive, not an EXE installer.

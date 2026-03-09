@@ -297,6 +297,42 @@ void main() {
 
       expect(find.byKey(const ValueKey('install_failure_title')), findsNothing);
     });
+
+    testWidgets('shows apkPath container when apkPath is provided', (
+      tester,
+    ) async {
+      const path = '/data/user/0/com.church.church_analytics/cache/update.apk';
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(body: UpdateInstallFailureDialog(apkPath: path)),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('install_failure_apk_path')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('install_failure_apk_path_text')),
+        findsOneWidget,
+      );
+      expect(find.text(path), findsWidgets);
+    });
+
+    testWidgets('does NOT show apkPath container when apkPath is null', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: UpdateInstallFailureDialog())),
+      );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('install_failure_apk_path')),
+        findsNothing,
+      );
+    });
   });
 
   // -------------------------------------------------------------------------
@@ -453,6 +489,36 @@ void main() {
         await tester.pumpAndSettle();
 
         expect(launchService.launchCallCount, 1);
+      },
+    );
+
+    testWidgets(
+      'failure dialog shows the downloaded APK path when launch fails',
+      (tester) async {
+        final launchService = _FailingLaunchService();
+        final activityLog = _RecordingActivityLog();
+
+        await tester.pumpWidget(
+          buildCardWithUpdateAvailable(
+            launchService: launchService,
+            activityLog: activityLog,
+          ),
+        );
+        await reachUpdateAvailableState(tester);
+
+        await tester.tap(find.byKey(const ValueKey('download_update_button')));
+        await tester.pumpAndSettle();
+
+        // The APK path container must be visible in the failure dialog.
+        expect(
+          find.byKey(const ValueKey('install_failure_apk_path')),
+          findsOneWidget,
+        );
+        // The fake download path provided by _FakeDownloadService must appear.
+        expect(
+          find.byKey(const ValueKey('install_failure_apk_path_text')),
+          findsOneWidget,
+        );
       },
     );
   });

@@ -249,6 +249,14 @@ class _ChurchSelectionScreenState extends ConsumerState<ChurchSelectionScreen> {
                       icon: const Icon(Icons.add),
                       label: const Text('Create Church'),
                     ),
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      key: const ValueKey('import_backup_button'),
+                      onPressed: () =>
+                          Navigator.of(context).pushNamed('/restore-backup'),
+                      icon: const Icon(Icons.restore_page_outlined),
+                      label: const Text('Import Backup'),
+                    ),
                   ],
                 ),
               ),

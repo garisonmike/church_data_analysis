@@ -1,4 +1,4 @@
-import 'dart:io' show Directory;
+import 'dart:io' show Directory, Platform;
 
 import 'package:church_analytics/models/update_error_messages.dart';
 import 'package:church_analytics/models/update_error_type.dart';
@@ -64,9 +64,8 @@ enum _CheckState {
 class AboutUpdatesCard extends ConsumerStatefulWidget {
   /// Installer launch service injected for testability.
   ///
-  /// Defaults to [NoOpInstallerLaunchService], which always returns a failure
-  /// so the recovery path (UPDATE-011) is exercised until UPDATE-007 provides
-  /// real platform implementations.
+  /// Defaults to [NoOpInstallerLaunchService] for tests.  In production,
+  /// [AppSettingsScreen] passes [PlatformInstallerLaunchService].
   final InstallerLaunchService launchService;
 
   /// Activity-log service injected for testability.
@@ -170,7 +169,11 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
     );
 
     if (result.isError && mounted) {
-      await UpdateInstallFailureDialog.show(context, errorDetail: result.error);
+      await UpdateInstallFailureDialog.show(
+        context,
+        errorDetail: result.error,
+        apkPath: installerPath,
+      );
     } else if (result.hint != null && mounted) {
       // Linux (and any future platform) where the user must take a follow-up
       // action after extraction (AC3 / AC6 — UPDATE-007).
@@ -256,7 +259,8 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
     );
 
     try {
-      final destDir = await (widget.destDirResolver ?? getTemporaryDirectory)();
+      final destDir =
+          await (widget.destDirResolver ?? _resolveDownloadDirectory)();
       final service = widget.downloadService ?? UpdateDownloadService();
       final result = await service.download(
         manifest: manifest,
@@ -291,6 +295,28 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
       popDialog();
       progressNotifier.dispose();
     }
+  }
+
+  /// Returns the best writable directory for the downloaded APK.
+  ///
+  /// On Android the app's external-storage directory (e.g.
+  /// `/storage/emulated/0/Android/data/com.church.church_analytics/files`)
+  /// is used when available. Unlike the internal cache directory, this path
+  /// is accessible to the user via the Files app, so they can manually
+  /// install the APK if automatic installation fails (Issue 6 — 6.3).
+  ///
+  /// On every other platform, or when external storage is not available, the
+  /// system temporary directory is used as the fallback.
+  static Future<Directory> _resolveDownloadDirectory() async {
+    if (!kIsWeb && Platform.isAndroid) {
+      try {
+        final external = await getExternalStorageDirectory();
+        if (external != null) return external;
+      } catch (_) {
+        // Ignore — fall through to temp.
+      }
+    }
+    return getTemporaryDirectory();
   }
 
   Future<void> _checkForUpdates() async {
@@ -338,9 +364,23 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ----------------------------------------------------------------
-            // Section heading
+            // Section heading with app icon
             // ----------------------------------------------------------------
-            Text('About & Updates', style: theme.textTheme.titleLarge),
+            Row(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Image.asset(
+                    'assets/images/icon.jpeg',
+                    width: 48,
+                    height: 48,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text('About & Updates', style: theme.textTheme.titleLarge),
+              ],
+            ),
             const SizedBox(height: 16),
 
             // ----------------------------------------------------------------

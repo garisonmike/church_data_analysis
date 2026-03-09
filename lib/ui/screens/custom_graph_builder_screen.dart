@@ -1,7 +1,8 @@
-import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:syncfusion_flutter_charts/charts.dart';
 
 import '../../models/weekly_record.dart';
 import '../../services/settings_service.dart';
@@ -13,20 +14,15 @@ import '../widgets/time_range_selector.dart';
 class ChartMetric {
   final String key;
   final String displayName;
-  final String Function(WeeklyRecord) valueExtractor;
+  final double Function(WeeklyRecord) getValue;
   final bool isCurrency;
 
   const ChartMetric({
     required this.key,
     required this.displayName,
-    required this.valueExtractor,
+    required this.getValue,
     this.isCurrency = false,
   });
-
-  double getValue(WeeklyRecord record) {
-    final value = valueExtractor(record);
-    return double.tryParse(value) ?? 0.0;
-  }
 }
 
 // Available metrics from WeeklyRecord model
@@ -34,61 +30,61 @@ final List<ChartMetric> availableMetrics = [
   ChartMetric(
     key: 'men',
     displayName: 'Men',
-    valueExtractor: (record) => record.men.toString(),
+    getValue: (r) => r.men.toDouble(),
   ),
   ChartMetric(
     key: 'women',
     displayName: 'Women',
-    valueExtractor: (record) => record.women.toString(),
+    getValue: (r) => r.women.toDouble(),
   ),
   ChartMetric(
     key: 'youth',
     displayName: 'Youth',
-    valueExtractor: (record) => record.youth.toString(),
+    getValue: (r) => r.youth.toDouble(),
   ),
   ChartMetric(
     key: 'children',
     displayName: 'Children',
-    valueExtractor: (record) => record.children.toString(),
+    getValue: (r) => r.children.toDouble(),
   ),
   ChartMetric(
     key: 'sundayHomeChurch',
     displayName: 'Sunday Home Church',
-    valueExtractor: (record) => record.sundayHomeChurch.toString(),
+    getValue: (r) => r.sundayHomeChurch.toDouble(),
   ),
   ChartMetric(
     key: 'totalAttendance',
     displayName: 'Total Attendance',
-    valueExtractor: (record) => record.totalAttendance.toString(),
+    getValue: (r) => r.totalAttendance.toDouble(),
   ),
   ChartMetric(
     key: 'tithe',
     displayName: 'Tithe',
-    valueExtractor: (record) => record.tithe.toString(),
+    getValue: (r) => r.tithe.toDouble(),
     isCurrency: true,
   ),
   ChartMetric(
     key: 'offerings',
     displayName: 'Offerings',
-    valueExtractor: (record) => record.offerings.toString(),
+    getValue: (r) => r.offerings.toDouble(),
     isCurrency: true,
   ),
   ChartMetric(
     key: 'emergencyCollection',
     displayName: 'Emergency Collection',
-    valueExtractor: (record) => record.emergencyCollection.toString(),
+    getValue: (r) => r.emergencyCollection.toDouble(),
     isCurrency: true,
   ),
   ChartMetric(
     key: 'plannedCollection',
     displayName: 'Planned Collection',
-    valueExtractor: (record) => record.plannedCollection.toString(),
+    getValue: (r) => r.plannedCollection.toDouble(),
     isCurrency: true,
   ),
   ChartMetric(
     key: 'totalIncome',
     displayName: 'Total Income',
-    valueExtractor: (record) => record.totalIncome.toString(),
+    getValue: (r) => r.totalIncome.toDouble(),
     isCurrency: true,
   ),
 ];
@@ -453,321 +449,166 @@ class CustomGraphBuilderScreen extends ConsumerWidget {
     ThemeData theme,
     WidgetRef ref,
   ) {
-    final data = records
-        .map(
-          (record) =>
-              FlSpot(xMetric.getValue(record), yMetric.getValue(record)),
-        )
-        .toList();
+    final currencySymbol = (xMetric.isCurrency || yMetric.isCurrency)
+        ? ref.watch(appSettingsProvider).currency.symbol
+        : '';
+    return _DynamicChart(
+      records: records,
+      xMetric: xMetric,
+      yMetric: yMetric,
+      chartType: chartType,
+      theme: theme,
+      currencySymbol: currencySymbol,
+    );
+  }
+}
 
-    switch (chartType) {
-      case ChartType.scatter:
-        return _buildScatterChart(data, xMetric, yMetric, theme, ref);
-      case ChartType.line:
-        return _buildLineChart(data, xMetric, yMetric, theme, ref);
-      case ChartType.bar:
-        return _buildBarChart(records, xMetric, yMetric, theme, ref);
-    }
+// ─── Syncfusion dynamic chart widget ─────────────────────────────────────────
+
+class _DynamicChart extends StatefulWidget {
+  final List<WeeklyRecord> records;
+  final ChartMetric xMetric;
+  final ChartMetric yMetric;
+  final ChartType chartType;
+  final ThemeData theme;
+  final String currencySymbol;
+
+  const _DynamicChart({
+    required this.records,
+    required this.xMetric,
+    required this.yMetric,
+    required this.chartType,
+    required this.theme,
+    required this.currencySymbol,
+  });
+
+  @override
+  State<_DynamicChart> createState() => _DynamicChartState();
+}
+
+class _DynamicChartState extends State<_DynamicChart> {
+  late final ZoomPanBehavior _zoomPan;
+  late final TrackballBehavior _trackball;
+
+  @override
+  void initState() {
+    super.initState();
+    _zoomPan = ZoomPanBehavior(
+      enablePinching: true,
+      enableDoubleTapZooming: true,
+      enablePanning: true,
+      enableMouseWheelZooming: true,
+    );
+    _trackball = TrackballBehavior(
+      enable: true,
+      activationMode: ActivationMode.singleTap,
+      tooltipSettings: const InteractiveTooltip(enable: true),
+    );
   }
 
-  String _formatAxisValue(double value, ChartMetric metric, WidgetRef ref) {
-    if (metric.isCurrency) {
-      final settings = ref.watch(appSettingsProvider);
-      return '${settings.currency.symbol}${value.toInt()}';
-    }
-    return value.toInt().toString();
-  }
-
-  String _getAxisLabel(ChartMetric metric, WidgetRef ref) {
-    if (metric.isCurrency) {
-      final settings = ref.watch(appSettingsProvider);
-      return '${metric.displayName} (${settings.currency.symbol})';
+  String _axisTitle(ChartMetric metric) {
+    if (metric.isCurrency && widget.currencySymbol.isNotEmpty) {
+      return '${metric.displayName} (${widget.currencySymbol})';
     }
     return metric.displayName;
   }
 
-  Widget _buildScatterChart(
-    List<FlSpot> data,
-    ChartMetric xMetric,
-    ChartMetric yMetric,
-    ThemeData theme,
-    WidgetRef ref,
-  ) {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: ScatterChart(
-        ScatterChartData(
-          scatterSpots: data.asMap().entries.map((entry) {
-            return ScatterSpot(
-              entry.value.x,
-              entry.value.y,
-              dotPainter: FlDotCirclePainter(
-                color: theme.colorScheme.primary,
-                radius: 6,
-              ),
-            );
-          }).toList(),
-          titlesData: FlTitlesData(
-            bottomTitles: AxisTitles(
-              axisNameWidget: Text(
-                _getAxisLabel(xMetric, ref),
-                style: TextStyle(
-                  color: theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    _formatAxisValue(value, xMetric, ref),
-                    style: const TextStyle(fontSize: 10),
-                  );
-                },
-              ),
-            ),
-            leftTitles: AxisTitles(
-              axisNameWidget: Text(
-                _getAxisLabel(yMetric, ref),
-                style: TextStyle(
-                  color: theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 60,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    _formatAxisValue(value, yMetric, ref),
-                    style: const TextStyle(fontSize: 10),
-                  );
-                },
-              ),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-          ),
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: true,
-            drawHorizontalLine: true,
-            getDrawingVerticalLine: (value) => FlLine(
-              color: theme.colorScheme.outline.withValues(alpha: 0.2),
-              strokeWidth: 1,
-            ),
-            getDrawingHorizontalLine: (value) => FlLine(
-              color: theme.colorScheme.outline.withValues(alpha: 0.2),
-              strokeWidth: 1,
-            ),
-          ),
-          borderData: FlBorderData(
-            show: true,
-            border: Border.all(
-              color: theme.colorScheme.outline.withValues(alpha: 0.3),
-            ),
+  @override
+  Widget build(BuildContext context) {
+    switch (widget.chartType) {
+      case ChartType.scatter:
+        return _buildScatter();
+      case ChartType.line:
+        return _buildLine();
+      case ChartType.bar:
+        return _buildBar();
+    }
+  }
+
+  Widget _buildScatter() {
+    return SfCartesianChart(
+      zoomPanBehavior: _zoomPan,
+      trackballBehavior: _trackball,
+      primaryXAxis: NumericAxis(
+        title: AxisTitle(text: _axisTitle(widget.xMetric)),
+        decimalPlaces: 0,
+      ),
+      primaryYAxis: NumericAxis(
+        title: AxisTitle(text: _axisTitle(widget.yMetric)),
+        decimalPlaces: 0,
+      ),
+      series: [
+        ScatterSeries<WeeklyRecord, double>(
+          dataSource: widget.records,
+          xValueMapper: (r, _) => widget.xMetric.getValue(r),
+          yValueMapper: (r, _) => widget.yMetric.getValue(r),
+          color: widget.theme.colorScheme.primary,
+          markerSettings: const MarkerSettings(
+            isVisible: true,
+            height: 10,
+            width: 10,
+            shape: DataMarkerType.circle,
           ),
         ),
-      ),
+      ],
     );
   }
 
-  Widget _buildLineChart(
-    List<FlSpot> data,
-    ChartMetric xMetric,
-    ChartMetric yMetric,
-    ThemeData theme,
-    WidgetRef ref,
-  ) {
-    // Sort data by x-axis for proper line connection
-    data.sort((a, b) => a.x.compareTo(b.x));
-
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: LineChart(
-        LineChartData(
-          lineBarsData: [
-            LineChartBarData(
-              spots: data,
-              color: theme.colorScheme.primary,
-              barWidth: 3,
-              dotData: const FlDotData(show: true),
-              belowBarData: BarAreaData(
-                show: true,
-                color: theme.colorScheme.primary.withValues(alpha: 0.1),
-              ),
-            ),
-          ],
-          titlesData: FlTitlesData(
-            bottomTitles: AxisTitles(
-              axisNameWidget: Text(
-                _getAxisLabel(xMetric, ref),
-                style: TextStyle(
-                  color: theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    _formatAxisValue(value, xMetric, ref),
-                    style: const TextStyle(fontSize: 10),
-                  );
-                },
-              ),
-            ),
-            leftTitles: AxisTitles(
-              axisNameWidget: Text(
-                _getAxisLabel(yMetric, ref),
-                style: TextStyle(
-                  color: theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 60,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    _formatAxisValue(value, yMetric, ref),
-                    style: const TextStyle(fontSize: 10),
-                  );
-                },
-              ),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-          ),
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: true,
-            drawHorizontalLine: true,
-            getDrawingVerticalLine: (value) => FlLine(
-              color: theme.colorScheme.outline.withValues(alpha: 0.2),
-              strokeWidth: 1,
-            ),
-            getDrawingHorizontalLine: (value) => FlLine(
-              color: theme.colorScheme.outline.withValues(alpha: 0.2),
-              strokeWidth: 1,
-            ),
-          ),
-          borderData: FlBorderData(
-            show: true,
-            border: Border.all(
-              color: theme.colorScheme.outline.withValues(alpha: 0.3),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildBarChart(
-    List<WeeklyRecord> records,
-    ChartMetric xMetric,
-    ChartMetric yMetric,
-    ThemeData theme,
-    WidgetRef ref,
-  ) {
-    final barGroups = records.asMap().entries.map((entry) {
-      final index = entry.key;
-      final record = entry.value;
-      return BarChartGroupData(
-        x: index,
-        barRods: [
-          BarChartRodData(
-            toY: yMetric.getValue(record),
-            color: theme.colorScheme.primary,
-            width: 16,
-          ),
-        ],
+  Widget _buildLine() {
+    final sorted = List<WeeklyRecord>.from(widget.records)
+      ..sort(
+        (a, b) =>
+            widget.xMetric.getValue(a).compareTo(widget.xMetric.getValue(b)),
       );
-    }).toList();
-
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: BarChart(
-        BarChartData(
-          barGroups: barGroups,
-          titlesData: FlTitlesData(
-            bottomTitles: AxisTitles(
-              axisNameWidget: Text(
-                '${xMetric.displayName} (Record Index)',
-                style: TextStyle(
-                  color: theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              sideTitles: SideTitles(
-                showTitles: true,
-                getTitlesWidget: (value, meta) {
-                  final index = value.toInt();
-                  if (index >= 0 && index < records.length) {
-                    final xValue = xMetric.getValue(records[index]);
-                    return Text(
-                      _formatAxisValue(xValue, xMetric, ref),
-                      style: TextStyle(
-                        fontSize: 10,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    );
-                  }
-                  return const Text('');
-                },
-              ),
-            ),
-            leftTitles: AxisTitles(
-              axisNameWidget: Text(
-                _getAxisLabel(yMetric, ref),
-                style: TextStyle(
-                  color: theme.colorScheme.onSurface,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              sideTitles: SideTitles(
-                showTitles: true,
-                reservedSize: 60,
-                getTitlesWidget: (value, meta) {
-                  return Text(
-                    _formatAxisValue(value, yMetric, ref),
-                    style: const TextStyle(fontSize: 10),
-                  );
-                },
-              ),
-            ),
-            topTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-            rightTitles: const AxisTitles(
-              sideTitles: SideTitles(showTitles: false),
-            ),
-          ),
-          gridData: FlGridData(
-            show: true,
-            drawVerticalLine: false,
-            drawHorizontalLine: true,
-            getDrawingHorizontalLine: (value) => FlLine(
-              color: theme.colorScheme.outline.withValues(alpha: 0.2),
-              strokeWidth: 1,
-            ),
-          ),
-          borderData: FlBorderData(
-            show: true,
-            border: Border.all(
-              color: theme.colorScheme.outline.withValues(alpha: 0.3),
-            ),
+    return SfCartesianChart(
+      zoomPanBehavior: _zoomPan,
+      trackballBehavior: _trackball,
+      primaryXAxis: NumericAxis(
+        title: AxisTitle(text: _axisTitle(widget.xMetric)),
+        decimalPlaces: 0,
+      ),
+      primaryYAxis: NumericAxis(
+        title: AxisTitle(text: _axisTitle(widget.yMetric)),
+        decimalPlaces: 0,
+      ),
+      series: [
+        SplineSeries<WeeklyRecord, double>(
+          dataSource: sorted,
+          xValueMapper: (r, _) => widget.xMetric.getValue(r),
+          yValueMapper: (r, _) => widget.yMetric.getValue(r),
+          color: widget.theme.colorScheme.primary,
+          width: 2,
+          markerSettings: const MarkerSettings(
+            isVisible: true,
+            shape: DataMarkerType.circle,
           ),
         ),
+      ],
+    );
+  }
+
+  Widget _buildBar() {
+    final fmt = DateFormat.MMMd();
+    return SfCartesianChart(
+      zoomPanBehavior: _zoomPan,
+      trackballBehavior: _trackball,
+      primaryXAxis: CategoryAxis(
+        title: AxisTitle(text: widget.xMetric.displayName),
+        labelStyle: const TextStyle(fontSize: 10),
+        labelRotation: -45,
       ),
+      primaryYAxis: NumericAxis(
+        title: AxisTitle(text: _axisTitle(widget.yMetric)),
+        decimalPlaces: 0,
+      ),
+      series: [
+        ColumnSeries<WeeklyRecord, String>(
+          dataSource: widget.records,
+          xValueMapper: (r, _) => fmt.format(r.weekStartDate),
+          yValueMapper: (r, _) => widget.yMetric.getValue(r),
+          color: widget.theme.colorScheme.primary,
+        ),
+      ],
     );
   }
 }

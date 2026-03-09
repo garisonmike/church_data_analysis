@@ -1,0 +1,27 @@
+# ---------------------------------------------------------------------------
+# Church Analytics — Android release signing template
+# ---------------------------------------------------------------------------
+#
+# Copy this file to android/key.properties (which is .gitignored).
+# Fill in the values for your keystore.
+# NEVER commit key.properties or your .jks file to version control.
+#
+# ---------------------------------------------------------------------------
+# How to generate a new keystore (run once, keep the file safe):
+#
+#   keytool -genkey -v \
+#           -keystore android/keystore.jks \
+#           -storetype JKS \
+#           -keyalg RSA -keysize 2048 -validity 10000 \
+#           -alias church_analytics
+#
+# ---------------------------------------------------------------------------
+# IMPORTANT: All APKs distributed to users MUST be signed with the SAME
+# keystore.  Android will reject an update signed with a different key,
+# resulting in a "Package signature mismatch" installation error.
+# ---------------------------------------------------------------------------
+
+storePassword=<your-keystore-password>
+keyPassword=<your-key-password>
+keyAlias=church_analytics
+storeFile=../android/keystore.jks

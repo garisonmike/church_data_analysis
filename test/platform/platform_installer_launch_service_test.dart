@@ -162,6 +162,119 @@ void main() {
 
       expect(popCalled, isFalse);
     });
+
+    // -----------------------------------------------------------------------
+    // Android-specific installation failure detection (Issue 6 — 6.2 / 6.4)
+    // -----------------------------------------------------------------------
+
+    group('Android — specific installation failure detection', () {
+      test(
+        'returns signature-mismatch guidance for INSTALL_FAILED_UPDATE_INCOMPATIBLE',
+        () async {
+          final service = makeService(
+            platform: 'android',
+            openFileFn: (_) async => OpenResult(
+              type: ResultType.error,
+              message: 'INSTALL_FAILED_UPDATE_INCOMPATIBLE',
+            ),
+          );
+
+          final result = await service.launch(kFakePath);
+
+          expect(result.isError, isTrue);
+          // Should mention uninstalling as the recovery step.
+          expect(result.error!.toLowerCase(), contains('uninstall'));
+          // Should not expose the raw Android error code to the user.
+          expect(
+            result.error,
+            isNot(equals('INSTALL_FAILED_UPDATE_INCOMPATIBLE')),
+          );
+        },
+      );
+
+      test(
+        'returns signature-mismatch guidance for INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES',
+        () async {
+          final service = makeService(
+            platform: 'android',
+            openFileFn: (_) async => OpenResult(
+              type: ResultType.error,
+              message: 'INSTALL_PARSE_FAILED_INCONSISTENT_CERTIFICATES',
+            ),
+          );
+
+          final result = await service.launch(kFakePath);
+
+          expect(result.isError, isTrue);
+          expect(result.error!.toLowerCase(), contains('uninstall'));
+        },
+      );
+
+      test(
+        'returns version-downgrade message for INSTALL_FAILED_VERSION_DOWNGRADE',
+        () async {
+          final service = makeService(
+            platform: 'android',
+            openFileFn: (_) async => OpenResult(
+              type: ResultType.error,
+              message: 'INSTALL_FAILED_VERSION_DOWNGRADE',
+            ),
+          );
+
+          final result = await service.launch(kFakePath);
+
+          expect(result.isError, isTrue);
+          expect(result.error!.toLowerCase(), contains('downgrade'));
+        },
+      );
+
+      test(
+        'returns conflict message for INSTALL_FAILED_CONFLICTING_PROVIDER',
+        () async {
+          final service = makeService(
+            platform: 'android',
+            openFileFn: (_) async => OpenResult(
+              type: ResultType.error,
+              message: 'INSTALL_FAILED_CONFLICTING_PROVIDER',
+            ),
+          );
+
+          final result = await service.launch(kFakePath);
+
+          expect(result.isError, isTrue);
+          expect(result.error!.toLowerCase(), contains('conflict'));
+        },
+      );
+
+      test('returns generic fallback for unrecognised empty error', () async {
+        final service = makeService(
+          platform: 'android',
+          openFileFn: (_) async =>
+              OpenResult(type: ResultType.error, message: ''),
+        );
+
+        final result = await service.launch(kFakePath);
+
+        expect(result.isError, isTrue);
+        // Generic message must not be empty.
+        expect(result.error, isNotNull);
+        expect(result.error, isNotEmpty);
+      });
+
+      test('returns raw message for unrecognised non-empty error', () async {
+        const rawMsg = 'INSTALL_FAILED_SOME_UNKNOWN_REASON';
+        final service = makeService(
+          platform: 'android',
+          openFileFn: (_) async =>
+              OpenResult(type: ResultType.error, message: rawMsg),
+        );
+
+        final result = await service.launch(kFakePath);
+
+        expect(result.isError, isTrue);
+        expect(result.error, equals(rawMsg));
+      });
+    });
   });
 
   // -------------------------------------------------------------------------

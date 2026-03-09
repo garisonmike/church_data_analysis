@@ -26,18 +26,31 @@ class UpdateInstallFailureDialog extends StatelessWidget {
   /// When non-null this is shown as a secondary line below the main message.
   final String? errorDetail;
 
-  const UpdateInstallFailureDialog({super.key, this.errorDetail});
+  /// Local filesystem path to the downloaded APK.
+  ///
+  /// When non-null, the dialog displays the exact path so the user can
+  /// manually locate and install the file from a file manager or ADB.
+  final String? apkPath;
+
+  const UpdateInstallFailureDialog({super.key, this.errorDetail, this.apkPath});
 
   // -------------------------------------------------------------------------
   // Static helpers
   // -------------------------------------------------------------------------
 
   /// Shows the dialog as a modal and awaits user dismissal.
-  static Future<void> show(BuildContext context, {String? errorDetail}) {
+  static Future<void> show(
+    BuildContext context, {
+    String? errorDetail,
+    String? apkPath,
+  }) {
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => UpdateInstallFailureDialog(errorDetail: errorDetail),
+      builder: (_) => UpdateInstallFailureDialog(
+        errorDetail: errorDetail,
+        apkPath: apkPath,
+      ),
     );
   }
 
@@ -82,6 +95,49 @@ class UpdateInstallFailureDialog extends StatelessWidget {
                 errorDetail!,
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+
+            // APK file path — shown when the download succeeded but the
+            // automatic installer could not be launched.  Lets the user
+            // find the file manually via a file manager or ADB.
+            if (apkPath != null) ...[
+              const SizedBox(height: 12),
+              Container(
+                key: const ValueKey('install_failure_apk_path'),
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.secondaryContainer,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'APK downloaded to:',
+                      style: theme.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      key: const ValueKey('install_failure_apk_path_text'),
+                      apkPath!,
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        fontFamily: 'monospace',
+                        color: theme.colorScheme.onSecondaryContainer,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'You can install it manually from a file manager.',
+                      style: theme.textTheme.bodySmall?.copyWith(
+                        color: theme.colorScheme.onSecondaryContainer,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ],

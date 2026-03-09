@@ -1,812 +1,302 @@
-import 'package:church_analytics/database/app_database.dart' as db;
-import 'package:church_analytics/models/models.dart' as models;
-import 'package:church_analytics/repositories/repositories.dart';
-import 'package:church_analytics/services/admin_profile_service.dart';
-import 'package:church_analytics/services/settings_service.dart';
+import 'package:church_analytics/models/charts/time_series_point.dart';
+import 'package:church_analytics/models/weekly_record.dart';
+import 'package:church_analytics/services/analytics_service.dart';
+import 'package:church_analytics/services/weekly_records_provider.dart';
 import 'package:church_analytics/ui/widgets/widgets.dart';
-import 'package:fl_chart/fl_chart.dart';
+import 'package:church_analytics/widgets/charts/charts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
-class FinancialChartsScreen extends ConsumerStatefulWidget {
+class FinancialChartsScreen extends ConsumerWidget {
   final int churchId;
-
   const FinancialChartsScreen({super.key, required this.churchId});
 
   @override
-  ConsumerState<FinancialChartsScreen> createState() =>
-      _FinancialChartsScreenState();
-}
-
-class _FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
-  bool _isLoading = true;
-  String? _errorMessage;
-  List<models.WeeklyRecord> _records = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final database = ref.read(db.databaseProvider);
-      final repository = WeeklyRecordRepository(database);
-
-      // Get current admin ID to filter records
-      final prefs = await SharedPreferences.getInstance();
-      final adminRepo = AdminUserRepository(database);
-      final profileService = AdminProfileService(adminRepo, prefs);
-      final currentAdminId = profileService.getCurrentProfileId();
-
-      // Get records for the last 12 weeks - filtered by admin if ID exists
-      List<models.WeeklyRecord> records;
-      if (currentAdminId != null) {
-        records = await repository.getRecentRecordsByAdmin(
-          widget.churchId,
-          currentAdminId,
-          12,
-        );
-      } else {
-        records = await repository.getRecentRecords(widget.churchId, 12);
-      }
-
-      if (mounted) {
-        setState(() {
-          _records = records;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'Error loading data: ${e.toString()}';
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recordsAsync = ref.watch(weeklyRecordsForChurchProvider(churchId));
     return Scaffold(
       appBar: AppBar(
         title: const Text('Financial Charts'),
         actions: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: TimeRangeSelector(compact: true),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
             tooltip: 'Refresh',
+            onPressed: () =>
+                ref.invalidate(weeklyRecordsForChurchProvider(churchId)),
           ),
         ],
       ),
-      body: _buildBody(),
+      body: recordsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => _ErrorView(
+          message: error.toString(),
+          onRetry: () =>
+              ref.invalidate(weeklyRecordsForChurchProvider(churchId)),
+        ),
+        data: (records) => records.isEmpty
+            ? const _EmptyView()
+            : _FinancialContent(records: records),
+      ),
     );
   }
+}
 
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+class _FinancialContent extends StatelessWidget {
+  final List<WeeklyRecord> records;
+  const _FinancialContent({required this.records});
 
-    if (_errorMessage != null) {
-      return Center(
+  @override
+  Widget build(BuildContext context) {
+    final analytics = AnalyticsService();
+    final sorted = List<WeeklyRecord>.from(records)
+      ..sort((a, b) => a.weekStartDate.compareTo(b.weekStartDate));
+
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // 1. Tithe vs Offerings Trend
+        ResponsiveChartContainer(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: LineChartWidget(
+            seriesData: {
+              'Tithe': analytics.titheTrend(sorted),
+              'Offerings': analytics.offeringsTrend(sorted),
+            },
+            title: 'Tithe vs Offerings Trend',
+            yAxisTitle: 'Amount',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // 2. Income Composition (stacked area)
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: StackedAreaChartWidget(
+            seriesData: analytics.titheOfferingsComposition(sorted),
+            title: 'Income Composition Over Time',
+            yAxisTitle: 'Amount',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // 3. Income Distribution Pie
+        ResponsiveLazyChart(
+          minHeight: 260,
+          maxHeight: 420,
+          aspectRatio: 16 / 10,
+          child: PieChartWidget(
+            data: analytics.incomeDistribution(sorted),
+            title: 'Income Distribution',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // 4. Income vs Attendance (dual axis)
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: DualAxisChartWidget(
+            primarySeries: analytics.attendanceTrendSeries(sorted),
+            secondarySeries: analytics.incomeTrendSeries(sorted),
+            title: 'Income vs Attendance',
+            primaryAxisTitle: 'Attendance',
+            secondaryAxisTitle: 'Income',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // G-09: Financial Pairwise Comparisons
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: BarChartWidget(
+            seriesData: analytics.demographicPairPerWeek(
+              sorted,
+              'TITHE',
+              'OFFERINGS',
+            ),
+            title: 'Tithe vs Offerings Per Week',
+            yAxisTitle: 'Amount',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: BarChartWidget(
+            seriesData: analytics.demographicPairPerWeek(
+              sorted,
+              'TITHE',
+              'TOTAL_INCOME',
+            ),
+            title: 'Tithe vs Total Income Per Week',
+            yAxisTitle: 'Amount',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: BarChartWidget(
+            seriesData: analytics.demographicPairPerWeek(
+              sorted,
+              'OFFERINGS',
+              'TOTAL_INCOME',
+            ),
+            title: 'Offerings vs Total Income Per Week',
+            yAxisTitle: 'Amount',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // G-31: Regular vs Total Income Per Week
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: BarChartWidget(
+            seriesData: {
+              'Regular Income': analytics.regularIncomePerWeek(sorted),
+              'Total Income': analytics.totalIncomePerWeek(sorted),
+            },
+            title: 'Regular vs Total Income Per Week',
+            yAxisTitle: 'Amount',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // G-37: Tithe Per Attendee Per Week
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: BarChartWidget(
+            seriesData: {
+              'Tithe/Attendee': analytics.tithePerAttendeePerWeek(sorted),
+            },
+            title: 'Tithe Per Attendee Per Week',
+            yAxisTitle: 'Amount',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // G-38: Regular Income Per Adult Per Week
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: BarChartWidget(
+            seriesData: {
+              'Income/Adult': analytics.regularIncomePerAdultPerWeek(sorted),
+            },
+            title: 'Regular Income Per Adult Per Week',
+            yAxisTitle: 'Amount',
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // G-39: All Per-Capita Metrics Combined
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: LineChartWidget(
+            seriesData: {
+              'Income/Att': analytics.incomePerAttendeeTrend(sorted),
+              'Tithe/Att': sorted.map((r) {
+                final att = r.totalAttendance;
+                return TimeSeriesPoint(
+                  x: r.weekStartDate,
+                  y: att > 0 ? r.tithe / att : 0.0,
+                );
+              }).toList(),
+              'Offerings/Att': sorted.map((r) {
+                final att = r.totalAttendance;
+                return TimeSeriesPoint(
+                  x: r.weekStartDate,
+                  y: att > 0 ? r.offerings / att : 0.0,
+                );
+              }).toList(),
+            },
+            title: 'All Per-Capita Metrics',
+            yAxisTitle: 'Amount',
+          ),
+        ),
+        const SizedBox(height: 32),
+      ],
+    );
+  }
+}
+
+class _ErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _ErrorView({required this.message, required this.onRetry});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const Icon(Icons.error_outline, size: 64, color: Colors.red),
             const SizedBox(height: 16),
             Text(
-              _errorMessage!,
-              style: const TextStyle(color: Colors.red),
+              message,
               textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red),
             ),
             const SizedBox(height: 16),
-            ElevatedButton(onPressed: _loadData, child: const Text('Retry')),
-          ],
-        ),
-      );
-    }
-
-    if (_records.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.analytics_outlined, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            const Text('No data available'),
-            const SizedBox(height: 8),
-            Text(
-              'Add weekly records to see financial charts',
-              style: Theme.of(context).textTheme.bodySmall,
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
             ),
           ],
         ),
-      );
-    }
+      ),
+    );
+  }
+}
 
-    // Sort records by date
-    final sortedRecords = List<models.WeeklyRecord>.from(_records)
-      ..sort((a, b) => a.weekStartDate.compareTo(b.weekStartDate));
+class _EmptyView extends StatelessWidget {
+  const _EmptyView();
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(16),
+  @override
+  Widget build(BuildContext context) {
+    return Center(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // First chart loads immediately (above fold)
-          _buildTitheVsOfferingsChart(sortedRecords),
-          const SizedBox(height: 24),
-          // Remaining charts lazy loaded
-          LazyLoadChart(
-            placeholderHeight: 380,
-            child: _buildIncomeBreakdownChart(sortedRecords),
-          ),
-          const SizedBox(height: 24),
-          LazyLoadChart(
-            placeholderHeight: 380,
-            child: _buildIncomeDistributionPieChart(sortedRecords),
-          ),
-          const SizedBox(height: 24),
-          LazyLoadChart(
-            placeholderHeight: 380,
-            child: _buildFundsVsAttendanceChart(sortedRecords),
+          Icon(Icons.pie_chart_outline, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          const Text('No data yet', style: TextStyle(fontSize: 18)),
+          const SizedBox(height: 8),
+          Text(
+            'Add weekly records to see financial charts.',
+            style: TextStyle(color: Colors.grey[600]),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildTitheVsOfferingsChart(List<models.WeeklyRecord> records) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Tithe vs Offerings',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Weekly tithe and offerings amounts compared over time',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 16),
-            ResponsiveChartContainer(
-              minHeight: MediaQuery.sizeOf(context).width < 480
-                  ? 200.0
-                  : MediaQuery.sizeOf(context).width < 840
-                  ? 220.0
-                  : 260.0,
-              maxHeight: 420,
-              aspectRatio: 16 / 10,
-              enableInteractive: false,
-              child: LineChart(
-                LineChartData(
-                  gridData: FlGridData(show: true, drawVerticalLine: false),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 60,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            '${_getCurrencySymbol()}${value.toInt()}',
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        },
-                      ),
-                      axisNameWidget: Text('Amount (${_getCurrencySymbol()})'),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 40,
-                        getTitlesWidget: (value, meta) {
-                          final index = value.toInt();
-                          if (index >= 0 && index < records.length) {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                DateFormat(
-                                  'MM/dd',
-                                ).format(records[index].weekStartDate),
-                                style: const TextStyle(fontSize: 10),
-                              ),
-                            );
-                          }
-                          return const Text('');
-                        },
-                      ),
-                      axisNameWidget: const Text('Week Starting'),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                  ),
-                  borderData: FlBorderData(show: true),
-                  lineBarsData: [
-                    // Tithe line
-                    LineChartBarData(
-                      spots: records
-                          .asMap()
-                          .entries
-                          .map((e) => FlSpot(e.key.toDouble(), e.value.tithe))
-                          .toList(),
-                      isCurved: true,
-                      color: Colors.blue,
-                      barWidth: 3,
-                      dotData: const FlDotData(show: true),
-                      belowBarData: BarAreaData(show: false),
-                    ),
-                    // Offerings line
-                    LineChartBarData(
-                      spots: records
-                          .asMap()
-                          .entries
-                          .map(
-                            (e) => FlSpot(e.key.toDouble(), e.value.offerings),
-                          )
-                          .toList(),
-                      isCurved: true,
-                      color: Colors.green,
-                      barWidth: 3,
-                      dotData: const FlDotData(show: true),
-                      belowBarData: BarAreaData(show: false),
-                    ),
-                  ],
-                  lineTouchData: LineTouchData(
-                    touchTooltipData: LineTouchTooltipData(
-                      getTooltipItems: (touchedSpots) {
-                        return touchedSpots.map((spot) {
-                          final record = records[spot.x.toInt()];
-                          final date = DateFormat(
-                            'MM/dd',
-                          ).format(record.weekStartDate);
-                          final value = spot.y;
-                          final label = spot.barIndex == 0
-                              ? 'Tithe'
-                              : 'Offerings';
-                          return LineTooltipItem(
-                            '$label\n$date: ${_formatCurrency(value)}',
-                            const TextStyle(color: Colors.white),
-                          );
-                        }).toList();
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: [
-                _buildLegendItem('Tithe', Colors.blue),
-                _buildLegendItem('Offerings', Colors.green),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildIncomeBreakdownChart(List<models.WeeklyRecord> records) {
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Income Breakdown (Stacked)',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Weekly income split by tithe, offerings, emergency and planned collections',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 16),
-            ResponsiveChartContainer(
-              minHeight: MediaQuery.sizeOf(context).width < 480
-                  ? 200.0
-                  : MediaQuery.sizeOf(context).width < 840
-                  ? 220.0
-                  : 260.0,
-              maxHeight: 420,
-              aspectRatio: 16 / 10,
-              enableInteractive: false,
-              child: BarChart(
-                BarChartData(
-                  alignment: BarChartAlignment.spaceAround,
-                  barTouchData: BarTouchData(
-                    touchTooltipData: BarTouchTooltipData(
-                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                        final record = records[group.x.toInt()];
-                        final date = DateFormat(
-                          'MM/dd',
-                        ).format(record.weekStartDate);
-                        return BarTooltipItem(
-                          '$date\nTotal: ${_formatCurrency(record.totalIncome)}',
-                          const TextStyle(color: Colors.white),
-                        );
-                      },
-                    ),
-                  ),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 60,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            '${_getCurrencySymbol()}${value.toInt()}',
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        },
-                      ),
-                      axisNameWidget: Text('Amount (${_getCurrencySymbol()})'),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 40,
-                        getTitlesWidget: (value, meta) {
-                          final index = value.toInt();
-                          if (index >= 0 && index < records.length) {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                DateFormat(
-                                  'MM/dd',
-                                ).format(records[index].weekStartDate),
-                                style: const TextStyle(fontSize: 10),
-                              ),
-                            );
-                          }
-                          return const Text('');
-                        },
-                      ),
-                      axisNameWidget: const Text('Week Starting'),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                  ),
-                  borderData: FlBorderData(show: true),
-                  gridData: const FlGridData(
-                    show: true,
-                    drawVerticalLine: false,
-                  ),
-                  barGroups: records.asMap().entries.map((entry) {
-                    final record = entry.value;
-                    return BarChartGroupData(
-                      x: entry.key,
-                      barRods: [
-                        BarChartRodData(
-                          toY: record.totalIncome,
-                          width: 20,
-                          rodStackItems: [
-                            BarChartRodStackItem(0, record.tithe, Colors.blue),
-                            BarChartRodStackItem(
-                              record.tithe,
-                              record.tithe + record.offerings,
-                              Colors.green,
-                            ),
-                            BarChartRodStackItem(
-                              record.tithe + record.offerings,
-                              record.tithe +
-                                  record.offerings +
-                                  record.emergencyCollection,
-                              Colors.orange,
-                            ),
-                            BarChartRodStackItem(
-                              record.tithe +
-                                  record.offerings +
-                                  record.emergencyCollection,
-                              record.totalIncome,
-                              Colors.purple,
-                            ),
-                          ],
-                        ),
-                      ],
-                    );
-                  }).toList(),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 16,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: [
-                _buildLegendItem('Tithe', Colors.blue),
-                _buildLegendItem('Offerings', Colors.green),
-                _buildLegendItem('Emergency', Colors.orange),
-                _buildLegendItem('Planned', Colors.purple),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildIncomeDistributionPieChart(List<models.WeeklyRecord> records) {
-    // Calculate totals across all records
-    final totalTithe = records.fold(0.0, (sum, r) => sum + r.tithe);
-    final totalOfferings = records.fold(0.0, (sum, r) => sum + r.offerings);
-    final totalEmergency = records.fold(
-      0.0,
-      (sum, r) => sum + r.emergencyCollection,
-    );
-    final totalPlanned = records.fold(
-      0.0,
-      (sum, r) => sum + r.plannedCollection,
-    );
-    final grandTotal =
-        totalTithe + totalOfferings + totalEmergency + totalPlanned;
-
-    if (grandTotal == 0) {
-      return Card(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Income Distribution',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Proportional breakdown of total income by fund type',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
-              const SizedBox(height: 16),
-              const Center(child: Text('No income data available')),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Income Distribution',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Proportional breakdown of total income by fund type',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 16),
-            ResponsiveChartContainer(
-              minHeight: MediaQuery.sizeOf(context).width < 480
-                  ? 200.0
-                  : MediaQuery.sizeOf(context).width < 840
-                  ? 220.0
-                  : 260.0,
-              maxHeight: 420,
-              aspectRatio: 16 / 10,
-              enableInteractive: false,
-              child: PieChart(
-                PieChartData(
-                  sections: [
-                    PieChartSectionData(
-                      value: totalTithe,
-                      title:
-                          '${((totalTithe / grandTotal) * 100).toStringAsFixed(1)}%',
-                      color: Colors.blue,
-                      radius: 120,
-                      titleStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    PieChartSectionData(
-                      value: totalOfferings,
-                      title:
-                          '${((totalOfferings / grandTotal) * 100).toStringAsFixed(1)}%',
-                      color: Colors.green,
-                      radius: 120,
-                      titleStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    PieChartSectionData(
-                      value: totalEmergency,
-                      title:
-                          '${((totalEmergency / grandTotal) * 100).toStringAsFixed(1)}%',
-                      color: Colors.orange,
-                      radius: 120,
-                      titleStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                    PieChartSectionData(
-                      value: totalPlanned,
-                      title:
-                          '${((totalPlanned / grandTotal) * 100).toStringAsFixed(1)}%',
-                      color: Colors.purple,
-                      radius: 120,
-                      titleStyle: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                  sectionsSpace: 2,
-                  centerSpaceRadius: 0,
-                  pieTouchData: PieTouchData(
-                    touchCallback: (event, response) {},
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 16,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: [
-                _buildLegendItem(
-                  'Tithe: ${_formatCurrency(totalTithe)}',
-                  Colors.blue,
-                ),
-                _buildLegendItem(
-                  'Offerings: ${_formatCurrency(totalOfferings)}',
-                  Colors.green,
-                ),
-                _buildLegendItem(
-                  'Emergency: ${_formatCurrency(totalEmergency)}',
-                  Colors.orange,
-                ),
-                _buildLegendItem(
-                  'Planned: ${_formatCurrency(totalPlanned)}',
-                  Colors.purple,
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFundsVsAttendanceChart(List<models.WeeklyRecord> records) {
-    // Calculate max values for scaling
-    final maxIncome = records.fold(
-      0.0,
-      (max, r) => r.totalIncome > max ? r.totalIncome : max,
-    );
-    final maxAttendance = records.fold(
-      0,
-      (max, r) => r.totalAttendance > max ? r.totalAttendance : max,
-    );
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Total Income vs Attendance',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Weekly total income alongside total attendance to highlight the relationship',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 16),
-            ResponsiveChartContainer(
-              minHeight: MediaQuery.sizeOf(context).width < 480
-                  ? 200.0
-                  : MediaQuery.sizeOf(context).width < 840
-                  ? 220.0
-                  : 260.0,
-              maxHeight: 420,
-              aspectRatio: 16 / 10,
-              enableInteractive: false,
-              child: LineChart(
-                LineChartData(
-                  gridData: FlGridData(show: true, drawVerticalLine: false),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 60,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            '${_getCurrencySymbol()}${value.toInt()}',
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        },
-                      ),
-                      axisNameWidget: Text('Income (${_getCurrencySymbol()})'),
-                    ),
-                    rightTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 50,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            value.toInt().toString(),
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        },
-                      ),
-                      axisNameWidget: const Text('Attendance'),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 40,
-                        getTitlesWidget: (value, meta) {
-                          final index = value.toInt();
-                          if (index >= 0 && index < records.length) {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                DateFormat(
-                                  'MM/dd',
-                                ).format(records[index].weekStartDate),
-                                style: const TextStyle(fontSize: 10),
-                              ),
-                            );
-                          }
-                          return const Text('');
-                        },
-                      ),
-                      axisNameWidget: const Text('Week Starting'),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                  ),
-                  borderData: FlBorderData(show: true),
-                  lineBarsData: [
-                    // Income line (primary axis)
-                    LineChartBarData(
-                      spots: records
-                          .asMap()
-                          .entries
-                          .map(
-                            (e) =>
-                                FlSpot(e.key.toDouble(), e.value.totalIncome),
-                          )
-                          .toList(),
-                      isCurved: true,
-                      color: Colors.green,
-                      barWidth: 3,
-                      dotData: const FlDotData(show: true),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        color: Colors.green.withValues(alpha: 0.2),
-                      ),
-                    ),
-                    // Attendance line (scaled to income range for dual axis effect)
-                    LineChartBarData(
-                      spots: records
-                          .asMap()
-                          .entries
-                          .map(
-                            (e) => FlSpot(
-                              e.key.toDouble(),
-                              maxAttendance > 0
-                                  ? (e.value.totalAttendance / maxAttendance) *
-                                        maxIncome
-                                  : 0,
-                            ),
-                          )
-                          .toList(),
-                      isCurved: true,
-                      color: Colors.blue,
-                      barWidth: 3,
-                      dotData: const FlDotData(show: true),
-                      belowBarData: BarAreaData(show: false),
-                    ),
-                  ],
-                  lineTouchData: LineTouchData(
-                    touchTooltipData: LineTouchTooltipData(
-                      getTooltipItems: (touchedSpots) {
-                        return touchedSpots.map((spot) {
-                          final record = records[spot.x.toInt()];
-                          final date = DateFormat(
-                            'MM/dd',
-                          ).format(record.weekStartDate);
-                          if (spot.barIndex == 0) {
-                            return LineTooltipItem(
-                              'Income\n$date: ${_formatCurrency(record.totalIncome)}',
-                              const TextStyle(color: Colors.white),
-                            );
-                          } else {
-                            return LineTooltipItem(
-                              'Attendance\n$date: ${record.totalAttendance}',
-                              const TextStyle(color: Colors.white),
-                            );
-                          }
-                        }).toList();
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: [
-                _buildLegendItem('Total Income', Colors.green),
-                _buildLegendItem('Total Attendance', Colors.blue),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  String _formatCurrency(double amount) {
-    final settingsNotifier = ref.read(appSettingsProvider.notifier);
-    return settingsNotifier.formatCurrencyPrecise(amount);
-  }
-
-  String _getCurrencySymbol() {
-    final settings = ref.read(appSettingsProvider);
-    return settings.currency.symbol;
-  }
-
-  Widget _buildLegendItem(String label, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
-        ),
-        const SizedBox(width: 8),
-        Text(label),
-      ],
     );
   }
 }
