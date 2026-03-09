@@ -40,6 +40,15 @@ void main() {
       expect(find.text('Attendance Charts'), findsOneWidget);
       expect(find.text('Financial Charts'), findsOneWidget);
       expect(find.text('Correlation Charts'), findsOneWidget);
+      // Advanced Charts is in the 3rd grid row — scroll to bring it into view.
+      await tester.scrollUntilVisible(
+        find.text('Advanced Charts'),
+        200,
+        scrollable: find.descendant(
+          of: find.byType(GridView),
+          matching: find.byType(Scrollable),
+        ),
+      );
       expect(find.text('Advanced Charts'), findsOneWidget);
     });
 
@@ -74,14 +83,24 @@ void main() {
         ),
       );
 
-      // Verify cards are tappable
-      expect(find.byType(Card), findsNWidgets(4)); // 4 chart cards
-
-      // Verify all chart titles are present for navigation
+      // Verify chart titles are present for navigation.
+      // The grid is scrollable; scroll to reveal cards below the fold.
       expect(find.text('Attendance Charts'), findsOneWidget);
       expect(find.text('Financial Charts'), findsOneWidget);
       expect(find.text('Correlation Charts'), findsOneWidget);
+      // Advanced Charts is in the 3rd grid row — scroll to bring it into view.
+      await tester.scrollUntilVisible(
+        find.text('Advanced Charts'),
+        200,
+        scrollable: find.descendant(
+          of: find.byType(GridView),
+          matching: find.byType(Scrollable),
+        ),
+      );
       expect(find.text('Advanced Charts'), findsOneWidget);
+
+      // Grid contains card widgets (lazy grid renders a subset at a time).
+      expect(find.byType(Card), findsWidgets);
     });
 
     testWidgets('shows grid with proper layout', (WidgetTester tester) async {
@@ -92,7 +111,10 @@ void main() {
       );
 
       expect(find.byType(GridView), findsOneWidget);
-      expect(find.byType(Card), findsNWidgets(4)); // 4 chart types
+      expect(
+        find.byType(Card),
+        findsWidgets,
+      ); // 6 chart types (lazy grid renders a subset)
     });
   });
 }
