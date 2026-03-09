@@ -792,6 +792,186 @@ class AnalyticsService {
   }
 
   // ---------------------------------------------------------------------------
+  // Scatter: Attendance vs Income correlation
+  // ---------------------------------------------------------------------------
+
+  /// Returns scatter data for the attendance-vs-income correlation chart.
+  ///
+  /// Each [ScatterPoint] has x = TOTAL_ATTENDANCE, y = TOTAL_INCOME so that
+  /// every weekly record is plotted as a dot on the correlation plane.
+  /// The [label] holds the formatted date for use in tooltips.
+  ///
+  /// Mirrors: `combined_plot_attendance_vs_income_both` scatter sub-plot.
+  List<ScatterPoint> attendanceVsIncomeScatter(List<WeeklyRecord> records) {
+    return records
+        .map(
+          (r) => ScatterPoint(
+            x: r.totalAttendance.toDouble(),
+            y: r.totalIncome,
+            label: _formatDate(r.weekStartDate),
+          ),
+        )
+        .toList();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Income composition (Tithe + Offerings only, for stacked-area chart 5)
+  // ---------------------------------------------------------------------------
+
+  /// Returns Tithe and Offerings as parallel time series for a stacked area.
+  ///
+  /// Mirrors: `plot_stacked_area` — simplified to the two primary income types.
+  Map<String, List<TimeSeriesPoint>> titheOfferingsComposition(
+    List<WeeklyRecord> records,
+  ) {
+    return {
+      'Tithe': records
+          .map((r) => TimeSeriesPoint(x: r.weekStartDate, y: r.tithe))
+          .toList(),
+      'Offerings': records
+          .map((r) => TimeSeriesPoint(x: r.weekStartDate, y: r.offerings))
+          .toList(),
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Dual-axis: Attendance & Income on separate Y scales
+  // ---------------------------------------------------------------------------
+
+  /// Returns total attendance time series for the primary (left) Y axis.
+  ///
+  /// Pair with [totalIncomeTrend] on the secondary axis to form a dual-axis view.
+  /// Mirrors: `plot_dual_axis_trends` — "Attendance vs Income Dual-Axis".
+  Map<String, List<TimeSeriesPoint>> attendanceTrendSeries(
+    List<WeeklyRecord> records,
+  ) {
+    return {'Total Attendance': totalAttendanceTrend(records)};
+  }
+
+  /// Returns total income time series for the secondary (right) Y axis.
+  ///
+  /// Pair with [attendanceTrendSeries] on the primary axis.
+  Map<String, List<TimeSeriesPoint>> incomeTrendSeries(
+    List<WeeklyRecord> records,
+  ) {
+    return {'Total Income': totalIncomeTrend(records)};
+  }
+
+  // ---------------------------------------------------------------------------
+  // Advanced Chart Methods
+  // ---------------------------------------------------------------------------
+
+  /// Simple linear-regression forecast of total attendance.
+  /// Returns 'Historical' and 'Forecast' series.
+  Map<String, List<TimeSeriesPoint>> attendanceForecast(
+    List<WeeklyRecord> records, {
+    int weeksAhead = 4,
+  }) {
+    if (records.length < 2) return {};
+    final sorted = List<WeeklyRecord>.from(records)
+      ..sort((a, b) => a.weekStartDate.compareTo(b.weekStartDate));
+    final n = sorted.length.toDouble();
+    double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
+    for (int i = 0; i < sorted.length; i++) {
+      final x = i.toDouble();
+      final y = sorted[i].totalAttendance.toDouble();
+      sumX += x;
+      sumY += y;
+      sumXY += x * y;
+      sumX2 += x * x;
+    }
+    final denom = n * sumX2 - sumX * sumX;
+    final slope = denom == 0 ? 0.0 : (n * sumXY - sumX * sumY) / denom;
+    final intercept = (sumY - slope * sumX) / n;
+
+    final historical = sorted
+        .map(
+          (r) => TimeSeriesPoint(
+            x: r.weekStartDate,
+            y: r.totalAttendance.toDouble(),
+          ),
+        )
+        .toList();
+
+    final lastDate = sorted.last.weekStartDate;
+    final forecast = <TimeSeriesPoint>[historical.last];
+    for (int i = 1; i <= weeksAhead; i++) {
+      final forecastDate = lastDate.add(Duration(days: 7 * i));
+      final x = (sorted.length - 1 + i).toDouble();
+      final y = (slope * x + intercept).clamp(0.0, double.infinity).toDouble();
+      forecast.add(TimeSeriesPoint(x: forecastDate, y: y));
+    }
+    return {'Historical': historical, 'Forecast': forecast};
+  }
+
+  /// N-week moving average of total attendance.
+  /// Returns 'Actual' and a labelled moving-average series.
+  Map<String, List<TimeSeriesPoint>> attendanceMovingAverage(
+    List<WeeklyRecord> records, {
+    int window = 3,
+  }) {
+    if (records.isEmpty) return {};
+    final sorted = List<WeeklyRecord>.from(records)
+      ..sort((a, b) => a.weekStartDate.compareTo(b.weekStartDate));
+    final actual = sorted
+        .map(
+          (r) => TimeSeriesPoint(
+            x: r.weekStartDate,
+            y: r.totalAttendance.toDouble(),
+          ),
+        )
+        .toList();
+    final ma = <TimeSeriesPoint>[];
+    for (int i = window - 1; i < sorted.length; i++) {
+      final sum = sorted
+          .sublist(i - window + 1, i + 1)
+          .fold(0.0, (acc, r) => acc + r.totalAttendance);
+      ma.add(TimeSeriesPoint(x: sorted[i].weekStartDate, y: sum / window));
+    }
+    return {'Actual': actual, '$window-Week Moving Avg': ma};
+  }
+
+  /// IQR-based outlier detection on total attendance.
+  /// Returns 'Normal' and 'Outliers' series.
+  Map<String, List<TimeSeriesPoint>> attendanceWithOutliers(
+    List<WeeklyRecord> records,
+  ) {
+    if (records.isEmpty) return {};
+    final sorted = List<WeeklyRecord>.from(records)
+      ..sort((a, b) => a.weekStartDate.compareTo(b.weekStartDate));
+    final values = sorted.map((r) => r.totalAttendance.toDouble()).toList()
+      ..sort();
+    if (values.length < 4) {
+      final normal = sorted
+          .map(
+            (r) => TimeSeriesPoint(
+              x: r.weekStartDate,
+              y: r.totalAttendance.toDouble(),
+            ),
+          )
+          .toList();
+      return {'Normal': normal, 'Outliers': []};
+    }
+    final q1 = values[(values.length * 0.25).floor()];
+    final q3 = values[(values.length * 0.75).floor()];
+    final iqr = q3 - q1;
+    final lower = q1 - 1.5 * iqr;
+    final upper = q3 + 1.5 * iqr;
+    final normal = <TimeSeriesPoint>[];
+    final outliers = <TimeSeriesPoint>[];
+    for (final r in sorted) {
+      final val = r.totalAttendance.toDouble();
+      final pt = TimeSeriesPoint(x: r.weekStartDate, y: val);
+      if (val < lower || val > upper) {
+        outliers.add(pt);
+      } else {
+        normal.add(pt);
+      }
+    }
+    return {'Normal': normal, 'Outliers': outliers};
+  }
+
+  // ---------------------------------------------------------------------------
   // Helper
   // ---------------------------------------------------------------------------
 

@@ -1,582 +1,130 @@
-import 'package:church_analytics/database/app_database.dart' as db;
-import 'package:church_analytics/models/models.dart' as models;
-import 'package:church_analytics/repositories/repositories.dart';
-import 'package:church_analytics/services/admin_profile_service.dart';
+import 'package:church_analytics/models/charts/time_series_point.dart';
+import 'package:church_analytics/models/weekly_record.dart';
+import 'package:church_analytics/services/analytics_service.dart';
+import 'package:church_analytics/services/weekly_records_provider.dart';
 import 'package:church_analytics/ui/widgets/widgets.dart';
-import 'package:fl_chart/fl_chart.dart';
+import 'package:church_analytics/widgets/charts/charts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:syncfusion_flutter_charts/charts.dart';
 
-class AdvancedChartsScreen extends ConsumerStatefulWidget {
+class AdvancedChartsScreen extends ConsumerWidget {
   final int churchId;
-
   const AdvancedChartsScreen({super.key, required this.churchId});
 
   @override
-  ConsumerState<AdvancedChartsScreen> createState() =>
-      _AdvancedChartsScreenState();
-}
-
-class _AdvancedChartsScreenState extends ConsumerState<AdvancedChartsScreen> {
-  bool _isLoading = true;
-  String? _errorMessage;
-  List<models.WeeklyRecord> _records = [];
-
-  @override
-  void initState() {
-    super.initState();
-    _loadData();
-  }
-
-  Future<void> _loadData() async {
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
-
-    try {
-      final database = ref.read(db.databaseProvider);
-      final repository = WeeklyRecordRepository(database);
-
-      // Get current admin ID to filter records
-      final prefs = await SharedPreferences.getInstance();
-      final adminRepo = AdminUserRepository(database);
-      final profileService = AdminProfileService(adminRepo, prefs);
-      final currentAdminId = profileService.getCurrentProfileId();
-
-      // Get records for the last 12 weeks - filtered by admin if ID exists
-      List<models.WeeklyRecord> records;
-      if (currentAdminId != null) {
-        records = await repository.getRecentRecordsByAdmin(
-          widget.churchId,
-          currentAdminId,
-          12,
-        );
-      } else {
-        records = await repository.getRecentRecords(widget.churchId, 12);
-      }
-
-      if (mounted) {
-        setState(() {
-          _records = records;
-          _isLoading = false;
-        });
-      }
-    } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = 'Error loading data: ${e.toString()}';
-          _isLoading = false;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    final recordsAsync = ref.watch(weeklyRecordsForChurchProvider(churchId));
     return Scaffold(
       appBar: AppBar(
         title: const Text('Advanced Charts'),
         actions: [
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: TimeRangeSelector(compact: true),
+            ),
+          ),
           IconButton(
             icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
             tooltip: 'Refresh',
+            onPressed: () =>
+                ref.invalidate(weeklyRecordsForChurchProvider(churchId)),
           ),
         ],
       ),
-      body: _buildBody(),
+      body: recordsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (error, _) => _ErrorView(
+          message: error.toString(),
+          onRetry: () =>
+              ref.invalidate(weeklyRecordsForChurchProvider(churchId)),
+        ),
+        data: (records) => records.isEmpty
+            ? const _EmptyView()
+            : _AdvancedContent(records: records),
+      ),
     );
   }
+}
 
-  Widget _buildBody() {
-    if (_isLoading) {
-      return const Center(child: CircularProgressIndicator());
-    }
+// ─── Content ─────────────────────────────────────────────────────────────────
 
-    if (_errorMessage != null) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.error_outline, size: 64, color: Colors.red),
-            const SizedBox(height: 16),
-            Text(
-              _errorMessage!,
-              style: const TextStyle(color: Colors.red),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 16),
-            ElevatedButton(onPressed: _loadData, child: const Text('Retry')),
-          ],
-        ),
-      );
-    }
+class _AdvancedContent extends StatelessWidget {
+  final List<WeeklyRecord> records;
+  const _AdvancedContent({required this.records});
 
-    if (_records.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.analytics_outlined, size: 64, color: Colors.grey),
-            const SizedBox(height: 16),
-            const Text('No data available'),
-            const SizedBox(height: 8),
-            Text(
-              'Add weekly records to see advanced charts',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-          ],
-        ),
-      );
-    }
-
-    // Sort records by date
-    final sortedRecords = List<models.WeeklyRecord>.from(_records)
+  @override
+  Widget build(BuildContext context) {
+    final analytics = AnalyticsService();
+    final sorted = List<WeeklyRecord>.from(records)
       ..sort((a, b) => a.weekStartDate.compareTo(b.weekStartDate));
 
-    return SingleChildScrollView(
+    return ListView(
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // First chart loads immediately (above fold)
-          _buildForecastChart(sortedRecords),
-          const SizedBox(height: 24),
-          // Remaining charts lazy loaded
-          LazyLoadChart(
-            placeholderHeight: 380,
-            child: _buildMovingAverageChart(sortedRecords),
+      children: [
+        // 1. Attendance Forecast
+        ResponsiveChartContainer(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: LineChartWidget(
+            seriesData: analytics.attendanceForecast(sorted),
+            title: 'Attendance Forecast (4-Week Projection)',
+            yAxisTitle: 'Attendance',
           ),
-          const SizedBox(height: 24),
-          LazyLoadChart(
-            placeholderHeight: 380,
-            child: _buildHeatmapChart(sortedRecords),
+        ),
+        const SizedBox(height: 16),
+
+        // 2. Moving Average
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: LineChartWidget(
+            seriesData: analytics.attendanceMovingAverage(sorted),
+            title: 'Attendance Moving Average (3-Week)',
+            yAxisTitle: 'Attendance',
           ),
-          const SizedBox(height: 24),
-          _buildOutliersChart(sortedRecords),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildForecastChart(List<models.WeeklyRecord> records) {
-    // Calculate simple linear regression for forecast
-    final attendanceData = records
-        .asMap()
-        .entries
-        .map(
-          (e) => MapEntry(e.key.toDouble(), e.value.totalAttendance.toDouble()),
-        )
-        .toList();
-
-    final forecast = _calculateForecast(attendanceData, 4); // Forecast 4 weeks
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Attendance Forecast Projection',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Historical data with 4-week forecast based on linear regression',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 16),
-            ResponsiveChartContainer(
-              minHeight: MediaQuery.sizeOf(context).width < 480
-                  ? 200.0
-                  : MediaQuery.sizeOf(context).width < 840
-                  ? 220.0
-                  : 260.0,
-              maxHeight: 420,
-              aspectRatio: 16 / 10,
-              enableInteractive: false,
-              child: LineChart(
-                LineChartData(
-                  gridData: FlGridData(show: true, drawVerticalLine: false),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 40,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            value.toInt().toString(),
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        },
-                      ),
-                      axisNameWidget: const Text('Attendance'),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 40,
-                        getTitlesWidget: (value, meta) {
-                          final index = value.toInt();
-                          if (index >= 0 && index < records.length) {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                DateFormat(
-                                  'MM/dd',
-                                ).format(records[index].weekStartDate),
-                                style: const TextStyle(fontSize: 10),
-                              ),
-                            );
-                          } else if (index >= records.length &&
-                              index < records.length + 4) {
-                            // Forecast labels
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                'F${index - records.length + 1}',
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: Colors.orange,
-                                ),
-                              ),
-                            );
-                          }
-                          return const Text('');
-                        },
-                      ),
-                      axisNameWidget: const Text('Week'),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                  ),
-                  borderData: FlBorderData(show: true),
-                  lineBarsData: [
-                    // Historical data
-                    LineChartBarData(
-                      spots: records
-                          .asMap()
-                          .entries
-                          .map(
-                            (e) => FlSpot(
-                              e.key.toDouble(),
-                              e.value.totalAttendance.toDouble(),
-                            ),
-                          )
-                          .toList(),
-                      isCurved: true,
-                      color: Colors.blue,
-                      barWidth: 3,
-                      dotData: const FlDotData(show: true),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        color: Colors.blue.withValues(alpha: 0.1),
-                      ),
-                    ),
-                    // Forecast line
-                    LineChartBarData(
-                      spots: forecast,
-                      isCurved: false,
-                      color: Colors.orange,
-                      barWidth: 2,
-                      dotData: const FlDotData(show: true),
-                      dashArray: [5, 5],
-                      belowBarData: BarAreaData(
-                        show: true,
-                        color: Colors.orange.withValues(alpha: 0.1),
-                      ),
-                    ),
-                  ],
-                  lineTouchData: LineTouchData(
-                    touchTooltipData: LineTouchTooltipData(
-                      getTooltipItems: (touchedSpots) {
-                        return touchedSpots.map((spot) {
-                          final index = spot.x.toInt();
-                          if (index < records.length) {
-                            final record = records[index];
-                            return LineTooltipItem(
-                              'Actual\n${DateFormat('MM/dd').format(record.weekStartDate)}: ${record.totalAttendance}',
-                              const TextStyle(color: Colors.white),
-                            );
-                          } else {
-                            return LineTooltipItem(
-                              'Forecast\nWeek ${index - records.length + 1}: ${spot.y.toInt()}',
-                              const TextStyle(color: Colors.white),
-                            );
-                          }
-                        }).toList();
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: [
-                _buildLegendItem('Historical', Colors.blue),
-                _buildLegendItem('Forecast', Colors.orange),
-              ],
-            ),
-          ],
         ),
-      ),
-    );
-  }
+        const SizedBox(height: 16),
 
-  List<FlSpot> _calculateForecast(
-    List<MapEntry<double, double>> data,
-    int periods,
-  ) {
-    if (data.length < 2) return [];
-
-    // Simple linear regression: y = mx + b
-    final n = data.length;
-    final sumX = data.fold(0.0, (sum, e) => sum + e.key);
-    final sumY = data.fold(0.0, (sum, e) => sum + e.value);
-    final sumXY = data.fold(0.0, (sum, e) => sum + (e.key * e.value));
-    final sumX2 = data.fold(0.0, (sum, e) => sum + (e.key * e.key));
-
-    final m = (n * sumXY - sumX * sumY) / (n * sumX2 - sumX * sumX);
-    final b = (sumY - m * sumX) / n;
-
-    // Generate forecast points
-    final lastIndex = data.last.key;
-    final forecast = <FlSpot>[];
-
-    // Connect to last actual data point
-    forecast.add(FlSpot(lastIndex, m * lastIndex + b));
-
-    // Add forecast points
-    for (int i = 1; i <= periods; i++) {
-      final x = lastIndex + i;
-      final y = m * x + b;
-      forecast.add(FlSpot(x, y > 0 ? y : 0)); // Ensure non-negative
-    }
-
-    return forecast;
-  }
-
-  Widget _buildMovingAverageChart(List<models.WeeklyRecord> records) {
-    // Calculate 3-week moving average for attendance
-    final movingAvg = _calculateMovingAverage(
-      records.map((r) => r.totalAttendance.toDouble()).toList(),
-      3,
-    );
-
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Attendance with Moving Average Overlay',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              '3-week moving average smooths weekly fluctuations',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 16),
-            ResponsiveChartContainer(
-              minHeight: MediaQuery.sizeOf(context).width < 480
-                  ? 200.0
-                  : MediaQuery.sizeOf(context).width < 840
-                  ? 220.0
-                  : 260.0,
-              maxHeight: 420,
-              aspectRatio: 16 / 10,
-              enableInteractive: false,
-              child: LineChart(
-                LineChartData(
-                  gridData: FlGridData(show: true, drawVerticalLine: false),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 40,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            value.toInt().toString(),
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        },
-                      ),
-                      axisNameWidget: const Text('Attendance'),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 40,
-                        getTitlesWidget: (value, meta) {
-                          final index = value.toInt();
-                          if (index >= 0 && index < records.length) {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                DateFormat(
-                                  'MM/dd',
-                                ).format(records[index].weekStartDate),
-                                style: const TextStyle(fontSize: 10),
-                              ),
-                            );
-                          }
-                          return const Text('');
-                        },
-                      ),
-                      axisNameWidget: const Text('Week Starting'),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                  ),
-                  borderData: FlBorderData(show: true),
-                  lineBarsData: [
-                    // Actual attendance
-                    LineChartBarData(
-                      spots: records
-                          .asMap()
-                          .entries
-                          .map(
-                            (e) => FlSpot(
-                              e.key.toDouble(),
-                              e.value.totalAttendance.toDouble(),
-                            ),
-                          )
-                          .toList(),
-                      isCurved: false,
-                      color: Colors.blue.withValues(alpha: 0.5),
-                      barWidth: 2,
-                      dotData: const FlDotData(show: true),
-                      belowBarData: BarAreaData(show: false),
-                    ),
-                    // Moving average
-                    LineChartBarData(
-                      spots: movingAvg,
-                      isCurved: true,
-                      color: Colors.red,
-                      barWidth: 3,
-                      dotData: const FlDotData(show: false),
-                      belowBarData: BarAreaData(show: false),
-                    ),
-                  ],
-                  lineTouchData: LineTouchData(
-                    touchTooltipData: LineTouchTooltipData(
-                      getTooltipItems: (touchedSpots) {
-                        return touchedSpots.map((spot) {
-                          final index = spot.x.toInt();
-                          final record = records[index];
-                          final date = DateFormat(
-                            'MM/dd',
-                          ).format(record.weekStartDate);
-
-                          if (spot.barIndex == 0) {
-                            return LineTooltipItem(
-                              'Actual\n$date: ${record.totalAttendance}',
-                              const TextStyle(color: Colors.white),
-                            );
-                          } else {
-                            return LineTooltipItem(
-                              'Avg\n$date: ${spot.y.toInt()}',
-                              const TextStyle(color: Colors.white),
-                            );
-                          }
-                        }).toList();
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: [
-                _buildLegendItem(
-                  'Weekly Attendance',
-                  Colors.blue.withValues(alpha: 0.5),
-                ),
-                _buildLegendItem('3-Week Moving Avg', Colors.red),
-              ],
-            ),
-          ],
+        // 3. Heatmap (custom Flutter widget — no external chart library)
+        ResponsiveLazyChart(
+          minHeight: 240,
+          maxHeight: 440,
+          aspectRatio: 16 / 10,
+          child: _HeatmapWidget(records: sorted),
         ),
-      ),
-    );
-  }
+        const SizedBox(height: 16),
 
-  List<FlSpot> _calculateMovingAverage(List<double> data, int window) {
-    if (data.length < window) return [];
-
-    final result = <FlSpot>[];
-    for (int i = window - 1; i < data.length; i++) {
-      double sum = 0;
-      for (int j = 0; j < window; j++) {
-        sum += data[i - j];
-      }
-      result.add(FlSpot(i.toDouble(), sum / window));
-    }
-    return result;
-  }
-
-  Widget _buildHeatmapChart(List<models.WeeklyRecord> records) {
-    // Create a simplified heatmap showing attendance vs income intensity
-    // We'll use a grid showing the relationship strength
-    return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Attendance vs Funds Heatmap',
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Color intensity shows the relationship between attendance and income',
-              style: Theme.of(context).textTheme.bodySmall,
-            ),
-            const SizedBox(height: 16),
-            ResponsiveChartContainer(
-              minHeight: MediaQuery.sizeOf(context).width < 480
-                  ? 200.0
-                  : MediaQuery.sizeOf(context).width < 840
-                  ? 220.0
-                  : 260.0,
-              maxHeight: 420,
-              aspectRatio: 16 / 10,
-              enableInteractive: false,
-              child: _buildHeatmapGrid(records),
-            ),
-            const SizedBox(height: 16),
-            _buildHeatmapLegend(),
-          ],
+        // 4. Outlier Detection
+        ResponsiveLazyChart(
+          minHeight: 220,
+          maxHeight: 380,
+          aspectRatio: 16 / 9,
+          child: _OutliersChart(records: sorted),
         ),
-      ),
+        const SizedBox(height: 32),
+      ],
     );
   }
+}
 
-  Widget _buildHeatmapGrid(List<models.WeeklyRecord> records) {
-    // Divide attendance and income into buckets
+// ─── Heatmap (custom Flutter widget) ─────────────────────────────────────────
+
+class _HeatmapWidget extends StatelessWidget {
+  final List<WeeklyRecord> records;
+  const _HeatmapWidget({required this.records});
+
+  Color _getHeatmapColor(double intensity) {
+    if (intensity == 0) return Colors.grey.shade100;
+    return Color.lerp(Colors.blue.shade100, Colors.blue.shade900, intensity)!;
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final maxAttendance = records.fold(
       0,
       (max, r) => r.totalAttendance > max ? r.totalAttendance : max,
@@ -586,176 +134,202 @@ class _AdvancedChartsScreenState extends ConsumerState<AdvancedChartsScreen> {
       (max, r) => r.totalIncome > max ? r.totalIncome : max,
     );
 
-    // Create 5x5 grid
     const gridSize = 5;
-    final attendanceBucket = maxAttendance / gridSize;
-    final incomeBucket = maxIncome / gridSize;
+    final attendanceBucket = maxAttendance == 0
+        ? 1.0
+        : maxAttendance / gridSize;
+    final incomeBucket = maxIncome == 0 ? 1.0 : maxIncome / gridSize;
 
-    // Count records in each cell
     final grid = List.generate(gridSize, (_) => List<int>.filled(gridSize, 0));
-
     for (final record in records) {
-      final attendanceIndex =
-          ((record.totalAttendance / attendanceBucket).floor()).clamp(
-            0,
-            gridSize - 1,
-          );
-      final incomeIndex = ((record.totalIncome / incomeBucket).floor()).clamp(
+      final ai = ((record.totalAttendance / attendanceBucket).floor()).clamp(
         0,
         gridSize - 1,
       );
-      grid[gridSize - 1 - incomeIndex][attendanceIndex]++;
+      final ii = ((record.totalIncome / incomeBucket).floor()).clamp(
+        0,
+        gridSize - 1,
+      );
+      grid[gridSize - 1 - ii][ai]++;
     }
-
     final maxCount = grid.fold(
       0,
       (max, row) => row.fold(max, (m, v) => v > m ? v : m),
     );
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        // Y-axis label
-        Row(
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const SizedBox(width: 40),
+            Text(
+              'Attendance vs Funds Heatmap',
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'Color intensity shows the relationship between attendance and income',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: 12),
             Expanded(
-              child: Center(
-                child: Text(
-                  'Attendance Range',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
+              child: Row(
+                children: [
+                  RotatedBox(
+                    quarterTurns: 3,
+                    child: Text(
+                      'Income Range',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
-                ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Column(
+                      children: [
+                        Text(
+                          'Attendance Range',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Expanded(
+                          child: Column(
+                            children: List.generate(gridSize, (row) {
+                              return Expanded(
+                                child: Row(
+                                  children: List.generate(gridSize, (col) {
+                                    final count = grid[row][col];
+                                    final intensity = maxCount > 0
+                                        ? count / maxCount
+                                        : 0.0;
+                                    return Expanded(
+                                      child: Container(
+                                        margin: const EdgeInsets.all(2),
+                                        decoration: BoxDecoration(
+                                          color: _getHeatmapColor(intensity),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.grey.shade300,
+                                          ),
+                                        ),
+                                        child: Center(
+                                          child: count > 0
+                                              ? Text(
+                                                  count.toString(),
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: intensity > 0.5
+                                                        ? Colors.white
+                                                        : Colors.black,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                )
+                                              : null,
+                                        ),
+                                      ),
+                                    );
+                                  }),
+                                ),
+                              );
+                            }),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
               ),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _legendItem(Colors.grey.shade100, 'Low'),
+                const SizedBox(width: 16),
+                _legendItem(Colors.blue.shade400, 'Medium'),
+                const SizedBox(width: 16),
+                _legendItem(Colors.blue.shade900, 'High'),
+              ],
             ),
           ],
         ),
-        const SizedBox(height: 8),
-        Expanded(
-          child: Row(
-            children: [
-              // Y-axis
-              RotatedBox(
-                quarterTurns: 3,
-                child: Text(
-                  'Income Range',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              // Grid
-              Expanded(
-                child: Column(
-                  children: List.generate(gridSize, (row) {
-                    return Expanded(
-                      child: Row(
-                        children: List.generate(gridSize, (col) {
-                          final count = grid[row][col];
-                          final intensity = maxCount > 0
-                              ? count / maxCount
-                              : 0.0;
-                          return Expanded(
-                            child: Container(
-                              margin: const EdgeInsets.all(2),
-                              decoration: BoxDecoration(
-                                color: _getHeatmapColor(intensity),
-                                borderRadius: BorderRadius.circular(4),
-                                border: Border.all(color: Colors.grey.shade300),
-                              ),
-                              child: Center(
-                                child: count > 0
-                                    ? Text(
-                                        count.toString(),
-                                        style: TextStyle(
-                                          fontSize: 10,
-                                          color: intensity > 0.5
-                                              ? Colors.white
-                                              : Colors.black,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      )
-                                    : null,
-                              ),
-                            ),
-                          );
-                        }),
-                      ),
-                    );
-                  }),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  Color _getHeatmapColor(double intensity) {
-    if (intensity == 0) return Colors.grey.shade100;
-    // Gradient from light blue to dark blue
-    return Color.lerp(Colors.blue.shade100, Colors.blue.shade900, intensity)!;
-  }
-
-  Widget _buildHeatmapLegend() {
+  Widget _legendItem(Color color, String label) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: 20,
           height: 20,
           decoration: BoxDecoration(
-            color: Colors.grey.shade100,
+            color: color,
             border: Border.all(color: Colors.grey.shade300),
             borderRadius: BorderRadius.circular(4),
           ),
         ),
         const SizedBox(width: 4),
-        const Text('Low', style: TextStyle(fontSize: 12)),
-        const SizedBox(width: 16),
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            color: Colors.blue.shade400,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(width: 4),
-        const Text('Medium', style: TextStyle(fontSize: 12)),
-        const SizedBox(width: 16),
-        Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            color: Colors.blue.shade900,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
-        const SizedBox(width: 4),
-        const Text('High', style: TextStyle(fontSize: 12)),
+        Text(label, style: const TextStyle(fontSize: 12)),
       ],
     );
   }
+}
 
-  Widget _buildOutliersChart(List<models.WeeklyRecord> records) {
-    // Detect outliers using IQR method for attendance
-    final attendanceValues =
-        records.map((r) => r.totalAttendance.toDouble()).toList()..sort();
+// ─── Outliers Chart ──────────────────────────────────────────────────────────
 
-    final outliers = _detectOutliers(attendanceValues);
-    final outlierIndices = <int>{};
+class _OutliersChart extends StatefulWidget {
+  final List<WeeklyRecord> records;
+  const _OutliersChart({required this.records});
 
-    for (int i = 0; i < records.length; i++) {
-      if (outliers.contains(records[i].totalAttendance.toDouble())) {
-        outlierIndices.add(i);
-      }
-    }
+  @override
+  State<_OutliersChart> createState() => _OutliersChartState();
+}
+
+class _OutliersChartState extends State<_OutliersChart> {
+  late final ZoomPanBehavior _zoomPan;
+  late final TrackballBehavior _trackball;
+  late final Map<String, List<TimeSeriesPoint>> _seriesData;
+  int _outlierCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _zoomPan = ZoomPanBehavior(
+      enablePinching: true,
+      enableDoubleTapZooming: true,
+      enablePanning: true,
+      zoomMode: ZoomMode.x,
+      enableMouseWheelZooming: true,
+    );
+    _trackball = TrackballBehavior(
+      enable: true,
+      activationMode: ActivationMode.singleTap,
+      tooltipSettings: const InteractiveTooltip(
+        enable: true,
+        color: Color(0xFF1565C0),
+      ),
+    );
+    final analytics = AnalyticsService();
+    _seriesData = analytics.attendanceWithOutliers(widget.records);
+    _outlierCount = _seriesData['Outliers']?.length ?? 0;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final normalPts = _seriesData['Normal'] ?? [];
+    final outlierPts = _seriesData['Outliers'] ?? [];
 
     return Card(
       child: Padding(
@@ -765,164 +339,62 @@ class _AdvancedChartsScreenState extends ConsumerState<AdvancedChartsScreen> {
           children: [
             Text(
               'Attendance with Outlier Detection',
-              style: Theme.of(context).textTheme.titleLarge,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w600),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 4),
             Text(
               'Outliers detected using IQR method (values beyond 1.5 × IQR)',
               style: Theme.of(context).textTheme.bodySmall,
             ),
-            const SizedBox(height: 16),
-            ResponsiveChartContainer(
-              minHeight: MediaQuery.sizeOf(context).width < 480
-                  ? 200.0
-                  : MediaQuery.sizeOf(context).width < 840
-                  ? 220.0
-                  : 260.0,
-              maxHeight: 420,
-              aspectRatio: 16 / 10,
-              enableInteractive: false,
-              child: LineChart(
-                LineChartData(
-                  gridData: FlGridData(show: true, drawVerticalLine: false),
-                  titlesData: FlTitlesData(
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 40,
-                        getTitlesWidget: (value, meta) {
-                          return Text(
-                            value.toInt().toString(),
-                            style: const TextStyle(fontSize: 10),
-                          );
-                        },
-                      ),
-                      axisNameWidget: const Text('Attendance'),
-                    ),
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        reservedSize: 40,
-                        getTitlesWidget: (value, meta) {
-                          final index = value.toInt();
-                          if (index >= 0 && index < records.length) {
-                            return Padding(
-                              padding: const EdgeInsets.only(top: 8),
-                              child: Text(
-                                DateFormat(
-                                  'MM/dd',
-                                ).format(records[index].weekStartDate),
-                                style: const TextStyle(fontSize: 10),
-                              ),
-                            );
-                          }
-                          return const Text('');
-                        },
-                      ),
-                      axisNameWidget: const Text('Week Starting'),
-                    ),
-                    rightTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                    topTitles: const AxisTitles(
-                      sideTitles: SideTitles(showTitles: false),
-                    ),
-                  ),
-                  borderData: FlBorderData(show: true),
-                  lineBarsData: [
-                    // Normal data points
-                    LineChartBarData(
-                      spots: records
-                          .asMap()
-                          .entries
-                          .where((e) => !outlierIndices.contains(e.key))
-                          .map(
-                            (e) => FlSpot(
-                              e.key.toDouble(),
-                              e.value.totalAttendance.toDouble(),
-                            ),
-                          )
-                          .toList(),
-                      isCurved: true,
-                      color: Colors.blue,
-                      barWidth: 3,
-                      dotData: const FlDotData(show: true),
-                      belowBarData: BarAreaData(
-                        show: true,
-                        color: Colors.blue.withValues(alpha: 0.1),
-                      ),
-                    ),
-                    // Outlier points
-                    LineChartBarData(
-                      spots: records
-                          .asMap()
-                          .entries
-                          .where((e) => outlierIndices.contains(e.key))
-                          .map(
-                            (e) => FlSpot(
-                              e.key.toDouble(),
-                              e.value.totalAttendance.toDouble(),
-                            ),
-                          )
-                          .toList(),
-                      isCurved: false,
-                      color: Colors.red,
-                      barWidth: 0,
-                      dotData: FlDotData(
-                        show: true,
-                        getDotPainter: (spot, percent, barData, index) {
-                          return FlDotCirclePainter(
-                            radius: 6,
-                            color: Colors.red,
-                            strokeWidth: 2,
-                            strokeColor: Colors.white,
-                          );
-                        },
-                      ),
-                      belowBarData: BarAreaData(show: false),
-                    ),
-                  ],
-                  lineTouchData: LineTouchData(
-                    touchTooltipData: LineTouchTooltipData(
-                      getTooltipItems: (touchedSpots) {
-                        return touchedSpots.map((spot) {
-                          final index = spot.x.toInt();
-                          final record = records[index];
-                          final date = DateFormat(
-                            'MM/dd',
-                          ).format(record.weekStartDate);
-                          final isOutlier = outlierIndices.contains(index);
-
-                          return LineTooltipItem(
-                            isOutlier
-                                ? 'OUTLIER\n$date: ${record.totalAttendance}'
-                                : 'Normal\n$date: ${record.totalAttendance}',
-                            TextStyle(
-                              color: Colors.white,
-                              fontWeight: isOutlier
-                                  ? FontWeight.bold
-                                  : FontWeight.normal,
-                            ),
-                          );
-                        }).toList();
-                      },
-                    ),
-                  ),
+            const SizedBox(height: 12),
+            Expanded(
+              child: SfCartesianChart(
+                zoomPanBehavior: _zoomPan,
+                trackballBehavior: _trackball,
+                legend: const Legend(
+                  isVisible: true,
+                  position: LegendPosition.bottom,
                 ),
+                primaryXAxis: const DateTimeAxis(
+                  intervalType: DateTimeIntervalType.days,
+                  interval: 7,
+                ),
+                primaryYAxis: const NumericAxis(
+                  title: AxisTitle(text: 'Attendance'),
+                ),
+                series: [
+                  SplineSeries<TimeSeriesPoint, DateTime>(
+                    name: 'Normal',
+                    dataSource: normalPts,
+                    xValueMapper: (p, _) => p.x,
+                    yValueMapper: (p, _) => p.y,
+                    color: const Color(0xFF1565C0),
+                    width: 2,
+                    markerSettings: const MarkerSettings(
+                      isVisible: true,
+                      shape: DataMarkerType.circle,
+                    ),
+                  ),
+                  ScatterSeries<TimeSeriesPoint, DateTime>(
+                    name: 'Outliers',
+                    dataSource: outlierPts,
+                    xValueMapper: (p, _) => p.x,
+                    yValueMapper: (p, _) => p.y,
+                    color: const Color(0xFFC62828),
+                    markerSettings: const MarkerSettings(
+                      isVisible: true,
+                      height: 12,
+                      width: 12,
+                      shape: DataMarkerType.circle,
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              alignment: WrapAlignment.center,
-              children: [
-                _buildLegendItem('Normal', Colors.blue),
-                _buildLegendItem('Outlier', Colors.red),
-              ],
-            ),
-            if (outlierIndices.isNotEmpty) ...[
-              const SizedBox(height: 16),
+            if (_outlierCount > 0) ...[
+              const SizedBox(height: 12),
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
@@ -939,7 +411,7 @@ class _AdvancedChartsScreenState extends ConsumerState<AdvancedChartsScreen> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        '${outlierIndices.length} outlier${outlierIndices.length > 1 ? 's' : ''} detected. These weeks had unusually high or low attendance.',
+                        '\$_outlierCount outlier\${_outlierCount > 1 ? "s" : ""} detected. These weeks had unusually high or low attendance.',
                         style: TextStyle(
                           color: Colors.orange.shade900,
                           fontSize: 13,
@@ -955,39 +427,62 @@ class _AdvancedChartsScreenState extends ConsumerState<AdvancedChartsScreen> {
       ),
     );
   }
+}
 
-  Set<double> _detectOutliers(List<double> sortedValues) {
-    if (sortedValues.length < 4) return {};
+// ─── Error / Empty ────────────────────────────────────────────────────────────
 
-    // Calculate Q1, Q3, and IQR
-    final q1Index = (sortedValues.length * 0.25).floor();
-    final q3Index = (sortedValues.length * 0.75).floor();
+class _ErrorView extends StatelessWidget {
+  final String message;
+  final VoidCallback onRetry;
+  const _ErrorView({required this.message, required this.onRetry});
 
-    final q1 = sortedValues[q1Index];
-    final q3 = sortedValues[q3Index];
-    final iqr = q3 - q1;
-
-    // Outliers are values beyond 1.5 * IQR from Q1 or Q3
-    final lowerBound = q1 - 1.5 * iqr;
-    final upperBound = q3 + 1.5 * iqr;
-
-    return sortedValues
-        .where((value) => value < lowerBound || value > upperBound)
-        .toSet();
-  }
-
-  Widget _buildLegendItem(String label, Color color) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 16,
-          height: 16,
-          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(Icons.error_outline, size: 64, color: Colors.red),
+            const SizedBox(height: 16),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.red),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Retry'),
+            ),
+          ],
         ),
-        const SizedBox(width: 8),
-        Text(label),
-      ],
+      ),
+    );
+  }
+}
+
+class _EmptyView extends StatelessWidget {
+  const _EmptyView();
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.insights_outlined, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          const Text('No data yet', style: TextStyle(fontSize: 18)),
+          const SizedBox(height: 8),
+          Text(
+            'Add weekly records to see advanced charts.',
+            style: TextStyle(color: Colors.grey[600]),
+          ),
+        ],
+      ),
     );
   }
 }

@@ -38,13 +38,43 @@ class _LazyLoadChartState extends State<LazyLoadChart> {
   bool _isVisible = false;
   final GlobalKey _key = GlobalKey();
 
+  // Listener attached to the ancestor scroll position so that scroll events
+  // trigger a visibility re-check. Using the scroll position directly is
+  // necessary because ScrollNotification bubbles *upward* — a
+  // NotificationListener that is a *descendant* of the scrollable never
+  // receives its notifications.
+  ScrollPosition? _attachedPosition;
+
   @override
   void initState() {
     super.initState();
-    // Check visibility after first frame
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _checkVisibility();
+      _attachScrollListener();
     });
+  }
+
+  void _attachScrollListener() {
+    if (!mounted || _hasBeenVisible) return;
+    final position = Scrollable.maybeOf(context)?.position;
+    if (position == null || position == _attachedPosition) return;
+    _attachedPosition = position;
+    position.addListener(_checkVisibility);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Re-attach when the scrollable ancestor changes (e.g. navigator push/pop).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _attachScrollListener();
+    });
+  }
+
+  @override
+  void dispose() {
+    _attachedPosition?.removeListener(_checkVisibility);
+    super.dispose();
   }
 
   void _checkVisibility() {
@@ -54,10 +84,8 @@ class _LazyLoadChartState extends State<LazyLoadChart> {
     if (renderObject == null || renderObject is! RenderBox) return;
     if (renderObject.size.isEmpty) return;
 
-    // Check scrollable before doing expensive viewport math
     final scrollableState = Scrollable.maybeOf(context);
     if (scrollableState == null) {
-      // Not in a scrollable, assume visible
       _setVisible(true);
       return;
     }
@@ -71,25 +99,20 @@ class _LazyLoadChartState extends State<LazyLoadChart> {
       0.0,
     );
 
-    // Get the viewport's visible height
     final viewportDimension =
         (viewport as RenderBox?)?.size.height ?? double.infinity;
 
-    // Calculate if this widget is within the visible area
-    // We check if any part of the widget is visible
     final widgetTop = offsetToReveal.offset;
     final widgetBottom = widgetTop + renderObject.size.height;
 
-    // Get the current scroll position
     final scrollPosition = scrollableState.position;
     final viewportTop = scrollPosition.pixels;
     final viewportBottom = viewportTop + viewportDimension;
 
-    // Check if the widget overlaps with the visible viewport
     final isNowVisible =
         widgetBottom > viewportTop && widgetTop < viewportBottom;
 
-    if (isNowVisible && !_hasBeenVisible) {
+    if (isNowVisible) {
       _setVisible(true);
     }
   }
@@ -100,28 +123,22 @@ class _LazyLoadChartState extends State<LazyLoadChart> {
         _isVisible = true;
         _hasBeenVisible = true;
       });
+      _attachedPosition?.removeListener(_checkVisibility);
       widget.onVisibilityChanged?.call(true);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return NotificationListener<ScrollNotification>(
-      onNotification: (notification) {
-        if (_hasBeenVisible) return false;
-        _checkVisibility();
-        return false;
-      },
-      child: SizedBox(
-        key: _key,
-        child: _hasBeenVisible
-            ? AnimatedOpacity(
-                duration: widget.fadeInDuration,
-                opacity: _isVisible ? 1.0 : 0.0,
-                child: widget.child,
-              )
-            : widget.placeholder ?? _buildDefaultPlaceholder(),
-      ),
+    return SizedBox(
+      key: _key,
+      child: _hasBeenVisible
+          ? AnimatedOpacity(
+              duration: widget.fadeInDuration,
+              opacity: _isVisible ? 1.0 : 0.0,
+              child: widget.child,
+            )
+          : widget.placeholder ?? _buildDefaultPlaceholder(),
     );
   }
 
