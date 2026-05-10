@@ -91,6 +91,9 @@ dev_dependencies:
   drift_dev: ^2.23.0
   build_runner: ^2.4.14
 
+  # App icon generation (run: dart run flutter_launcher_icons)
+  flutter_launcher_icons: ^0.14.1
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -104,6 +107,7 @@ flutter:
 
   assets:
     - assets/images/icon.jpeg
+    - assets/images/app_icon.png
 
   # To add more assets to your application, add entries to the assets section:
 
@@ -132,3 +136,38 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# ── App Icon Generation ────────────────────────────────────────────────────────
+# Source: assets/images/app_icon.png (1024×1024 PNG, square)
+# To regenerate all platform icons after replacing the source image, run:
+#   dart run flutter_launcher_icons
+#
+# To replace the icon for a fork:
+#   1. Replace assets/images/app_icon.png with your own square PNG (min 1024×1024)
+#   2. Run: dart run flutter_launcher_icons
+#   3. Commit the generated files.
+flutter_launcher_icons:
+  image_path: "assets/images/app_icon.png"
+
+  android: true          # generates mipmap-*/ic_launcher.png + adaptive icon XMLs
+  min_sdk_android: 21   # matches android/app/build.gradle.kts minSdk
+
+  ios: false             # set to true and add iOS bundle id if building for iOS
+
+  web:
+    generate: true
+    image_path: "assets/images/app_icon.png"
+    background_color: "#ffffff"
+    theme_color: "#0175C2"
+
+  windows:
+    generate: true
+    image_path: "assets/images/app_icon.png"
+    icon_size: 48        # pixels; tool also generates 16, 32, 256 variants
+
+  linux:
+    generate: true
+    image_path: "assets/images/app_icon.png"
+
+  macos:
+    generate: false      # macOS icons already maintained in xcassets manually

@@ -3,9 +3,6 @@
 A Flutter multiplatform application for church administrators to track and analyze weekly attendance and financial data.
 
 
-### This app is majorly vibe coded.
-
-
 ## Overview
 
 This app replaces the legacy Python CLI + matplotlib workflow with a modern, UI-driven, cross-platform analytics tool.
@@ -134,17 +131,18 @@ The fastest “reset” is usually `flutter clean` followed by `flutter pub get`
 
 ```
 lib/
+  config/         # Build-time secrets (app_secrets.dart)
   models/         # Data models
   services/       # Business logic
   repositories/   # Data persistence layer
-  ui/            # UI screens and widgets
+  ui/             # UI screens and widgets
 ```
 
 ## Architecture
 
 - **State Management**: Riverpod
 - **Local Database**: SQLite (Drift/sqflite)
-- **Charts**: fl_chart
+- **Charts**: Syncfusion Flutter Charts (^32.2.8)
 - **CSV Handling**: csv package
 - **PDF Export**: pdf + printing packages
 
@@ -184,6 +182,20 @@ The app includes an in-app update system. See [**docs/update-contract.md**](docs
 - Update manifest schema (`update.json`)
 - Trust model and security considerations
 - URL requirements and CORS configuration
+
+## Forking This Project
+
+If you are deploying this app for a different church or organisation, see
+[**docs/FORK_GUIDE.md**](docs/FORK_GUIDE.md) for the complete checklist,
+including:
+
+- Android keystore generation and GitHub Secrets setup
+- Syncfusion license key injection
+- Crash report email configuration
+- In-app update manifest URL change
+- App icon replacement
+
+---
 
 ## Legacy Reference
 

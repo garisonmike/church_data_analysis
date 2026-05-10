@@ -5,7 +5,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'config/app_secrets.dart';
 import 'services/log_service.dart';
 import 'services/settings_service.dart';
 import 'services/theme_service.dart';
@@ -57,15 +56,6 @@ void main() async {
     );
     FlutterError.presentError(details); // still show red screen in debug
   };
-
-  // ── Syncfusion License ───────────────────────────────────────────────────
-  // License key is injected at build time via --dart-define.
-  // In CI: flutter build apk --dart-define=SYNCFUSION_LICENSE_KEY=<secret>
-  // Local builds without the key will show the community watermark, which is
-  // acceptable for development. Never put a real key in this file.
-  if (kSyncfusionLicenseKey.isNotEmpty) {
-    // SfLicenseKey.registerLicense(kSyncfusionLicenseKey);
-  }
 
   // Initialize date formatting.
   try {

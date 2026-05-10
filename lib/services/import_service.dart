@@ -228,7 +228,7 @@ class ImportService {
   }
 
   /// Get suggested column mapping based on header names
-  Map<String, int> suggestColumnMapping(List<String> headers) {
+  ColumnMappingResult suggestColumnMapping(List<String> headers) {
     final mapping = <String, int>{};
 
     // Common variations of field names
@@ -247,8 +247,14 @@ class ImportService {
 
     final allFields = fieldVariations.keys.toList();
     final cleanedHeaders = headers
-        .map((h) => h.toLowerCase().replaceAll(' ', '').replaceAll('_', ''))
-        .toList();
+      .map((h) => h
+        .toLowerCase()
+        // strip anything in parentheses e.g. "(KES)", "(USD)"
+        .replaceAll(RegExp(r'\s*\(.*?\)'), '')
+        .replaceAll(' ', '')
+        .replaceAll('_', '')
+        .trim())
+      .toList();
 
     for (final fieldName in allFields) {
       // 1. Prioritize exact match (after cleaning)
@@ -273,7 +279,18 @@ class ImportService {
       }
     }
 
-    return mapping;
+    final matchedIndices = mapping.values.toSet();
+    final ignoredColumns = <String>[];
+    for (var i = 0; i < headers.length; i++) {
+      if (!matchedIndices.contains(i)) {
+        ignoredColumns.add(headers[i]);
+      }
+    }
+
+    return ColumnMappingResult(
+      mapping: mapping,
+      ignoredColumns: ignoredColumns,
+    );
   }
 
   /// Validate that the CSV schema has all required columns mapped
@@ -295,6 +312,16 @@ class ParseResult {
   ParseResult.success(this.headers, this.rows) : success = true, error = null;
 
   ParseResult.error(this.error) : success = false, headers = null, rows = null;
+}
+
+class ColumnMappingResult {
+  final Map<String, int> mapping;
+  final List<String> ignoredColumns;
+
+  const ColumnMappingResult({
+    required this.mapping,
+    required this.ignoredColumns,
+  });
 }
 
 /// Result of importing a single row

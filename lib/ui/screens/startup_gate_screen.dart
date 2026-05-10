@@ -2,6 +2,7 @@ import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:church_analytics/ui/screens/log_viewer_screen.dart';
+import 'package:church_analytics/ui/widgets/onboarding_overlay.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -22,9 +23,20 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
   void initState() {
     super.initState();
     _routeFromState();
-    // After first frame, check if the previous session crashed.
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) showCrashRecoveryDialogIfNeeded(context);
+    // After first frame: check for crash, then show onboarding on first launch.
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      await showCrashRecoveryDialogIfNeeded(context);
+      if (!mounted) return;
+      final done = await isOnboardingComplete();
+      if (!done && mounted) {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            fullscreenDialog: true,
+            builder: (_) => const OnboardingOverlay(),
+          ),
+        );
+      }
     });
   }
 

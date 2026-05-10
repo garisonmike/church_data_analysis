@@ -184,6 +184,38 @@ class WeeklyRecordRepository {
         );
   }
 
+  /// Update an existing weekly record matched by churchId + weekStartDate.
+  ///
+  /// Used during CSV import where the incoming record has no database [id].
+  /// Finds the existing row by natural key and overwrites all data fields.
+  /// Returns true if exactly one row was updated, false otherwise.
+  Future<bool> updateRecordByWeekStartDate(WeeklyRecord record) async {
+    final rowsUpdated = await (
+      _db.update(_db.weeklyRecords)
+        ..where(
+          (t) =>
+              t.churchId.equals(record.churchId) &
+              t.weekStartDate.equals(record.weekStartDate),
+        )
+    ).write(
+      db.WeeklyRecordsCompanion(
+        men: Value(record.men),
+        women: Value(record.women),
+        youth: Value(record.youth),
+        children: Value(record.children),
+        sundayHomeChurch: Value(record.sundayHomeChurch),
+        baptisms: Value(record.baptisms),
+        holyCommunion: Value(record.holyCommunion),
+        tithe: Value(record.tithe),
+        offerings: Value(record.offerings),
+        emergencyCollection: Value(record.emergencyCollection),
+        plannedCollection: Value(record.plannedCollection),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
+    return rowsUpdated > 0;
+  }
+
   /// Delete a weekly record
   Future<int> deleteRecord(int id) async {
     return await (_db.delete(

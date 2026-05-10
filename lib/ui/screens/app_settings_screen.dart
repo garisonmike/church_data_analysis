@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import '../widgets/onboarding_overlay.dart';
 import 'package:flutter/services.dart' show Clipboard, ClipboardData;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -317,6 +318,24 @@ class AppSettingsScreen extends ConsumerWidget {
 
           // About & Updates Card
           AboutUpdatesCard(launchService: PlatformInstallerLaunchService()),
+
+          const SizedBox(height: 16),
+
+          // Help & Tutorial Card
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.help_outline),
+              title: const Text('Help & Tutorial'),
+              subtitle: const Text('View the app walkthrough again'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute<void>(
+                  fullscreenDialog: true,
+                  builder: (_) => const OnboardingOverlay(fromSettings: true),
+                ),
+              ),
+            ),
+          ),
 
           const SizedBox(height: 32),
         ],

@@ -22,9 +22,11 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
   List<String>? _headers;
   List<List<dynamic>>? _rows;
   Map<String, int> _columnMapping = {};
+  List<String> _ignoredColumns = [];
   List<WeeklyRecordImportResult>? _validationResults;
   bool _isLoading = false;
   String? _errorMessage;
+  String _duplicateStrategy = 'skip';
 
   final List<String> _requiredFields = [
     'weekStartDate',
@@ -89,13 +91,18 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
         _selectedFile = file;
         _headers = result.headers;
         _rows = result.rows;
-        _columnMapping = _importService.suggestColumnMapping(result.headers!);
+        final mappingResult = _importService.suggestColumnMapping(
+          result.headers!,
+        );
+        _columnMapping = mappingResult.mapping;
+        _ignoredColumns = mappingResult.ignoredColumns;
         _isLoading = false;
         _validationResults = null;
       });
     } catch (e) {
+      LogService.error('ImportScreen', 'File pick failed', error: e);
       setState(() {
-        _errorMessage = 'Error picking file: ${e.toString()}';
+        _errorMessage = 'Could not open the file. Please try a different file.';
         _isLoading = false;
       });
     }
@@ -208,14 +215,38 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       _errorMessage = null;
     });
 
+    final database = ref.read(databaseProvider);
+    final repository = WeeklyRecordRepository(database);
+    final conflictDates = <DateTime>[];
+
+    for (final record in validRecords) {
+      final exists = await repository.weekExists(
+        record.churchId,
+        record.weekStartDate,
+      );
+      if (exists) conflictDates.add(record.weekStartDate);
+    }
+
+    setState(() => _isLoading = false);
+
+    if (conflictDates.isNotEmpty && mounted) {
+      final strategy = await _showDuplicateStrategyDialog(conflictDates);
+      if (strategy == null) return;
+      _duplicateStrategy = strategy;
+    }
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoading = true;
+      _errorMessage = null;
+    });
+
     int successCount = 0;
     int skipCount = 0;
     final errors = <String>[];
 
     try {
-      final database = ref.read(databaseProvider);
-      final repository = WeeklyRecordRepository(database);
-
       for (final record in validRecords) {
         try {
           final exists = await repository.weekExists(
@@ -224,16 +255,31 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
           );
 
           if (exists) {
-            skipCount++;
-            errors.add(
-              'Skipped duplicate: week of ${record.weekStartDate.toString().split('T')[0]}',
-            );
+            if (_duplicateStrategy == 'update') {
+              final updated = await repository.updateRecordByWeekStartDate(
+                record,
+              );
+              if (updated) {
+                successCount++;
+              } else {
+                skipCount++;
+                errors.add(
+                  'Skipped duplicate: week of ${record.weekStartDate.toString().split('T')[0]}',
+                );
+              }
+            } else {
+              skipCount++;
+              errors.add(
+                'Skipped duplicate: week of ${record.weekStartDate.toString().split('T')[0]}',
+              );
+            }
           } else {
             await repository.createRecord(record);
             successCount++;
           }
         } catch (e) {
-          errors.add('Failed to import record: ${e.toString()}');
+          errors.add('Failed to import record: row data error');
+          LogService.error('ImportScreen', 'Row import failed', error: e);
         }
       }
     } catch (e) {
@@ -321,6 +367,71 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
     );
   }
 
+  Future<String?> _showDuplicateStrategyDialog(
+    List<DateTime> conflictDates,
+  ) async {
+    final dateStrings = conflictDates
+        .map((d) => d.toString().split('T')[0])
+        .toList()
+      ..sort();
+
+    return showDialog<String>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Duplicate Records Found'),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        content: LayoutBuilder(
+          builder: (context, constraints) => ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: constraints.maxHeight * 0.7,
+              maxWidth: 560,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${conflictDates.length} week(s) in this file already have data in the database:',
+                  ),
+                  const SizedBox(height: 8),
+                  ...dateStrings.map(
+                    (d) => Text(
+                      '• $d',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'What would you like to do with these records?',
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, null),
+            child: const Text('Cancel'),
+          ),
+          OutlinedButton(
+            onPressed: () => Navigator.pop(ctx, 'skip'),
+            child: const Text('Skip Duplicates'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, 'update'),
+            child: const Text('Update Existing'),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ── Reset ───────────────────────────────────────────────────────────────────
 
   void _reset() {
@@ -329,6 +440,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       _headers = null;
       _rows = null;
       _columnMapping = {};
+      _ignoredColumns = [];
       _validationResults = null;
       _isLoading = false;
       _errorMessage = null;
@@ -493,6 +605,36 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             ..._optionalFields.map(
               (field) => _buildMappingDropdown(field, isOptional: true),
             ),
+            if (_ignoredColumns.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.amber.shade50,
+                  border: Border.all(color: Colors.amber.shade300),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Icon(
+                      Icons.info_outline,
+                      color: Colors.amber,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        '${_ignoredColumns.length} column(s) in your file were not recognised and will be ignored:\n'
+                        '${_ignoredColumns.map((c) => '• $c').join('\n')}',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
             Text(
               'Preview: First ${_rows!.take(3).length} of ${_rows!.length} data rows',

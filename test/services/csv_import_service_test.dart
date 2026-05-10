@@ -108,16 +108,16 @@ void main() {
 
         final mapping = service.suggestColumnMapping(headers);
 
-        expect(mapping['weekStartDate'], 0);
-        expect(mapping['men'], 1);
-        expect(mapping['women'], 2);
-        expect(mapping['youth'], 3);
-        expect(mapping['children'], 4);
-        expect(mapping['sundayHomeChurch'], 5);
-        expect(mapping['tithe'], 6);
-        expect(mapping['offerings'], 7);
-        expect(mapping['emergencyCollection'], 8);
-        expect(mapping['plannedCollection'], 9);
+        expect(mapping.mapping['weekStartDate'], 0);
+        expect(mapping.mapping['men'], 1);
+        expect(mapping.mapping['women'], 2);
+        expect(mapping.mapping['youth'], 3);
+        expect(mapping.mapping['children'], 4);
+        expect(mapping.mapping['sundayHomeChurch'], 5);
+        expect(mapping.mapping['tithe'], 6);
+        expect(mapping.mapping['offerings'], 7);
+        expect(mapping.mapping['emergencyCollection'], 8);
+        expect(mapping.mapping['plannedCollection'], 9);
       });
 
       test('handles lowercase and underscores', () {
@@ -136,16 +136,16 @@ void main() {
 
         final mapping = service.suggestColumnMapping(headers);
 
-        expect(mapping['weekStartDate'], 0);
-        expect(mapping['men'], 1);
-        expect(mapping['women'], 2);
-        expect(mapping['youth'], 3);
-        expect(mapping['children'], 4);
-        expect(mapping['sundayHomeChurch'], 5);
-        expect(mapping['tithe'], 6);
-        expect(mapping['offerings'], 7);
-        expect(mapping['emergencyCollection'], 8);
-        expect(mapping['plannedCollection'], 9);
+        expect(mapping.mapping['weekStartDate'], 0);
+        expect(mapping.mapping['men'], 1);
+        expect(mapping.mapping['women'], 2);
+        expect(mapping.mapping['youth'], 3);
+        expect(mapping.mapping['children'], 4);
+        expect(mapping.mapping['sundayHomeChurch'], 5);
+        expect(mapping.mapping['tithe'], 6);
+        expect(mapping.mapping['offerings'], 7);
+        expect(mapping.mapping['emergencyCollection'], 8);
+        expect(mapping.mapping['plannedCollection'], 9);
       });
 
       test('returns empty map for unrecognized headers', () {
@@ -153,7 +153,7 @@ void main() {
 
         final mapping = service.suggestColumnMapping(headers);
 
-        expect(mapping, isEmpty);
+        expect(mapping.mapping, isEmpty);
       });
     });
 

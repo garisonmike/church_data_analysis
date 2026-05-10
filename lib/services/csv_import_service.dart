@@ -193,7 +193,7 @@ class CsvImportService {
   }
 
   /// Get suggested column mapping based on header names
-  Map<String, int> suggestColumnMapping(List<String> headers) {
+  ColumnMappingResult suggestColumnMapping(List<String> headers) {
     final mapping = <String, int>{};
 
     final fieldVariations = {
@@ -243,6 +243,17 @@ class CsvImportService {
       }
     }
 
-    return mapping;
+    final matchedIndices = mapping.values.toSet();
+    final ignoredColumns = <String>[];
+    for (var i = 0; i < headers.length; i++) {
+      if (!matchedIndices.contains(i)) {
+        ignoredColumns.add(headers[i]);
+      }
+    }
+
+    return ColumnMappingResult(
+      mapping: mapping,
+      ignoredColumns: ignoredColumns,
+    );
   }
 }
