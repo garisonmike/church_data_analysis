@@ -10,6 +10,7 @@ class AdminUser extends Equatable {
   final bool isActive;
   final DateTime createdAt;
   final DateTime lastLoginAt;
+  final String? pinHash;
 
   const AdminUser({
     this.id,
@@ -20,6 +21,7 @@ class AdminUser extends Equatable {
     this.isActive = true,
     required this.createdAt,
     required this.lastLoginAt,
+    this.pinHash,
   });
 
   /// Creates a copy of this AdminUser with updated fields
@@ -32,6 +34,7 @@ class AdminUser extends Equatable {
     bool? isActive,
     DateTime? createdAt,
     DateTime? lastLoginAt,
+    String? pinHash,
   }) {
     return AdminUser(
       id: id ?? this.id,
@@ -42,6 +45,7 @@ class AdminUser extends Equatable {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
+      pinHash: pinHash ?? this.pinHash,
     );
   }
 
@@ -56,6 +60,7 @@ class AdminUser extends Equatable {
       'isActive': isActive,
       'createdAt': createdAt.toIso8601String(),
       'lastLoginAt': lastLoginAt.toIso8601String(),
+      'pinHash': pinHash,
     };
   }
 
@@ -70,6 +75,7 @@ class AdminUser extends Equatable {
       isActive: json['isActive'] as bool? ?? true,
       createdAt: DateTime.parse(json['createdAt'] as String),
       lastLoginAt: DateTime.parse(json['lastLoginAt'] as String),
+      pinHash: json['pinHash'] as String?,
     );
   }
 
@@ -115,5 +121,6 @@ class AdminUser extends Equatable {
     isActive,
     createdAt,
     lastLoginAt,
+    pinHash,
   ];
 }

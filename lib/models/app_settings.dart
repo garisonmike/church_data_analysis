@@ -12,20 +12,15 @@ enum AppThemeMode {
   final String value;
   final String displayName;
 
-  /// Default theme mode
   static const AppThemeMode defaultTheme = AppThemeMode.system;
 
-  /// Returns AppThemeMode from string value
   static AppThemeMode fromValue(String value) {
     for (AppThemeMode mode in AppThemeMode.values) {
-      if (mode.value == value) {
-        return mode;
-      }
+      if (mode.value == value) return mode;
     }
     return defaultTheme;
   }
 
-  /// Convert to Flutter ThemeMode
   ThemeMode toThemeMode() {
     switch (this) {
       case AppThemeMode.light:
@@ -53,60 +48,65 @@ enum Currency {
   final String name;
   final String symbol;
 
-  /// Default currency for the app
   static const Currency defaultCurrency = Currency.kes;
 
-  /// Returns Currency from code, defaults to KES if not found
   static Currency fromCode(String code) {
     for (Currency currency in Currency.values) {
-      if (currency.code == code) {
-        return currency;
-      }
+      if (currency.code == code) return currency;
     }
     return defaultCurrency;
   }
 }
 
-/// Application settings model
+/// Application settings model — includes the active church selection so every
+/// screen can read it from a single, persisted source of truth.
 class AppSettings extends Equatable {
   final Currency currency;
   final String locale;
   final String timezone;
   final AppThemeMode themeMode;
 
+  /// The ID of the currently selected church. Null when no church has been
+  /// selected yet (first-launch state).
+  final int? selectedChurchId;
+
   const AppSettings({
     this.currency = Currency.kes,
     this.locale = 'en_KE',
     this.timezone = 'Africa/Nairobi',
     this.themeMode = AppThemeMode.system,
+    this.selectedChurchId,
   });
 
-  /// Creates a copy of this AppSettings with updated fields
   AppSettings copyWith({
     Currency? currency,
     String? locale,
     String? timezone,
     AppThemeMode? themeMode,
+    // Use a sentinel so callers can explicitly set selectedChurchId to null.
+    Object? selectedChurchId = _unset,
   }) {
     return AppSettings(
       currency: currency ?? this.currency,
       locale: locale ?? this.locale,
       timezone: timezone ?? this.timezone,
       themeMode: themeMode ?? this.themeMode,
+      selectedChurchId: identical(selectedChurchId, _unset)
+          ? this.selectedChurchId
+          : selectedChurchId as int?,
     );
   }
 
-  /// Convert to JSON map for persistence
   Map<String, dynamic> toJson() {
     return {
       'currency': currency.code,
       'locale': locale,
       'timezone': timezone,
       'themeMode': themeMode.value,
+      if (selectedChurchId != null) 'selectedChurchId': selectedChurchId,
     };
   }
 
-  /// Create from JSON map
   factory AppSettings.fromJson(Map<String, dynamic> json) {
     return AppSettings(
       currency: Currency.fromCode(json['currency'] ?? Currency.kes.code),
@@ -115,10 +115,10 @@ class AppSettings extends Equatable {
       themeMode: AppThemeMode.fromValue(
         json['themeMode'] ?? AppThemeMode.system.value,
       ),
+      selectedChurchId: json['selectedChurchId'] as int?,
     );
   }
 
-  /// Default settings for Kenya
   factory AppSettings.defaultKenyan() {
     return const AppSettings(
       currency: Currency.kes,
@@ -129,10 +129,17 @@ class AppSettings extends Equatable {
   }
 
   @override
-  List<Object?> get props => [currency, locale, timezone, themeMode];
+  List<Object?> get props =>
+      [currency, locale, timezone, themeMode, selectedChurchId];
 
   @override
   String toString() {
-    return 'AppSettings(currency: $currency, locale: $locale, timezone: $timezone, themeMode: $themeMode)';
+    return 'AppSettings(currency: $currency, locale: $locale, '
+        'timezone: $timezone, themeMode: $themeMode, '
+        'selectedChurchId: $selectedChurchId)';
   }
 }
+
+/// Private sentinel value used by [AppSettings.copyWith] so that
+/// `selectedChurchId: null` can be distinguished from "not provided".
+const _unset = Object();

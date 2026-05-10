@@ -8,6 +8,7 @@ class Church extends Equatable {
   final String? contactEmail;
   final String? contactPhone;
   final String currency;
+  final int boardMemberCount;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -18,6 +19,7 @@ class Church extends Equatable {
     this.contactEmail,
     this.contactPhone,
     this.currency = 'USD',
+    this.boardMemberCount = 0,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -30,6 +32,7 @@ class Church extends Equatable {
     String? contactEmail,
     String? contactPhone,
     String? currency,
+    int? boardMemberCount,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -40,6 +43,7 @@ class Church extends Equatable {
       contactEmail: contactEmail ?? this.contactEmail,
       contactPhone: contactPhone ?? this.contactPhone,
       currency: currency ?? this.currency,
+      boardMemberCount: boardMemberCount ?? this.boardMemberCount,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -54,6 +58,7 @@ class Church extends Equatable {
       'contactEmail': contactEmail,
       'contactPhone': contactPhone,
       'currency': currency,
+      'boardMemberCount': boardMemberCount,
       'createdAt': createdAt.toIso8601String(),
       'updatedAt': updatedAt.toIso8601String(),
     };
@@ -68,6 +73,7 @@ class Church extends Equatable {
       contactEmail: json['contactEmail'] as String?,
       contactPhone: json['contactPhone'] as String?,
       currency: json['currency'] as String? ?? 'USD',
+      boardMemberCount: json['boardMemberCount'] as int? ?? 0,
       createdAt: DateTime.parse(json['createdAt'] as String),
       updatedAt: DateTime.parse(json['updatedAt'] as String),
     );
@@ -101,6 +107,7 @@ class Church extends Equatable {
     contactEmail,
     contactPhone,
     currency,
+    boardMemberCount,
     createdAt,
     updatedAt,
   ];

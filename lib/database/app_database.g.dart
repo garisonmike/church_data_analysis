@@ -79,6 +79,41 @@ class $ChurchesTable extends Churches with TableInfo<$ChurchesTable, Churche> {
     requiredDuringInsert: false,
     defaultValue: const Constant('USD'),
   );
+  static const VerificationMeta _websiteMeta = const VerificationMeta(
+    'website',
+  );
+  @override
+  late final GeneratedColumn<String> website = GeneratedColumn<String>(
+    'website',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _boardMemberCountMeta = const VerificationMeta(
+    'boardMemberCount',
+  );
+  @override
+  late final GeneratedColumn<int> boardMemberCount = GeneratedColumn<int>(
+    'board_member_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _totalMembershipMeta = const VerificationMeta(
+    'totalMembership',
+  );
+  @override
+  late final GeneratedColumn<int> totalMembership = GeneratedColumn<int>(
+    'total_membership',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -109,6 +144,9 @@ class $ChurchesTable extends Churches with TableInfo<$ChurchesTable, Churche> {
     contactEmail,
     contactPhone,
     currency,
+    website,
+    boardMemberCount,
+    totalMembership,
     createdAt,
     updatedAt,
   ];
@@ -165,6 +203,30 @@ class $ChurchesTable extends Churches with TableInfo<$ChurchesTable, Churche> {
         currency.isAcceptableOrUnknown(data['currency']!, _currencyMeta),
       );
     }
+    if (data.containsKey('website')) {
+      context.handle(
+        _websiteMeta,
+        website.isAcceptableOrUnknown(data['website']!, _websiteMeta),
+      );
+    }
+    if (data.containsKey('board_member_count')) {
+      context.handle(
+        _boardMemberCountMeta,
+        boardMemberCount.isAcceptableOrUnknown(
+          data['board_member_count']!,
+          _boardMemberCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('total_membership')) {
+      context.handle(
+        _totalMembershipMeta,
+        totalMembership.isAcceptableOrUnknown(
+          data['total_membership']!,
+          _totalMembershipMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -214,6 +276,18 @@ class $ChurchesTable extends Churches with TableInfo<$ChurchesTable, Churche> {
         DriftSqlType.string,
         data['${effectivePrefix}currency'],
       )!,
+      website: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}website'],
+      ),
+      boardMemberCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}board_member_count'],
+      )!,
+      totalMembership: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_membership'],
+      )!,
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -238,6 +312,9 @@ class Churche extends DataClass implements Insertable<Churche> {
   final String? contactEmail;
   final String? contactPhone;
   final String currency;
+  final String? website;
+  final int boardMemberCount;
+  final int totalMembership;
   final DateTime createdAt;
   final DateTime updatedAt;
   const Churche({
@@ -247,6 +324,9 @@ class Churche extends DataClass implements Insertable<Churche> {
     this.contactEmail,
     this.contactPhone,
     required this.currency,
+    this.website,
+    required this.boardMemberCount,
+    required this.totalMembership,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -265,6 +345,11 @@ class Churche extends DataClass implements Insertable<Churche> {
       map['contact_phone'] = Variable<String>(contactPhone);
     }
     map['currency'] = Variable<String>(currency);
+    if (!nullToAbsent || website != null) {
+      map['website'] = Variable<String>(website);
+    }
+    map['board_member_count'] = Variable<int>(boardMemberCount);
+    map['total_membership'] = Variable<int>(totalMembership);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -284,6 +369,11 @@ class Churche extends DataClass implements Insertable<Churche> {
           ? const Value.absent()
           : Value(contactPhone),
       currency: Value(currency),
+      website: website == null && nullToAbsent
+          ? const Value.absent()
+          : Value(website),
+      boardMemberCount: Value(boardMemberCount),
+      totalMembership: Value(totalMembership),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -301,6 +391,9 @@ class Churche extends DataClass implements Insertable<Churche> {
       contactEmail: serializer.fromJson<String?>(json['contactEmail']),
       contactPhone: serializer.fromJson<String?>(json['contactPhone']),
       currency: serializer.fromJson<String>(json['currency']),
+      website: serializer.fromJson<String?>(json['website']),
+      boardMemberCount: serializer.fromJson<int>(json['boardMemberCount']),
+      totalMembership: serializer.fromJson<int>(json['totalMembership']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -315,6 +408,9 @@ class Churche extends DataClass implements Insertable<Churche> {
       'contactEmail': serializer.toJson<String?>(contactEmail),
       'contactPhone': serializer.toJson<String?>(contactPhone),
       'currency': serializer.toJson<String>(currency),
+      'website': serializer.toJson<String?>(website),
+      'boardMemberCount': serializer.toJson<int>(boardMemberCount),
+      'totalMembership': serializer.toJson<int>(totalMembership),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -327,6 +423,9 @@ class Churche extends DataClass implements Insertable<Churche> {
     Value<String?> contactEmail = const Value.absent(),
     Value<String?> contactPhone = const Value.absent(),
     String? currency,
+    Value<String?> website = const Value.absent(),
+    int? boardMemberCount,
+    int? totalMembership,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => Churche(
@@ -336,6 +435,9 @@ class Churche extends DataClass implements Insertable<Churche> {
     contactEmail: contactEmail.present ? contactEmail.value : this.contactEmail,
     contactPhone: contactPhone.present ? contactPhone.value : this.contactPhone,
     currency: currency ?? this.currency,
+    website: website.present ? website.value : this.website,
+    boardMemberCount: boardMemberCount ?? this.boardMemberCount,
+    totalMembership: totalMembership ?? this.totalMembership,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -351,6 +453,13 @@ class Churche extends DataClass implements Insertable<Churche> {
           ? data.contactPhone.value
           : this.contactPhone,
       currency: data.currency.present ? data.currency.value : this.currency,
+      website: data.website.present ? data.website.value : this.website,
+      boardMemberCount: data.boardMemberCount.present
+          ? data.boardMemberCount.value
+          : this.boardMemberCount,
+      totalMembership: data.totalMembership.present
+          ? data.totalMembership.value
+          : this.totalMembership,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -365,6 +474,9 @@ class Churche extends DataClass implements Insertable<Churche> {
           ..write('contactEmail: $contactEmail, ')
           ..write('contactPhone: $contactPhone, ')
           ..write('currency: $currency, ')
+          ..write('website: $website, ')
+          ..write('boardMemberCount: $boardMemberCount, ')
+          ..write('totalMembership: $totalMembership, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -379,6 +491,9 @@ class Churche extends DataClass implements Insertable<Churche> {
     contactEmail,
     contactPhone,
     currency,
+    website,
+    boardMemberCount,
+    totalMembership,
     createdAt,
     updatedAt,
   );
@@ -392,6 +507,9 @@ class Churche extends DataClass implements Insertable<Churche> {
           other.contactEmail == this.contactEmail &&
           other.contactPhone == this.contactPhone &&
           other.currency == this.currency &&
+          other.website == this.website &&
+          other.boardMemberCount == this.boardMemberCount &&
+          other.totalMembership == this.totalMembership &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -403,6 +521,9 @@ class ChurchesCompanion extends UpdateCompanion<Churche> {
   final Value<String?> contactEmail;
   final Value<String?> contactPhone;
   final Value<String> currency;
+  final Value<String?> website;
+  final Value<int> boardMemberCount;
+  final Value<int> totalMembership;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const ChurchesCompanion({
@@ -412,6 +533,9 @@ class ChurchesCompanion extends UpdateCompanion<Churche> {
     this.contactEmail = const Value.absent(),
     this.contactPhone = const Value.absent(),
     this.currency = const Value.absent(),
+    this.website = const Value.absent(),
+    this.boardMemberCount = const Value.absent(),
+    this.totalMembership = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -422,6 +546,9 @@ class ChurchesCompanion extends UpdateCompanion<Churche> {
     this.contactEmail = const Value.absent(),
     this.contactPhone = const Value.absent(),
     this.currency = const Value.absent(),
+    this.website = const Value.absent(),
+    this.boardMemberCount = const Value.absent(),
+    this.totalMembership = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
   }) : name = Value(name),
@@ -434,6 +561,9 @@ class ChurchesCompanion extends UpdateCompanion<Churche> {
     Expression<String>? contactEmail,
     Expression<String>? contactPhone,
     Expression<String>? currency,
+    Expression<String>? website,
+    Expression<int>? boardMemberCount,
+    Expression<int>? totalMembership,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -444,6 +574,9 @@ class ChurchesCompanion extends UpdateCompanion<Churche> {
       if (contactEmail != null) 'contact_email': contactEmail,
       if (contactPhone != null) 'contact_phone': contactPhone,
       if (currency != null) 'currency': currency,
+      if (website != null) 'website': website,
+      if (boardMemberCount != null) 'board_member_count': boardMemberCount,
+      if (totalMembership != null) 'total_membership': totalMembership,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -456,6 +589,9 @@ class ChurchesCompanion extends UpdateCompanion<Churche> {
     Value<String?>? contactEmail,
     Value<String?>? contactPhone,
     Value<String>? currency,
+    Value<String?>? website,
+    Value<int>? boardMemberCount,
+    Value<int>? totalMembership,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -466,6 +602,9 @@ class ChurchesCompanion extends UpdateCompanion<Churche> {
       contactEmail: contactEmail ?? this.contactEmail,
       contactPhone: contactPhone ?? this.contactPhone,
       currency: currency ?? this.currency,
+      website: website ?? this.website,
+      boardMemberCount: boardMemberCount ?? this.boardMemberCount,
+      totalMembership: totalMembership ?? this.totalMembership,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -492,6 +631,15 @@ class ChurchesCompanion extends UpdateCompanion<Churche> {
     if (currency.present) {
       map['currency'] = Variable<String>(currency.value);
     }
+    if (website.present) {
+      map['website'] = Variable<String>(website.value);
+    }
+    if (boardMemberCount.present) {
+      map['board_member_count'] = Variable<int>(boardMemberCount.value);
+    }
+    if (totalMembership.present) {
+      map['total_membership'] = Variable<int>(totalMembership.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -510,6 +658,9 @@ class ChurchesCompanion extends UpdateCompanion<Churche> {
           ..write('contactEmail: $contactEmail, ')
           ..write('contactPhone: $contactPhone, ')
           ..write('currency: $currency, ')
+          ..write('website: $website, ')
+          ..write('boardMemberCount: $boardMemberCount, ')
+          ..write('totalMembership: $totalMembership, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -626,6 +777,17 @@ class $AdminUsersTable extends AdminUsers
     type: DriftSqlType.dateTime,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _pinHashMeta = const VerificationMeta(
+    'pinHash',
+  );
+  @override
+  late final GeneratedColumn<String> pinHash = GeneratedColumn<String>(
+    'pin_hash',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -636,6 +798,7 @@ class $AdminUsersTable extends AdminUsers
     isActive,
     createdAt,
     lastLoginAt,
+    pinHash,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -707,6 +870,12 @@ class $AdminUsersTable extends AdminUsers
     } else if (isInserting) {
       context.missing(_lastLoginAtMeta);
     }
+    if (data.containsKey('pin_hash')) {
+      context.handle(
+        _pinHashMeta,
+        pinHash.isAcceptableOrUnknown(data['pin_hash']!, _pinHashMeta),
+      );
+    }
     return context;
   }
 
@@ -748,6 +917,10 @@ class $AdminUsersTable extends AdminUsers
         DriftSqlType.dateTime,
         data['${effectivePrefix}last_login_at'],
       )!,
+      pinHash: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}pin_hash'],
+      ),
     );
   }
 
@@ -766,6 +939,7 @@ class AdminUser extends DataClass implements Insertable<AdminUser> {
   final bool isActive;
   final DateTime createdAt;
   final DateTime lastLoginAt;
+  final String? pinHash;
   const AdminUser({
     required this.id,
     required this.username,
@@ -775,6 +949,7 @@ class AdminUser extends DataClass implements Insertable<AdminUser> {
     required this.isActive,
     required this.createdAt,
     required this.lastLoginAt,
+    this.pinHash,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -789,6 +964,9 @@ class AdminUser extends DataClass implements Insertable<AdminUser> {
     map['is_active'] = Variable<bool>(isActive);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['last_login_at'] = Variable<DateTime>(lastLoginAt);
+    if (!nullToAbsent || pinHash != null) {
+      map['pin_hash'] = Variable<String>(pinHash);
+    }
     return map;
   }
 
@@ -804,6 +982,9 @@ class AdminUser extends DataClass implements Insertable<AdminUser> {
       isActive: Value(isActive),
       createdAt: Value(createdAt),
       lastLoginAt: Value(lastLoginAt),
+      pinHash: pinHash == null && nullToAbsent
+          ? const Value.absent()
+          : Value(pinHash),
     );
   }
 
@@ -821,6 +1002,7 @@ class AdminUser extends DataClass implements Insertable<AdminUser> {
       isActive: serializer.fromJson<bool>(json['isActive']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       lastLoginAt: serializer.fromJson<DateTime>(json['lastLoginAt']),
+      pinHash: serializer.fromJson<String?>(json['pinHash']),
     );
   }
   @override
@@ -835,6 +1017,7 @@ class AdminUser extends DataClass implements Insertable<AdminUser> {
       'isActive': serializer.toJson<bool>(isActive),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'lastLoginAt': serializer.toJson<DateTime>(lastLoginAt),
+      'pinHash': serializer.toJson<String?>(pinHash),
     };
   }
 
@@ -847,6 +1030,7 @@ class AdminUser extends DataClass implements Insertable<AdminUser> {
     bool? isActive,
     DateTime? createdAt,
     DateTime? lastLoginAt,
+    Value<String?> pinHash = const Value.absent(),
   }) => AdminUser(
     id: id ?? this.id,
     username: username ?? this.username,
@@ -856,6 +1040,7 @@ class AdminUser extends DataClass implements Insertable<AdminUser> {
     isActive: isActive ?? this.isActive,
     createdAt: createdAt ?? this.createdAt,
     lastLoginAt: lastLoginAt ?? this.lastLoginAt,
+    pinHash: pinHash.present ? pinHash.value : this.pinHash,
   );
   AdminUser copyWithCompanion(AdminUsersCompanion data) {
     return AdminUser(
@@ -869,6 +1054,7 @@ class AdminUser extends DataClass implements Insertable<AdminUser> {
       lastLoginAt: data.lastLoginAt.present
           ? data.lastLoginAt.value
           : this.lastLoginAt,
+      pinHash: data.pinHash.present ? data.pinHash.value : this.pinHash,
     );
   }
 
@@ -882,7 +1068,8 @@ class AdminUser extends DataClass implements Insertable<AdminUser> {
           ..write('churchId: $churchId, ')
           ..write('isActive: $isActive, ')
           ..write('createdAt: $createdAt, ')
-          ..write('lastLoginAt: $lastLoginAt')
+          ..write('lastLoginAt: $lastLoginAt, ')
+          ..write('pinHash: $pinHash')
           ..write(')'))
         .toString();
   }
@@ -897,6 +1084,7 @@ class AdminUser extends DataClass implements Insertable<AdminUser> {
     isActive,
     createdAt,
     lastLoginAt,
+    pinHash,
   );
   @override
   bool operator ==(Object other) =>
@@ -909,7 +1097,8 @@ class AdminUser extends DataClass implements Insertable<AdminUser> {
           other.churchId == this.churchId &&
           other.isActive == this.isActive &&
           other.createdAt == this.createdAt &&
-          other.lastLoginAt == this.lastLoginAt);
+          other.lastLoginAt == this.lastLoginAt &&
+          other.pinHash == this.pinHash);
 }
 
 class AdminUsersCompanion extends UpdateCompanion<AdminUser> {
@@ -921,6 +1110,7 @@ class AdminUsersCompanion extends UpdateCompanion<AdminUser> {
   final Value<bool> isActive;
   final Value<DateTime> createdAt;
   final Value<DateTime> lastLoginAt;
+  final Value<String?> pinHash;
   const AdminUsersCompanion({
     this.id = const Value.absent(),
     this.username = const Value.absent(),
@@ -930,6 +1120,7 @@ class AdminUsersCompanion extends UpdateCompanion<AdminUser> {
     this.isActive = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.lastLoginAt = const Value.absent(),
+    this.pinHash = const Value.absent(),
   });
   AdminUsersCompanion.insert({
     this.id = const Value.absent(),
@@ -940,6 +1131,7 @@ class AdminUsersCompanion extends UpdateCompanion<AdminUser> {
     this.isActive = const Value.absent(),
     required DateTime createdAt,
     required DateTime lastLoginAt,
+    this.pinHash = const Value.absent(),
   }) : username = Value(username),
        fullName = Value(fullName),
        churchId = Value(churchId),
@@ -954,6 +1146,7 @@ class AdminUsersCompanion extends UpdateCompanion<AdminUser> {
     Expression<bool>? isActive,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? lastLoginAt,
+    Expression<String>? pinHash,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -964,6 +1157,7 @@ class AdminUsersCompanion extends UpdateCompanion<AdminUser> {
       if (isActive != null) 'is_active': isActive,
       if (createdAt != null) 'created_at': createdAt,
       if (lastLoginAt != null) 'last_login_at': lastLoginAt,
+      if (pinHash != null) 'pin_hash': pinHash,
     });
   }
 
@@ -976,6 +1170,7 @@ class AdminUsersCompanion extends UpdateCompanion<AdminUser> {
     Value<bool>? isActive,
     Value<DateTime>? createdAt,
     Value<DateTime>? lastLoginAt,
+    Value<String?>? pinHash,
   }) {
     return AdminUsersCompanion(
       id: id ?? this.id,
@@ -986,6 +1181,7 @@ class AdminUsersCompanion extends UpdateCompanion<AdminUser> {
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,
       lastLoginAt: lastLoginAt ?? this.lastLoginAt,
+      pinHash: pinHash ?? this.pinHash,
     );
   }
 
@@ -1016,6 +1212,9 @@ class AdminUsersCompanion extends UpdateCompanion<AdminUser> {
     if (lastLoginAt.present) {
       map['last_login_at'] = Variable<DateTime>(lastLoginAt.value);
     }
+    if (pinHash.present) {
+      map['pin_hash'] = Variable<String>(pinHash.value);
+    }
     return map;
   }
 
@@ -1029,7 +1228,8 @@ class AdminUsersCompanion extends UpdateCompanion<AdminUser> {
           ..write('churchId: $churchId, ')
           ..write('isActive: $isActive, ')
           ..write('createdAt: $createdAt, ')
-          ..write('lastLoginAt: $lastLoginAt')
+          ..write('lastLoginAt: $lastLoginAt, ')
+          ..write('pinHash: $pinHash')
           ..write(')'))
         .toString();
   }
@@ -1148,6 +1348,28 @@ class $WeeklyRecordsTable extends WeeklyRecords
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _baptismsMeta = const VerificationMeta(
+    'baptisms',
+  );
+  @override
+  late final GeneratedColumn<int> baptisms = GeneratedColumn<int>(
+    'baptisms',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _holyCommunionMeta = const VerificationMeta(
+    'holyCommunion',
+  );
+  @override
+  late final GeneratedColumn<int> holyCommunion = GeneratedColumn<int>(
+    'holy_communion',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _titheMeta = const VerificationMeta('tithe');
   @override
   late final GeneratedColumn<double> tithe = GeneratedColumn<double>(
@@ -1195,6 +1417,51 @@ class $WeeklyRecordsTable extends WeeklyRecords
         requiredDuringInsert: false,
         defaultValue: const Constant(0.0),
       );
+  static const VerificationMeta _sabbathSchoolAttendanceMeta =
+      const VerificationMeta('sabbathSchoolAttendance');
+  @override
+  late final GeneratedColumn<int> sabbathSchoolAttendance =
+      GeneratedColumn<int>(
+        'sabbath_school_attendance',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _visitorsCountMeta = const VerificationMeta(
+    'visitorsCount',
+  );
+  @override
+  late final GeneratedColumn<int> visitorsCount = GeneratedColumn<int>(
+    'visitors_count',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _missionOfferingMeta = const VerificationMeta(
+    'missionOffering',
+  );
+  @override
+  late final GeneratedColumn<double> missionOffering = GeneratedColumn<double>(
+    'mission_offering',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _localChurchBudgetMeta = const VerificationMeta(
+    'localChurchBudget',
+  );
+  @override
+  late final GeneratedColumn<double> localChurchBudget =
+      GeneratedColumn<double>(
+        'local_church_budget',
+        aliasedName,
+        true,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1228,10 +1495,16 @@ class $WeeklyRecordsTable extends WeeklyRecords
     youth,
     children,
     sundayHomeChurch,
+    baptisms,
+    holyCommunion,
     tithe,
     offerings,
     emergencyCollection,
     plannedCollection,
+    sabbathSchoolAttendance,
+    visitorsCount,
+    missionOffering,
+    localChurchBudget,
     createdAt,
     updatedAt,
   ];
@@ -1311,6 +1584,21 @@ class $WeeklyRecordsTable extends WeeklyRecords
         ),
       );
     }
+    if (data.containsKey('baptisms')) {
+      context.handle(
+        _baptismsMeta,
+        baptisms.isAcceptableOrUnknown(data['baptisms']!, _baptismsMeta),
+      );
+    }
+    if (data.containsKey('holy_communion')) {
+      context.handle(
+        _holyCommunionMeta,
+        holyCommunion.isAcceptableOrUnknown(
+          data['holy_communion']!,
+          _holyCommunionMeta,
+        ),
+      );
+    }
     if (data.containsKey('tithe')) {
       context.handle(
         _titheMeta,
@@ -1338,6 +1626,42 @@ class $WeeklyRecordsTable extends WeeklyRecords
         plannedCollection.isAcceptableOrUnknown(
           data['planned_collection']!,
           _plannedCollectionMeta,
+        ),
+      );
+    }
+    if (data.containsKey('sabbath_school_attendance')) {
+      context.handle(
+        _sabbathSchoolAttendanceMeta,
+        sabbathSchoolAttendance.isAcceptableOrUnknown(
+          data['sabbath_school_attendance']!,
+          _sabbathSchoolAttendanceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('visitors_count')) {
+      context.handle(
+        _visitorsCountMeta,
+        visitorsCount.isAcceptableOrUnknown(
+          data['visitors_count']!,
+          _visitorsCountMeta,
+        ),
+      );
+    }
+    if (data.containsKey('mission_offering')) {
+      context.handle(
+        _missionOfferingMeta,
+        missionOffering.isAcceptableOrUnknown(
+          data['mission_offering']!,
+          _missionOfferingMeta,
+        ),
+      );
+    }
+    if (data.containsKey('local_church_budget')) {
+      context.handle(
+        _localChurchBudgetMeta,
+        localChurchBudget.isAcceptableOrUnknown(
+          data['local_church_budget']!,
+          _localChurchBudgetMeta,
         ),
       );
     }
@@ -1406,6 +1730,14 @@ class $WeeklyRecordsTable extends WeeklyRecords
         DriftSqlType.int,
         data['${effectivePrefix}sunday_home_church'],
       )!,
+      baptisms: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}baptisms'],
+      ),
+      holyCommunion: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}holy_communion'],
+      ),
       tithe: attachedDatabase.typeMapping.read(
         DriftSqlType.double,
         data['${effectivePrefix}tithe'],
@@ -1422,6 +1754,22 @@ class $WeeklyRecordsTable extends WeeklyRecords
         DriftSqlType.double,
         data['${effectivePrefix}planned_collection'],
       )!,
+      sabbathSchoolAttendance: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sabbath_school_attendance'],
+      ),
+      visitorsCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}visitors_count'],
+      ),
+      missionOffering: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}mission_offering'],
+      ),
+      localChurchBudget: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}local_church_budget'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1449,10 +1797,16 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
   final int youth;
   final int children;
   final int sundayHomeChurch;
+  final int? baptisms;
+  final int? holyCommunion;
   final double tithe;
   final double offerings;
   final double emergencyCollection;
   final double plannedCollection;
+  final int? sabbathSchoolAttendance;
+  final int? visitorsCount;
+  final double? missionOffering;
+  final double? localChurchBudget;
   final DateTime createdAt;
   final DateTime updatedAt;
   const WeeklyRecord({
@@ -1465,10 +1819,16 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
     required this.youth,
     required this.children,
     required this.sundayHomeChurch,
+    this.baptisms,
+    this.holyCommunion,
     required this.tithe,
     required this.offerings,
     required this.emergencyCollection,
     required this.plannedCollection,
+    this.sabbathSchoolAttendance,
+    this.visitorsCount,
+    this.missionOffering,
+    this.localChurchBudget,
     required this.createdAt,
     required this.updatedAt,
   });
@@ -1486,10 +1846,28 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
     map['youth'] = Variable<int>(youth);
     map['children'] = Variable<int>(children);
     map['sunday_home_church'] = Variable<int>(sundayHomeChurch);
+    if (!nullToAbsent || baptisms != null) {
+      map['baptisms'] = Variable<int>(baptisms);
+    }
+    if (!nullToAbsent || holyCommunion != null) {
+      map['holy_communion'] = Variable<int>(holyCommunion);
+    }
     map['tithe'] = Variable<double>(tithe);
     map['offerings'] = Variable<double>(offerings);
     map['emergency_collection'] = Variable<double>(emergencyCollection);
     map['planned_collection'] = Variable<double>(plannedCollection);
+    if (!nullToAbsent || sabbathSchoolAttendance != null) {
+      map['sabbath_school_attendance'] = Variable<int>(sabbathSchoolAttendance);
+    }
+    if (!nullToAbsent || visitorsCount != null) {
+      map['visitors_count'] = Variable<int>(visitorsCount);
+    }
+    if (!nullToAbsent || missionOffering != null) {
+      map['mission_offering'] = Variable<double>(missionOffering);
+    }
+    if (!nullToAbsent || localChurchBudget != null) {
+      map['local_church_budget'] = Variable<double>(localChurchBudget);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
     return map;
@@ -1508,10 +1886,28 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
       youth: Value(youth),
       children: Value(children),
       sundayHomeChurch: Value(sundayHomeChurch),
+      baptisms: baptisms == null && nullToAbsent
+          ? const Value.absent()
+          : Value(baptisms),
+      holyCommunion: holyCommunion == null && nullToAbsent
+          ? const Value.absent()
+          : Value(holyCommunion),
       tithe: Value(tithe),
       offerings: Value(offerings),
       emergencyCollection: Value(emergencyCollection),
       plannedCollection: Value(plannedCollection),
+      sabbathSchoolAttendance: sabbathSchoolAttendance == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sabbathSchoolAttendance),
+      visitorsCount: visitorsCount == null && nullToAbsent
+          ? const Value.absent()
+          : Value(visitorsCount),
+      missionOffering: missionOffering == null && nullToAbsent
+          ? const Value.absent()
+          : Value(missionOffering),
+      localChurchBudget: localChurchBudget == null && nullToAbsent
+          ? const Value.absent()
+          : Value(localChurchBudget),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
     );
@@ -1532,12 +1928,22 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
       youth: serializer.fromJson<int>(json['youth']),
       children: serializer.fromJson<int>(json['children']),
       sundayHomeChurch: serializer.fromJson<int>(json['sundayHomeChurch']),
+      baptisms: serializer.fromJson<int?>(json['baptisms']),
+      holyCommunion: serializer.fromJson<int?>(json['holyCommunion']),
       tithe: serializer.fromJson<double>(json['tithe']),
       offerings: serializer.fromJson<double>(json['offerings']),
       emergencyCollection: serializer.fromJson<double>(
         json['emergencyCollection'],
       ),
       plannedCollection: serializer.fromJson<double>(json['plannedCollection']),
+      sabbathSchoolAttendance: serializer.fromJson<int?>(
+        json['sabbathSchoolAttendance'],
+      ),
+      visitorsCount: serializer.fromJson<int?>(json['visitorsCount']),
+      missionOffering: serializer.fromJson<double?>(json['missionOffering']),
+      localChurchBudget: serializer.fromJson<double?>(
+        json['localChurchBudget'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
     );
@@ -1555,10 +1961,18 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
       'youth': serializer.toJson<int>(youth),
       'children': serializer.toJson<int>(children),
       'sundayHomeChurch': serializer.toJson<int>(sundayHomeChurch),
+      'baptisms': serializer.toJson<int?>(baptisms),
+      'holyCommunion': serializer.toJson<int?>(holyCommunion),
       'tithe': serializer.toJson<double>(tithe),
       'offerings': serializer.toJson<double>(offerings),
       'emergencyCollection': serializer.toJson<double>(emergencyCollection),
       'plannedCollection': serializer.toJson<double>(plannedCollection),
+      'sabbathSchoolAttendance': serializer.toJson<int?>(
+        sabbathSchoolAttendance,
+      ),
+      'visitorsCount': serializer.toJson<int?>(visitorsCount),
+      'missionOffering': serializer.toJson<double?>(missionOffering),
+      'localChurchBudget': serializer.toJson<double?>(localChurchBudget),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
     };
@@ -1574,10 +1988,16 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
     int? youth,
     int? children,
     int? sundayHomeChurch,
+    Value<int?> baptisms = const Value.absent(),
+    Value<int?> holyCommunion = const Value.absent(),
     double? tithe,
     double? offerings,
     double? emergencyCollection,
     double? plannedCollection,
+    Value<int?> sabbathSchoolAttendance = const Value.absent(),
+    Value<int?> visitorsCount = const Value.absent(),
+    Value<double?> missionOffering = const Value.absent(),
+    Value<double?> localChurchBudget = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
   }) => WeeklyRecord(
@@ -1592,10 +2012,26 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
     youth: youth ?? this.youth,
     children: children ?? this.children,
     sundayHomeChurch: sundayHomeChurch ?? this.sundayHomeChurch,
+    baptisms: baptisms.present ? baptisms.value : this.baptisms,
+    holyCommunion: holyCommunion.present
+        ? holyCommunion.value
+        : this.holyCommunion,
     tithe: tithe ?? this.tithe,
     offerings: offerings ?? this.offerings,
     emergencyCollection: emergencyCollection ?? this.emergencyCollection,
     plannedCollection: plannedCollection ?? this.plannedCollection,
+    sabbathSchoolAttendance: sabbathSchoolAttendance.present
+        ? sabbathSchoolAttendance.value
+        : this.sabbathSchoolAttendance,
+    visitorsCount: visitorsCount.present
+        ? visitorsCount.value
+        : this.visitorsCount,
+    missionOffering: missionOffering.present
+        ? missionOffering.value
+        : this.missionOffering,
+    localChurchBudget: localChurchBudget.present
+        ? localChurchBudget.value
+        : this.localChurchBudget,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
   );
@@ -1616,6 +2052,10 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
       sundayHomeChurch: data.sundayHomeChurch.present
           ? data.sundayHomeChurch.value
           : this.sundayHomeChurch,
+      baptisms: data.baptisms.present ? data.baptisms.value : this.baptisms,
+      holyCommunion: data.holyCommunion.present
+          ? data.holyCommunion.value
+          : this.holyCommunion,
       tithe: data.tithe.present ? data.tithe.value : this.tithe,
       offerings: data.offerings.present ? data.offerings.value : this.offerings,
       emergencyCollection: data.emergencyCollection.present
@@ -1624,6 +2064,18 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
       plannedCollection: data.plannedCollection.present
           ? data.plannedCollection.value
           : this.plannedCollection,
+      sabbathSchoolAttendance: data.sabbathSchoolAttendance.present
+          ? data.sabbathSchoolAttendance.value
+          : this.sabbathSchoolAttendance,
+      visitorsCount: data.visitorsCount.present
+          ? data.visitorsCount.value
+          : this.visitorsCount,
+      missionOffering: data.missionOffering.present
+          ? data.missionOffering.value
+          : this.missionOffering,
+      localChurchBudget: data.localChurchBudget.present
+          ? data.localChurchBudget.value
+          : this.localChurchBudget,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
     );
@@ -1641,10 +2093,16 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
           ..write('youth: $youth, ')
           ..write('children: $children, ')
           ..write('sundayHomeChurch: $sundayHomeChurch, ')
+          ..write('baptisms: $baptisms, ')
+          ..write('holyCommunion: $holyCommunion, ')
           ..write('tithe: $tithe, ')
           ..write('offerings: $offerings, ')
           ..write('emergencyCollection: $emergencyCollection, ')
           ..write('plannedCollection: $plannedCollection, ')
+          ..write('sabbathSchoolAttendance: $sabbathSchoolAttendance, ')
+          ..write('visitorsCount: $visitorsCount, ')
+          ..write('missionOffering: $missionOffering, ')
+          ..write('localChurchBudget: $localChurchBudget, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -1652,7 +2110,7 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     churchId,
     createdByAdminId,
@@ -1662,13 +2120,19 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
     youth,
     children,
     sundayHomeChurch,
+    baptisms,
+    holyCommunion,
     tithe,
     offerings,
     emergencyCollection,
     plannedCollection,
+    sabbathSchoolAttendance,
+    visitorsCount,
+    missionOffering,
+    localChurchBudget,
     createdAt,
     updatedAt,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1682,10 +2146,16 @@ class WeeklyRecord extends DataClass implements Insertable<WeeklyRecord> {
           other.youth == this.youth &&
           other.children == this.children &&
           other.sundayHomeChurch == this.sundayHomeChurch &&
+          other.baptisms == this.baptisms &&
+          other.holyCommunion == this.holyCommunion &&
           other.tithe == this.tithe &&
           other.offerings == this.offerings &&
           other.emergencyCollection == this.emergencyCollection &&
           other.plannedCollection == this.plannedCollection &&
+          other.sabbathSchoolAttendance == this.sabbathSchoolAttendance &&
+          other.visitorsCount == this.visitorsCount &&
+          other.missionOffering == this.missionOffering &&
+          other.localChurchBudget == this.localChurchBudget &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
 }
@@ -1700,10 +2170,16 @@ class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
   final Value<int> youth;
   final Value<int> children;
   final Value<int> sundayHomeChurch;
+  final Value<int?> baptisms;
+  final Value<int?> holyCommunion;
   final Value<double> tithe;
   final Value<double> offerings;
   final Value<double> emergencyCollection;
   final Value<double> plannedCollection;
+  final Value<int?> sabbathSchoolAttendance;
+  final Value<int?> visitorsCount;
+  final Value<double?> missionOffering;
+  final Value<double?> localChurchBudget;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
   const WeeklyRecordsCompanion({
@@ -1716,10 +2192,16 @@ class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
     this.youth = const Value.absent(),
     this.children = const Value.absent(),
     this.sundayHomeChurch = const Value.absent(),
+    this.baptisms = const Value.absent(),
+    this.holyCommunion = const Value.absent(),
     this.tithe = const Value.absent(),
     this.offerings = const Value.absent(),
     this.emergencyCollection = const Value.absent(),
     this.plannedCollection = const Value.absent(),
+    this.sabbathSchoolAttendance = const Value.absent(),
+    this.visitorsCount = const Value.absent(),
+    this.missionOffering = const Value.absent(),
+    this.localChurchBudget = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
   });
@@ -1733,10 +2215,16 @@ class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
     this.youth = const Value.absent(),
     this.children = const Value.absent(),
     this.sundayHomeChurch = const Value.absent(),
+    this.baptisms = const Value.absent(),
+    this.holyCommunion = const Value.absent(),
     this.tithe = const Value.absent(),
     this.offerings = const Value.absent(),
     this.emergencyCollection = const Value.absent(),
     this.plannedCollection = const Value.absent(),
+    this.sabbathSchoolAttendance = const Value.absent(),
+    this.visitorsCount = const Value.absent(),
+    this.missionOffering = const Value.absent(),
+    this.localChurchBudget = const Value.absent(),
     required DateTime createdAt,
     required DateTime updatedAt,
   }) : churchId = Value(churchId),
@@ -1753,10 +2241,16 @@ class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
     Expression<int>? youth,
     Expression<int>? children,
     Expression<int>? sundayHomeChurch,
+    Expression<int>? baptisms,
+    Expression<int>? holyCommunion,
     Expression<double>? tithe,
     Expression<double>? offerings,
     Expression<double>? emergencyCollection,
     Expression<double>? plannedCollection,
+    Expression<int>? sabbathSchoolAttendance,
+    Expression<int>? visitorsCount,
+    Expression<double>? missionOffering,
+    Expression<double>? localChurchBudget,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
   }) {
@@ -1770,11 +2264,18 @@ class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
       if (youth != null) 'youth': youth,
       if (children != null) 'children': children,
       if (sundayHomeChurch != null) 'sunday_home_church': sundayHomeChurch,
+      if (baptisms != null) 'baptisms': baptisms,
+      if (holyCommunion != null) 'holy_communion': holyCommunion,
       if (tithe != null) 'tithe': tithe,
       if (offerings != null) 'offerings': offerings,
       if (emergencyCollection != null)
         'emergency_collection': emergencyCollection,
       if (plannedCollection != null) 'planned_collection': plannedCollection,
+      if (sabbathSchoolAttendance != null)
+        'sabbath_school_attendance': sabbathSchoolAttendance,
+      if (visitorsCount != null) 'visitors_count': visitorsCount,
+      if (missionOffering != null) 'mission_offering': missionOffering,
+      if (localChurchBudget != null) 'local_church_budget': localChurchBudget,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
     });
@@ -1790,10 +2291,16 @@ class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
     Value<int>? youth,
     Value<int>? children,
     Value<int>? sundayHomeChurch,
+    Value<int?>? baptisms,
+    Value<int?>? holyCommunion,
     Value<double>? tithe,
     Value<double>? offerings,
     Value<double>? emergencyCollection,
     Value<double>? plannedCollection,
+    Value<int?>? sabbathSchoolAttendance,
+    Value<int?>? visitorsCount,
+    Value<double?>? missionOffering,
+    Value<double?>? localChurchBudget,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
   }) {
@@ -1807,10 +2314,17 @@ class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
       youth: youth ?? this.youth,
       children: children ?? this.children,
       sundayHomeChurch: sundayHomeChurch ?? this.sundayHomeChurch,
+      baptisms: baptisms ?? this.baptisms,
+      holyCommunion: holyCommunion ?? this.holyCommunion,
       tithe: tithe ?? this.tithe,
       offerings: offerings ?? this.offerings,
       emergencyCollection: emergencyCollection ?? this.emergencyCollection,
       plannedCollection: plannedCollection ?? this.plannedCollection,
+      sabbathSchoolAttendance:
+          sabbathSchoolAttendance ?? this.sabbathSchoolAttendance,
+      visitorsCount: visitorsCount ?? this.visitorsCount,
+      missionOffering: missionOffering ?? this.missionOffering,
+      localChurchBudget: localChurchBudget ?? this.localChurchBudget,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );
@@ -1846,6 +2360,12 @@ class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
     if (sundayHomeChurch.present) {
       map['sunday_home_church'] = Variable<int>(sundayHomeChurch.value);
     }
+    if (baptisms.present) {
+      map['baptisms'] = Variable<int>(baptisms.value);
+    }
+    if (holyCommunion.present) {
+      map['holy_communion'] = Variable<int>(holyCommunion.value);
+    }
     if (tithe.present) {
       map['tithe'] = Variable<double>(tithe.value);
     }
@@ -1857,6 +2377,20 @@ class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
     }
     if (plannedCollection.present) {
       map['planned_collection'] = Variable<double>(plannedCollection.value);
+    }
+    if (sabbathSchoolAttendance.present) {
+      map['sabbath_school_attendance'] = Variable<int>(
+        sabbathSchoolAttendance.value,
+      );
+    }
+    if (visitorsCount.present) {
+      map['visitors_count'] = Variable<int>(visitorsCount.value);
+    }
+    if (missionOffering.present) {
+      map['mission_offering'] = Variable<double>(missionOffering.value);
+    }
+    if (localChurchBudget.present) {
+      map['local_church_budget'] = Variable<double>(localChurchBudget.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -1879,10 +2413,16 @@ class WeeklyRecordsCompanion extends UpdateCompanion<WeeklyRecord> {
           ..write('youth: $youth, ')
           ..write('children: $children, ')
           ..write('sundayHomeChurch: $sundayHomeChurch, ')
+          ..write('baptisms: $baptisms, ')
+          ..write('holyCommunion: $holyCommunion, ')
           ..write('tithe: $tithe, ')
           ..write('offerings: $offerings, ')
           ..write('emergencyCollection: $emergencyCollection, ')
           ..write('plannedCollection: $plannedCollection, ')
+          ..write('sabbathSchoolAttendance: $sabbathSchoolAttendance, ')
+          ..write('visitorsCount: $visitorsCount, ')
+          ..write('missionOffering: $missionOffering, ')
+          ..write('localChurchBudget: $localChurchBudget, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
           ..write(')'))
@@ -3385,6 +3925,3345 @@ class ExportHistoryListCompanion
   }
 }
 
+class $HomeChurchesTable extends HomeChurches
+    with TableInfo<$HomeChurchesTable, HomeChurche> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HomeChurchesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _churchIdMeta = const VerificationMeta(
+    'churchId',
+  );
+  @override
+  late final GeneratedColumn<int> churchId = GeneratedColumn<int>(
+    'church_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES churches (id)',
+    ),
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(
+      minTextLength: 1,
+      maxTextLength: 200,
+    ),
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _categoryMeta = const VerificationMeta(
+    'category',
+  );
+  @override
+  late final GeneratedColumn<String> category = GeneratedColumn<String>(
+    'category',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('geographical'),
+  );
+  static const VerificationMeta _expectedMembershipMeta =
+      const VerificationMeta('expectedMembership');
+  @override
+  late final GeneratedColumn<int> expectedMembership = GeneratedColumn<int>(
+    'expected_membership',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _expectedAtKccMeta = const VerificationMeta(
+    'expectedAtKcc',
+  );
+  @override
+  late final GeneratedColumn<int> expectedAtKcc = GeneratedColumn<int>(
+    'expected_at_kcc',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _isActiveMeta = const VerificationMeta(
+    'isActive',
+  );
+  @override
+  late final GeneratedColumn<bool> isActive = GeneratedColumn<bool>(
+    'is_active',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_active" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _sortOrderMeta = const VerificationMeta(
+    'sortOrder',
+  );
+  @override
+  late final GeneratedColumn<int> sortOrder = GeneratedColumn<int>(
+    'sort_order',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    churchId,
+    name,
+    category,
+    expectedMembership,
+    expectedAtKcc,
+    isActive,
+    sortOrder,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'home_churches';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<HomeChurche> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('church_id')) {
+      context.handle(
+        _churchIdMeta,
+        churchId.isAcceptableOrUnknown(data['church_id']!, _churchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_churchIdMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('category')) {
+      context.handle(
+        _categoryMeta,
+        category.isAcceptableOrUnknown(data['category']!, _categoryMeta),
+      );
+    }
+    if (data.containsKey('expected_membership')) {
+      context.handle(
+        _expectedMembershipMeta,
+        expectedMembership.isAcceptableOrUnknown(
+          data['expected_membership']!,
+          _expectedMembershipMeta,
+        ),
+      );
+    }
+    if (data.containsKey('expected_at_kcc')) {
+      context.handle(
+        _expectedAtKccMeta,
+        expectedAtKcc.isAcceptableOrUnknown(
+          data['expected_at_kcc']!,
+          _expectedAtKccMeta,
+        ),
+      );
+    }
+    if (data.containsKey('is_active')) {
+      context.handle(
+        _isActiveMeta,
+        isActive.isAcceptableOrUnknown(data['is_active']!, _isActiveMeta),
+      );
+    }
+    if (data.containsKey('sort_order')) {
+      context.handle(
+        _sortOrderMeta,
+        sortOrder.isAcceptableOrUnknown(data['sort_order']!, _sortOrderMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  HomeChurche map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HomeChurche(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      churchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}church_id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      category: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}category'],
+      )!,
+      expectedMembership: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expected_membership'],
+      )!,
+      expectedAtKcc: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expected_at_kcc'],
+      )!,
+      isActive: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_active'],
+      )!,
+      sortOrder: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}sort_order'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $HomeChurchesTable createAlias(String alias) {
+    return $HomeChurchesTable(attachedDatabase, alias);
+  }
+}
+
+class HomeChurche extends DataClass implements Insertable<HomeChurche> {
+  final int id;
+  final int churchId;
+  final String name;
+
+  /// geographical | ministry | special
+  final String category;
+
+  /// Expected membership registered at this home church
+  final int expectedMembership;
+
+  /// Expected count to appear at KCC (main church) events
+  final int expectedAtKcc;
+  final bool isActive;
+  final int sortOrder;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const HomeChurche({
+    required this.id,
+    required this.churchId,
+    required this.name,
+    required this.category,
+    required this.expectedMembership,
+    required this.expectedAtKcc,
+    required this.isActive,
+    required this.sortOrder,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['church_id'] = Variable<int>(churchId);
+    map['name'] = Variable<String>(name);
+    map['category'] = Variable<String>(category);
+    map['expected_membership'] = Variable<int>(expectedMembership);
+    map['expected_at_kcc'] = Variable<int>(expectedAtKcc);
+    map['is_active'] = Variable<bool>(isActive);
+    map['sort_order'] = Variable<int>(sortOrder);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  HomeChurchesCompanion toCompanion(bool nullToAbsent) {
+    return HomeChurchesCompanion(
+      id: Value(id),
+      churchId: Value(churchId),
+      name: Value(name),
+      category: Value(category),
+      expectedMembership: Value(expectedMembership),
+      expectedAtKcc: Value(expectedAtKcc),
+      isActive: Value(isActive),
+      sortOrder: Value(sortOrder),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory HomeChurche.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HomeChurche(
+      id: serializer.fromJson<int>(json['id']),
+      churchId: serializer.fromJson<int>(json['churchId']),
+      name: serializer.fromJson<String>(json['name']),
+      category: serializer.fromJson<String>(json['category']),
+      expectedMembership: serializer.fromJson<int>(json['expectedMembership']),
+      expectedAtKcc: serializer.fromJson<int>(json['expectedAtKcc']),
+      isActive: serializer.fromJson<bool>(json['isActive']),
+      sortOrder: serializer.fromJson<int>(json['sortOrder']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'churchId': serializer.toJson<int>(churchId),
+      'name': serializer.toJson<String>(name),
+      'category': serializer.toJson<String>(category),
+      'expectedMembership': serializer.toJson<int>(expectedMembership),
+      'expectedAtKcc': serializer.toJson<int>(expectedAtKcc),
+      'isActive': serializer.toJson<bool>(isActive),
+      'sortOrder': serializer.toJson<int>(sortOrder),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  HomeChurche copyWith({
+    int? id,
+    int? churchId,
+    String? name,
+    String? category,
+    int? expectedMembership,
+    int? expectedAtKcc,
+    bool? isActive,
+    int? sortOrder,
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => HomeChurche(
+    id: id ?? this.id,
+    churchId: churchId ?? this.churchId,
+    name: name ?? this.name,
+    category: category ?? this.category,
+    expectedMembership: expectedMembership ?? this.expectedMembership,
+    expectedAtKcc: expectedAtKcc ?? this.expectedAtKcc,
+    isActive: isActive ?? this.isActive,
+    sortOrder: sortOrder ?? this.sortOrder,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  HomeChurche copyWithCompanion(HomeChurchesCompanion data) {
+    return HomeChurche(
+      id: data.id.present ? data.id.value : this.id,
+      churchId: data.churchId.present ? data.churchId.value : this.churchId,
+      name: data.name.present ? data.name.value : this.name,
+      category: data.category.present ? data.category.value : this.category,
+      expectedMembership: data.expectedMembership.present
+          ? data.expectedMembership.value
+          : this.expectedMembership,
+      expectedAtKcc: data.expectedAtKcc.present
+          ? data.expectedAtKcc.value
+          : this.expectedAtKcc,
+      isActive: data.isActive.present ? data.isActive.value : this.isActive,
+      sortOrder: data.sortOrder.present ? data.sortOrder.value : this.sortOrder,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HomeChurche(')
+          ..write('id: $id, ')
+          ..write('churchId: $churchId, ')
+          ..write('name: $name, ')
+          ..write('category: $category, ')
+          ..write('expectedMembership: $expectedMembership, ')
+          ..write('expectedAtKcc: $expectedAtKcc, ')
+          ..write('isActive: $isActive, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    churchId,
+    name,
+    category,
+    expectedMembership,
+    expectedAtKcc,
+    isActive,
+    sortOrder,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HomeChurche &&
+          other.id == this.id &&
+          other.churchId == this.churchId &&
+          other.name == this.name &&
+          other.category == this.category &&
+          other.expectedMembership == this.expectedMembership &&
+          other.expectedAtKcc == this.expectedAtKcc &&
+          other.isActive == this.isActive &&
+          other.sortOrder == this.sortOrder &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class HomeChurchesCompanion extends UpdateCompanion<HomeChurche> {
+  final Value<int> id;
+  final Value<int> churchId;
+  final Value<String> name;
+  final Value<String> category;
+  final Value<int> expectedMembership;
+  final Value<int> expectedAtKcc;
+  final Value<bool> isActive;
+  final Value<int> sortOrder;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const HomeChurchesCompanion({
+    this.id = const Value.absent(),
+    this.churchId = const Value.absent(),
+    this.name = const Value.absent(),
+    this.category = const Value.absent(),
+    this.expectedMembership = const Value.absent(),
+    this.expectedAtKcc = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  HomeChurchesCompanion.insert({
+    this.id = const Value.absent(),
+    required int churchId,
+    required String name,
+    this.category = const Value.absent(),
+    this.expectedMembership = const Value.absent(),
+    this.expectedAtKcc = const Value.absent(),
+    this.isActive = const Value.absent(),
+    this.sortOrder = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  }) : churchId = Value(churchId),
+       name = Value(name),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<HomeChurche> custom({
+    Expression<int>? id,
+    Expression<int>? churchId,
+    Expression<String>? name,
+    Expression<String>? category,
+    Expression<int>? expectedMembership,
+    Expression<int>? expectedAtKcc,
+    Expression<bool>? isActive,
+    Expression<int>? sortOrder,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (churchId != null) 'church_id': churchId,
+      if (name != null) 'name': name,
+      if (category != null) 'category': category,
+      if (expectedMembership != null) 'expected_membership': expectedMembership,
+      if (expectedAtKcc != null) 'expected_at_kcc': expectedAtKcc,
+      if (isActive != null) 'is_active': isActive,
+      if (sortOrder != null) 'sort_order': sortOrder,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  HomeChurchesCompanion copyWith({
+    Value<int>? id,
+    Value<int>? churchId,
+    Value<String>? name,
+    Value<String>? category,
+    Value<int>? expectedMembership,
+    Value<int>? expectedAtKcc,
+    Value<bool>? isActive,
+    Value<int>? sortOrder,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return HomeChurchesCompanion(
+      id: id ?? this.id,
+      churchId: churchId ?? this.churchId,
+      name: name ?? this.name,
+      category: category ?? this.category,
+      expectedMembership: expectedMembership ?? this.expectedMembership,
+      expectedAtKcc: expectedAtKcc ?? this.expectedAtKcc,
+      isActive: isActive ?? this.isActive,
+      sortOrder: sortOrder ?? this.sortOrder,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (churchId.present) {
+      map['church_id'] = Variable<int>(churchId.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (category.present) {
+      map['category'] = Variable<String>(category.value);
+    }
+    if (expectedMembership.present) {
+      map['expected_membership'] = Variable<int>(expectedMembership.value);
+    }
+    if (expectedAtKcc.present) {
+      map['expected_at_kcc'] = Variable<int>(expectedAtKcc.value);
+    }
+    if (isActive.present) {
+      map['is_active'] = Variable<bool>(isActive.value);
+    }
+    if (sortOrder.present) {
+      map['sort_order'] = Variable<int>(sortOrder.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HomeChurchesCompanion(')
+          ..write('id: $id, ')
+          ..write('churchId: $churchId, ')
+          ..write('name: $name, ')
+          ..write('category: $category, ')
+          ..write('expectedMembership: $expectedMembership, ')
+          ..write('expectedAtKcc: $expectedAtKcc, ')
+          ..write('isActive: $isActive, ')
+          ..write('sortOrder: $sortOrder, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $BoardMeetingRecordsTable extends BoardMeetingRecords
+    with TableInfo<$BoardMeetingRecordsTable, BoardMeetingRecord> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BoardMeetingRecordsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _churchIdMeta = const VerificationMeta(
+    'churchId',
+  );
+  @override
+  late final GeneratedColumn<int> churchId = GeneratedColumn<int>(
+    'church_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES churches (id)',
+    ),
+  );
+  static const VerificationMeta _createdByAdminIdMeta = const VerificationMeta(
+    'createdByAdminId',
+  );
+  @override
+  late final GeneratedColumn<int> createdByAdminId = GeneratedColumn<int>(
+    'created_by_admin_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES admin_users (id)',
+    ),
+  );
+  static const VerificationMeta _meetingDateMeta = const VerificationMeta(
+    'meetingDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> meetingDate = GeneratedColumn<DateTime>(
+    'meeting_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _yearMeta = const VerificationMeta('year');
+  @override
+  late final GeneratedColumn<int> year = GeneratedColumn<int>(
+    'year',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _monthMeta = const VerificationMeta('month');
+  @override
+  late final GeneratedColumn<int> month = GeneratedColumn<int>(
+    'month',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _actualAttendanceMeta = const VerificationMeta(
+    'actualAttendance',
+  );
+  @override
+  late final GeneratedColumn<int> actualAttendance = GeneratedColumn<int>(
+    'actual_attendance',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _expectedAttendanceMeta =
+      const VerificationMeta('expectedAttendance');
+  @override
+  late final GeneratedColumn<int> expectedAttendance = GeneratedColumn<int>(
+    'expected_attendance',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    churchId,
+    createdByAdminId,
+    meetingDate,
+    year,
+    month,
+    actualAttendance,
+    expectedAttendance,
+    notes,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'board_meeting_records';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BoardMeetingRecord> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('church_id')) {
+      context.handle(
+        _churchIdMeta,
+        churchId.isAcceptableOrUnknown(data['church_id']!, _churchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_churchIdMeta);
+    }
+    if (data.containsKey('created_by_admin_id')) {
+      context.handle(
+        _createdByAdminIdMeta,
+        createdByAdminId.isAcceptableOrUnknown(
+          data['created_by_admin_id']!,
+          _createdByAdminIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('meeting_date')) {
+      context.handle(
+        _meetingDateMeta,
+        meetingDate.isAcceptableOrUnknown(
+          data['meeting_date']!,
+          _meetingDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_meetingDateMeta);
+    }
+    if (data.containsKey('year')) {
+      context.handle(
+        _yearMeta,
+        year.isAcceptableOrUnknown(data['year']!, _yearMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_yearMeta);
+    }
+    if (data.containsKey('month')) {
+      context.handle(
+        _monthMeta,
+        month.isAcceptableOrUnknown(data['month']!, _monthMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_monthMeta);
+    }
+    if (data.containsKey('actual_attendance')) {
+      context.handle(
+        _actualAttendanceMeta,
+        actualAttendance.isAcceptableOrUnknown(
+          data['actual_attendance']!,
+          _actualAttendanceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('expected_attendance')) {
+      context.handle(
+        _expectedAttendanceMeta,
+        expectedAttendance.isAcceptableOrUnknown(
+          data['expected_attendance']!,
+          _expectedAttendanceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {churchId, year, month},
+  ];
+  @override
+  BoardMeetingRecord map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BoardMeetingRecord(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      churchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}church_id'],
+      )!,
+      createdByAdminId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_by_admin_id'],
+      ),
+      meetingDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}meeting_date'],
+      )!,
+      year: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}year'],
+      )!,
+      month: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}month'],
+      )!,
+      actualAttendance: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}actual_attendance'],
+      )!,
+      expectedAttendance: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expected_attendance'],
+      )!,
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $BoardMeetingRecordsTable createAlias(String alias) {
+    return $BoardMeetingRecordsTable(attachedDatabase, alias);
+  }
+}
+
+class BoardMeetingRecord extends DataClass
+    implements Insertable<BoardMeetingRecord> {
+  final int id;
+  final int churchId;
+  final int? createdByAdminId;
+  final DateTime meetingDate;
+  final int year;
+  final int month;
+  final int actualAttendance;
+
+  /// Snapshot of Churches.boardMemberCount at time of recording
+  final int expectedAttendance;
+  final String? notes;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const BoardMeetingRecord({
+    required this.id,
+    required this.churchId,
+    this.createdByAdminId,
+    required this.meetingDate,
+    required this.year,
+    required this.month,
+    required this.actualAttendance,
+    required this.expectedAttendance,
+    this.notes,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['church_id'] = Variable<int>(churchId);
+    if (!nullToAbsent || createdByAdminId != null) {
+      map['created_by_admin_id'] = Variable<int>(createdByAdminId);
+    }
+    map['meeting_date'] = Variable<DateTime>(meetingDate);
+    map['year'] = Variable<int>(year);
+    map['month'] = Variable<int>(month);
+    map['actual_attendance'] = Variable<int>(actualAttendance);
+    map['expected_attendance'] = Variable<int>(expectedAttendance);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  BoardMeetingRecordsCompanion toCompanion(bool nullToAbsent) {
+    return BoardMeetingRecordsCompanion(
+      id: Value(id),
+      churchId: Value(churchId),
+      createdByAdminId: createdByAdminId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdByAdminId),
+      meetingDate: Value(meetingDate),
+      year: Value(year),
+      month: Value(month),
+      actualAttendance: Value(actualAttendance),
+      expectedAttendance: Value(expectedAttendance),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory BoardMeetingRecord.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BoardMeetingRecord(
+      id: serializer.fromJson<int>(json['id']),
+      churchId: serializer.fromJson<int>(json['churchId']),
+      createdByAdminId: serializer.fromJson<int?>(json['createdByAdminId']),
+      meetingDate: serializer.fromJson<DateTime>(json['meetingDate']),
+      year: serializer.fromJson<int>(json['year']),
+      month: serializer.fromJson<int>(json['month']),
+      actualAttendance: serializer.fromJson<int>(json['actualAttendance']),
+      expectedAttendance: serializer.fromJson<int>(json['expectedAttendance']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'churchId': serializer.toJson<int>(churchId),
+      'createdByAdminId': serializer.toJson<int?>(createdByAdminId),
+      'meetingDate': serializer.toJson<DateTime>(meetingDate),
+      'year': serializer.toJson<int>(year),
+      'month': serializer.toJson<int>(month),
+      'actualAttendance': serializer.toJson<int>(actualAttendance),
+      'expectedAttendance': serializer.toJson<int>(expectedAttendance),
+      'notes': serializer.toJson<String?>(notes),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  BoardMeetingRecord copyWith({
+    int? id,
+    int? churchId,
+    Value<int?> createdByAdminId = const Value.absent(),
+    DateTime? meetingDate,
+    int? year,
+    int? month,
+    int? actualAttendance,
+    int? expectedAttendance,
+    Value<String?> notes = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => BoardMeetingRecord(
+    id: id ?? this.id,
+    churchId: churchId ?? this.churchId,
+    createdByAdminId: createdByAdminId.present
+        ? createdByAdminId.value
+        : this.createdByAdminId,
+    meetingDate: meetingDate ?? this.meetingDate,
+    year: year ?? this.year,
+    month: month ?? this.month,
+    actualAttendance: actualAttendance ?? this.actualAttendance,
+    expectedAttendance: expectedAttendance ?? this.expectedAttendance,
+    notes: notes.present ? notes.value : this.notes,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  BoardMeetingRecord copyWithCompanion(BoardMeetingRecordsCompanion data) {
+    return BoardMeetingRecord(
+      id: data.id.present ? data.id.value : this.id,
+      churchId: data.churchId.present ? data.churchId.value : this.churchId,
+      createdByAdminId: data.createdByAdminId.present
+          ? data.createdByAdminId.value
+          : this.createdByAdminId,
+      meetingDate: data.meetingDate.present
+          ? data.meetingDate.value
+          : this.meetingDate,
+      year: data.year.present ? data.year.value : this.year,
+      month: data.month.present ? data.month.value : this.month,
+      actualAttendance: data.actualAttendance.present
+          ? data.actualAttendance.value
+          : this.actualAttendance,
+      expectedAttendance: data.expectedAttendance.present
+          ? data.expectedAttendance.value
+          : this.expectedAttendance,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BoardMeetingRecord(')
+          ..write('id: $id, ')
+          ..write('churchId: $churchId, ')
+          ..write('createdByAdminId: $createdByAdminId, ')
+          ..write('meetingDate: $meetingDate, ')
+          ..write('year: $year, ')
+          ..write('month: $month, ')
+          ..write('actualAttendance: $actualAttendance, ')
+          ..write('expectedAttendance: $expectedAttendance, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    churchId,
+    createdByAdminId,
+    meetingDate,
+    year,
+    month,
+    actualAttendance,
+    expectedAttendance,
+    notes,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BoardMeetingRecord &&
+          other.id == this.id &&
+          other.churchId == this.churchId &&
+          other.createdByAdminId == this.createdByAdminId &&
+          other.meetingDate == this.meetingDate &&
+          other.year == this.year &&
+          other.month == this.month &&
+          other.actualAttendance == this.actualAttendance &&
+          other.expectedAttendance == this.expectedAttendance &&
+          other.notes == this.notes &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class BoardMeetingRecordsCompanion extends UpdateCompanion<BoardMeetingRecord> {
+  final Value<int> id;
+  final Value<int> churchId;
+  final Value<int?> createdByAdminId;
+  final Value<DateTime> meetingDate;
+  final Value<int> year;
+  final Value<int> month;
+  final Value<int> actualAttendance;
+  final Value<int> expectedAttendance;
+  final Value<String?> notes;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const BoardMeetingRecordsCompanion({
+    this.id = const Value.absent(),
+    this.churchId = const Value.absent(),
+    this.createdByAdminId = const Value.absent(),
+    this.meetingDate = const Value.absent(),
+    this.year = const Value.absent(),
+    this.month = const Value.absent(),
+    this.actualAttendance = const Value.absent(),
+    this.expectedAttendance = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  BoardMeetingRecordsCompanion.insert({
+    this.id = const Value.absent(),
+    required int churchId,
+    this.createdByAdminId = const Value.absent(),
+    required DateTime meetingDate,
+    required int year,
+    required int month,
+    this.actualAttendance = const Value.absent(),
+    this.expectedAttendance = const Value.absent(),
+    this.notes = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  }) : churchId = Value(churchId),
+       meetingDate = Value(meetingDate),
+       year = Value(year),
+       month = Value(month),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<BoardMeetingRecord> custom({
+    Expression<int>? id,
+    Expression<int>? churchId,
+    Expression<int>? createdByAdminId,
+    Expression<DateTime>? meetingDate,
+    Expression<int>? year,
+    Expression<int>? month,
+    Expression<int>? actualAttendance,
+    Expression<int>? expectedAttendance,
+    Expression<String>? notes,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (churchId != null) 'church_id': churchId,
+      if (createdByAdminId != null) 'created_by_admin_id': createdByAdminId,
+      if (meetingDate != null) 'meeting_date': meetingDate,
+      if (year != null) 'year': year,
+      if (month != null) 'month': month,
+      if (actualAttendance != null) 'actual_attendance': actualAttendance,
+      if (expectedAttendance != null) 'expected_attendance': expectedAttendance,
+      if (notes != null) 'notes': notes,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  BoardMeetingRecordsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? churchId,
+    Value<int?>? createdByAdminId,
+    Value<DateTime>? meetingDate,
+    Value<int>? year,
+    Value<int>? month,
+    Value<int>? actualAttendance,
+    Value<int>? expectedAttendance,
+    Value<String?>? notes,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return BoardMeetingRecordsCompanion(
+      id: id ?? this.id,
+      churchId: churchId ?? this.churchId,
+      createdByAdminId: createdByAdminId ?? this.createdByAdminId,
+      meetingDate: meetingDate ?? this.meetingDate,
+      year: year ?? this.year,
+      month: month ?? this.month,
+      actualAttendance: actualAttendance ?? this.actualAttendance,
+      expectedAttendance: expectedAttendance ?? this.expectedAttendance,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (churchId.present) {
+      map['church_id'] = Variable<int>(churchId.value);
+    }
+    if (createdByAdminId.present) {
+      map['created_by_admin_id'] = Variable<int>(createdByAdminId.value);
+    }
+    if (meetingDate.present) {
+      map['meeting_date'] = Variable<DateTime>(meetingDate.value);
+    }
+    if (year.present) {
+      map['year'] = Variable<int>(year.value);
+    }
+    if (month.present) {
+      map['month'] = Variable<int>(month.value);
+    }
+    if (actualAttendance.present) {
+      map['actual_attendance'] = Variable<int>(actualAttendance.value);
+    }
+    if (expectedAttendance.present) {
+      map['expected_attendance'] = Variable<int>(expectedAttendance.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BoardMeetingRecordsCompanion(')
+          ..write('id: $id, ')
+          ..write('churchId: $churchId, ')
+          ..write('createdByAdminId: $createdByAdminId, ')
+          ..write('meetingDate: $meetingDate, ')
+          ..write('year: $year, ')
+          ..write('month: $month, ')
+          ..write('actualAttendance: $actualAttendance, ')
+          ..write('expectedAttendance: $expectedAttendance, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $HolyCommunionEventsTable extends HolyCommunionEvents
+    with TableInfo<$HolyCommunionEventsTable, HolyCommunionEvent> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HolyCommunionEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _churchIdMeta = const VerificationMeta(
+    'churchId',
+  );
+  @override
+  late final GeneratedColumn<int> churchId = GeneratedColumn<int>(
+    'church_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES churches (id)',
+    ),
+  );
+  static const VerificationMeta _createdByAdminIdMeta = const VerificationMeta(
+    'createdByAdminId',
+  );
+  @override
+  late final GeneratedColumn<int> createdByAdminId = GeneratedColumn<int>(
+    'created_by_admin_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES admin_users (id)',
+    ),
+  );
+  static const VerificationMeta _eventDateMeta = const VerificationMeta(
+    'eventDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> eventDate = GeneratedColumn<DateTime>(
+    'event_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _yearMeta = const VerificationMeta('year');
+  @override
+  late final GeneratedColumn<int> year = GeneratedColumn<int>(
+    'year',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _quarterMeta = const VerificationMeta(
+    'quarter',
+  );
+  @override
+  late final GeneratedColumn<int> quarter = GeneratedColumn<int>(
+    'quarter',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _totalExpectedAtKccMeta =
+      const VerificationMeta('totalExpectedAtKcc');
+  @override
+  late final GeneratedColumn<int> totalExpectedAtKcc = GeneratedColumn<int>(
+    'total_expected_at_kcc',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    churchId,
+    createdByAdminId,
+    eventDate,
+    year,
+    quarter,
+    totalExpectedAtKcc,
+    notes,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'holy_communion_events';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<HolyCommunionEvent> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('church_id')) {
+      context.handle(
+        _churchIdMeta,
+        churchId.isAcceptableOrUnknown(data['church_id']!, _churchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_churchIdMeta);
+    }
+    if (data.containsKey('created_by_admin_id')) {
+      context.handle(
+        _createdByAdminIdMeta,
+        createdByAdminId.isAcceptableOrUnknown(
+          data['created_by_admin_id']!,
+          _createdByAdminIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('event_date')) {
+      context.handle(
+        _eventDateMeta,
+        eventDate.isAcceptableOrUnknown(data['event_date']!, _eventDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventDateMeta);
+    }
+    if (data.containsKey('year')) {
+      context.handle(
+        _yearMeta,
+        year.isAcceptableOrUnknown(data['year']!, _yearMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_yearMeta);
+    }
+    if (data.containsKey('quarter')) {
+      context.handle(
+        _quarterMeta,
+        quarter.isAcceptableOrUnknown(data['quarter']!, _quarterMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_quarterMeta);
+    }
+    if (data.containsKey('total_expected_at_kcc')) {
+      context.handle(
+        _totalExpectedAtKccMeta,
+        totalExpectedAtKcc.isAcceptableOrUnknown(
+          data['total_expected_at_kcc']!,
+          _totalExpectedAtKccMeta,
+        ),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {churchId, year, quarter},
+  ];
+  @override
+  HolyCommunionEvent map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HolyCommunionEvent(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      churchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}church_id'],
+      )!,
+      createdByAdminId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_by_admin_id'],
+      ),
+      eventDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}event_date'],
+      )!,
+      year: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}year'],
+      )!,
+      quarter: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quarter'],
+      )!,
+      totalExpectedAtKcc: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_expected_at_kcc'],
+      )!,
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $HolyCommunionEventsTable createAlias(String alias) {
+    return $HolyCommunionEventsTable(attachedDatabase, alias);
+  }
+}
+
+class HolyCommunionEvent extends DataClass
+    implements Insertable<HolyCommunionEvent> {
+  final int id;
+  final int churchId;
+  final int? createdByAdminId;
+  final DateTime eventDate;
+  final int year;
+  final int quarter;
+
+  /// Snapshot of the KCC-wide expected total at time of recording
+  final int totalExpectedAtKcc;
+  final String? notes;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const HolyCommunionEvent({
+    required this.id,
+    required this.churchId,
+    this.createdByAdminId,
+    required this.eventDate,
+    required this.year,
+    required this.quarter,
+    required this.totalExpectedAtKcc,
+    this.notes,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['church_id'] = Variable<int>(churchId);
+    if (!nullToAbsent || createdByAdminId != null) {
+      map['created_by_admin_id'] = Variable<int>(createdByAdminId);
+    }
+    map['event_date'] = Variable<DateTime>(eventDate);
+    map['year'] = Variable<int>(year);
+    map['quarter'] = Variable<int>(quarter);
+    map['total_expected_at_kcc'] = Variable<int>(totalExpectedAtKcc);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  HolyCommunionEventsCompanion toCompanion(bool nullToAbsent) {
+    return HolyCommunionEventsCompanion(
+      id: Value(id),
+      churchId: Value(churchId),
+      createdByAdminId: createdByAdminId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdByAdminId),
+      eventDate: Value(eventDate),
+      year: Value(year),
+      quarter: Value(quarter),
+      totalExpectedAtKcc: Value(totalExpectedAtKcc),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory HolyCommunionEvent.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HolyCommunionEvent(
+      id: serializer.fromJson<int>(json['id']),
+      churchId: serializer.fromJson<int>(json['churchId']),
+      createdByAdminId: serializer.fromJson<int?>(json['createdByAdminId']),
+      eventDate: serializer.fromJson<DateTime>(json['eventDate']),
+      year: serializer.fromJson<int>(json['year']),
+      quarter: serializer.fromJson<int>(json['quarter']),
+      totalExpectedAtKcc: serializer.fromJson<int>(json['totalExpectedAtKcc']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'churchId': serializer.toJson<int>(churchId),
+      'createdByAdminId': serializer.toJson<int?>(createdByAdminId),
+      'eventDate': serializer.toJson<DateTime>(eventDate),
+      'year': serializer.toJson<int>(year),
+      'quarter': serializer.toJson<int>(quarter),
+      'totalExpectedAtKcc': serializer.toJson<int>(totalExpectedAtKcc),
+      'notes': serializer.toJson<String?>(notes),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  HolyCommunionEvent copyWith({
+    int? id,
+    int? churchId,
+    Value<int?> createdByAdminId = const Value.absent(),
+    DateTime? eventDate,
+    int? year,
+    int? quarter,
+    int? totalExpectedAtKcc,
+    Value<String?> notes = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => HolyCommunionEvent(
+    id: id ?? this.id,
+    churchId: churchId ?? this.churchId,
+    createdByAdminId: createdByAdminId.present
+        ? createdByAdminId.value
+        : this.createdByAdminId,
+    eventDate: eventDate ?? this.eventDate,
+    year: year ?? this.year,
+    quarter: quarter ?? this.quarter,
+    totalExpectedAtKcc: totalExpectedAtKcc ?? this.totalExpectedAtKcc,
+    notes: notes.present ? notes.value : this.notes,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  HolyCommunionEvent copyWithCompanion(HolyCommunionEventsCompanion data) {
+    return HolyCommunionEvent(
+      id: data.id.present ? data.id.value : this.id,
+      churchId: data.churchId.present ? data.churchId.value : this.churchId,
+      createdByAdminId: data.createdByAdminId.present
+          ? data.createdByAdminId.value
+          : this.createdByAdminId,
+      eventDate: data.eventDate.present ? data.eventDate.value : this.eventDate,
+      year: data.year.present ? data.year.value : this.year,
+      quarter: data.quarter.present ? data.quarter.value : this.quarter,
+      totalExpectedAtKcc: data.totalExpectedAtKcc.present
+          ? data.totalExpectedAtKcc.value
+          : this.totalExpectedAtKcc,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HolyCommunionEvent(')
+          ..write('id: $id, ')
+          ..write('churchId: $churchId, ')
+          ..write('createdByAdminId: $createdByAdminId, ')
+          ..write('eventDate: $eventDate, ')
+          ..write('year: $year, ')
+          ..write('quarter: $quarter, ')
+          ..write('totalExpectedAtKcc: $totalExpectedAtKcc, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    churchId,
+    createdByAdminId,
+    eventDate,
+    year,
+    quarter,
+    totalExpectedAtKcc,
+    notes,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HolyCommunionEvent &&
+          other.id == this.id &&
+          other.churchId == this.churchId &&
+          other.createdByAdminId == this.createdByAdminId &&
+          other.eventDate == this.eventDate &&
+          other.year == this.year &&
+          other.quarter == this.quarter &&
+          other.totalExpectedAtKcc == this.totalExpectedAtKcc &&
+          other.notes == this.notes &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class HolyCommunionEventsCompanion extends UpdateCompanion<HolyCommunionEvent> {
+  final Value<int> id;
+  final Value<int> churchId;
+  final Value<int?> createdByAdminId;
+  final Value<DateTime> eventDate;
+  final Value<int> year;
+  final Value<int> quarter;
+  final Value<int> totalExpectedAtKcc;
+  final Value<String?> notes;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const HolyCommunionEventsCompanion({
+    this.id = const Value.absent(),
+    this.churchId = const Value.absent(),
+    this.createdByAdminId = const Value.absent(),
+    this.eventDate = const Value.absent(),
+    this.year = const Value.absent(),
+    this.quarter = const Value.absent(),
+    this.totalExpectedAtKcc = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  HolyCommunionEventsCompanion.insert({
+    this.id = const Value.absent(),
+    required int churchId,
+    this.createdByAdminId = const Value.absent(),
+    required DateTime eventDate,
+    required int year,
+    required int quarter,
+    this.totalExpectedAtKcc = const Value.absent(),
+    this.notes = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  }) : churchId = Value(churchId),
+       eventDate = Value(eventDate),
+       year = Value(year),
+       quarter = Value(quarter),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<HolyCommunionEvent> custom({
+    Expression<int>? id,
+    Expression<int>? churchId,
+    Expression<int>? createdByAdminId,
+    Expression<DateTime>? eventDate,
+    Expression<int>? year,
+    Expression<int>? quarter,
+    Expression<int>? totalExpectedAtKcc,
+    Expression<String>? notes,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (churchId != null) 'church_id': churchId,
+      if (createdByAdminId != null) 'created_by_admin_id': createdByAdminId,
+      if (eventDate != null) 'event_date': eventDate,
+      if (year != null) 'year': year,
+      if (quarter != null) 'quarter': quarter,
+      if (totalExpectedAtKcc != null)
+        'total_expected_at_kcc': totalExpectedAtKcc,
+      if (notes != null) 'notes': notes,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  HolyCommunionEventsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? churchId,
+    Value<int?>? createdByAdminId,
+    Value<DateTime>? eventDate,
+    Value<int>? year,
+    Value<int>? quarter,
+    Value<int>? totalExpectedAtKcc,
+    Value<String?>? notes,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return HolyCommunionEventsCompanion(
+      id: id ?? this.id,
+      churchId: churchId ?? this.churchId,
+      createdByAdminId: createdByAdminId ?? this.createdByAdminId,
+      eventDate: eventDate ?? this.eventDate,
+      year: year ?? this.year,
+      quarter: quarter ?? this.quarter,
+      totalExpectedAtKcc: totalExpectedAtKcc ?? this.totalExpectedAtKcc,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (churchId.present) {
+      map['church_id'] = Variable<int>(churchId.value);
+    }
+    if (createdByAdminId.present) {
+      map['created_by_admin_id'] = Variable<int>(createdByAdminId.value);
+    }
+    if (eventDate.present) {
+      map['event_date'] = Variable<DateTime>(eventDate.value);
+    }
+    if (year.present) {
+      map['year'] = Variable<int>(year.value);
+    }
+    if (quarter.present) {
+      map['quarter'] = Variable<int>(quarter.value);
+    }
+    if (totalExpectedAtKcc.present) {
+      map['total_expected_at_kcc'] = Variable<int>(totalExpectedAtKcc.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HolyCommunionEventsCompanion(')
+          ..write('id: $id, ')
+          ..write('churchId: $churchId, ')
+          ..write('createdByAdminId: $createdByAdminId, ')
+          ..write('eventDate: $eventDate, ')
+          ..write('year: $year, ')
+          ..write('quarter: $quarter, ')
+          ..write('totalExpectedAtKcc: $totalExpectedAtKcc, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $HolyCommunionAttendanceTable extends HolyCommunionAttendance
+    with TableInfo<$HolyCommunionAttendanceTable, HolyCommunionAttendanceData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HolyCommunionAttendanceTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _eventIdMeta = const VerificationMeta(
+    'eventId',
+  );
+  @override
+  late final GeneratedColumn<int> eventId = GeneratedColumn<int>(
+    'event_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES holy_communion_events (id)',
+    ),
+  );
+  static const VerificationMeta _homeChurchIdMeta = const VerificationMeta(
+    'homeChurchId',
+  );
+  @override
+  late final GeneratedColumn<int> homeChurchId = GeneratedColumn<int>(
+    'home_church_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES home_churches (id)',
+    ),
+  );
+  static const VerificationMeta _actualAttendanceMeta = const VerificationMeta(
+    'actualAttendance',
+  );
+  @override
+  late final GeneratedColumn<int> actualAttendance = GeneratedColumn<int>(
+    'actual_attendance',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _expectedAtHcMeta = const VerificationMeta(
+    'expectedAtHc',
+  );
+  @override
+  late final GeneratedColumn<int> expectedAtHc = GeneratedColumn<int>(
+    'expected_at_hc',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    eventId,
+    homeChurchId,
+    actualAttendance,
+    expectedAtHc,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'holy_communion_attendance';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<HolyCommunionAttendanceData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('event_id')) {
+      context.handle(
+        _eventIdMeta,
+        eventId.isAcceptableOrUnknown(data['event_id']!, _eventIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventIdMeta);
+    }
+    if (data.containsKey('home_church_id')) {
+      context.handle(
+        _homeChurchIdMeta,
+        homeChurchId.isAcceptableOrUnknown(
+          data['home_church_id']!,
+          _homeChurchIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_homeChurchIdMeta);
+    }
+    if (data.containsKey('actual_attendance')) {
+      context.handle(
+        _actualAttendanceMeta,
+        actualAttendance.isAcceptableOrUnknown(
+          data['actual_attendance']!,
+          _actualAttendanceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('expected_at_hc')) {
+      context.handle(
+        _expectedAtHcMeta,
+        expectedAtHc.isAcceptableOrUnknown(
+          data['expected_at_hc']!,
+          _expectedAtHcMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {eventId, homeChurchId},
+  ];
+  @override
+  HolyCommunionAttendanceData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HolyCommunionAttendanceData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      eventId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}event_id'],
+      )!,
+      homeChurchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}home_church_id'],
+      )!,
+      actualAttendance: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}actual_attendance'],
+      )!,
+      expectedAtHc: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expected_at_hc'],
+      )!,
+    );
+  }
+
+  @override
+  $HolyCommunionAttendanceTable createAlias(String alias) {
+    return $HolyCommunionAttendanceTable(attachedDatabase, alias);
+  }
+}
+
+class HolyCommunionAttendanceData extends DataClass
+    implements Insertable<HolyCommunionAttendanceData> {
+  final int id;
+  final int eventId;
+  final int homeChurchId;
+  final int actualAttendance;
+
+  /// Snapshot of HomeChurch.expectedMembership at recording time
+  final int expectedAtHc;
+  const HolyCommunionAttendanceData({
+    required this.id,
+    required this.eventId,
+    required this.homeChurchId,
+    required this.actualAttendance,
+    required this.expectedAtHc,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['event_id'] = Variable<int>(eventId);
+    map['home_church_id'] = Variable<int>(homeChurchId);
+    map['actual_attendance'] = Variable<int>(actualAttendance);
+    map['expected_at_hc'] = Variable<int>(expectedAtHc);
+    return map;
+  }
+
+  HolyCommunionAttendanceCompanion toCompanion(bool nullToAbsent) {
+    return HolyCommunionAttendanceCompanion(
+      id: Value(id),
+      eventId: Value(eventId),
+      homeChurchId: Value(homeChurchId),
+      actualAttendance: Value(actualAttendance),
+      expectedAtHc: Value(expectedAtHc),
+    );
+  }
+
+  factory HolyCommunionAttendanceData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HolyCommunionAttendanceData(
+      id: serializer.fromJson<int>(json['id']),
+      eventId: serializer.fromJson<int>(json['eventId']),
+      homeChurchId: serializer.fromJson<int>(json['homeChurchId']),
+      actualAttendance: serializer.fromJson<int>(json['actualAttendance']),
+      expectedAtHc: serializer.fromJson<int>(json['expectedAtHc']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'eventId': serializer.toJson<int>(eventId),
+      'homeChurchId': serializer.toJson<int>(homeChurchId),
+      'actualAttendance': serializer.toJson<int>(actualAttendance),
+      'expectedAtHc': serializer.toJson<int>(expectedAtHc),
+    };
+  }
+
+  HolyCommunionAttendanceData copyWith({
+    int? id,
+    int? eventId,
+    int? homeChurchId,
+    int? actualAttendance,
+    int? expectedAtHc,
+  }) => HolyCommunionAttendanceData(
+    id: id ?? this.id,
+    eventId: eventId ?? this.eventId,
+    homeChurchId: homeChurchId ?? this.homeChurchId,
+    actualAttendance: actualAttendance ?? this.actualAttendance,
+    expectedAtHc: expectedAtHc ?? this.expectedAtHc,
+  );
+  HolyCommunionAttendanceData copyWithCompanion(
+    HolyCommunionAttendanceCompanion data,
+  ) {
+    return HolyCommunionAttendanceData(
+      id: data.id.present ? data.id.value : this.id,
+      eventId: data.eventId.present ? data.eventId.value : this.eventId,
+      homeChurchId: data.homeChurchId.present
+          ? data.homeChurchId.value
+          : this.homeChurchId,
+      actualAttendance: data.actualAttendance.present
+          ? data.actualAttendance.value
+          : this.actualAttendance,
+      expectedAtHc: data.expectedAtHc.present
+          ? data.expectedAtHc.value
+          : this.expectedAtHc,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HolyCommunionAttendanceData(')
+          ..write('id: $id, ')
+          ..write('eventId: $eventId, ')
+          ..write('homeChurchId: $homeChurchId, ')
+          ..write('actualAttendance: $actualAttendance, ')
+          ..write('expectedAtHc: $expectedAtHc')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, eventId, homeChurchId, actualAttendance, expectedAtHc);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HolyCommunionAttendanceData &&
+          other.id == this.id &&
+          other.eventId == this.eventId &&
+          other.homeChurchId == this.homeChurchId &&
+          other.actualAttendance == this.actualAttendance &&
+          other.expectedAtHc == this.expectedAtHc);
+}
+
+class HolyCommunionAttendanceCompanion
+    extends UpdateCompanion<HolyCommunionAttendanceData> {
+  final Value<int> id;
+  final Value<int> eventId;
+  final Value<int> homeChurchId;
+  final Value<int> actualAttendance;
+  final Value<int> expectedAtHc;
+  const HolyCommunionAttendanceCompanion({
+    this.id = const Value.absent(),
+    this.eventId = const Value.absent(),
+    this.homeChurchId = const Value.absent(),
+    this.actualAttendance = const Value.absent(),
+    this.expectedAtHc = const Value.absent(),
+  });
+  HolyCommunionAttendanceCompanion.insert({
+    this.id = const Value.absent(),
+    required int eventId,
+    required int homeChurchId,
+    this.actualAttendance = const Value.absent(),
+    this.expectedAtHc = const Value.absent(),
+  }) : eventId = Value(eventId),
+       homeChurchId = Value(homeChurchId);
+  static Insertable<HolyCommunionAttendanceData> custom({
+    Expression<int>? id,
+    Expression<int>? eventId,
+    Expression<int>? homeChurchId,
+    Expression<int>? actualAttendance,
+    Expression<int>? expectedAtHc,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (eventId != null) 'event_id': eventId,
+      if (homeChurchId != null) 'home_church_id': homeChurchId,
+      if (actualAttendance != null) 'actual_attendance': actualAttendance,
+      if (expectedAtHc != null) 'expected_at_hc': expectedAtHc,
+    });
+  }
+
+  HolyCommunionAttendanceCompanion copyWith({
+    Value<int>? id,
+    Value<int>? eventId,
+    Value<int>? homeChurchId,
+    Value<int>? actualAttendance,
+    Value<int>? expectedAtHc,
+  }) {
+    return HolyCommunionAttendanceCompanion(
+      id: id ?? this.id,
+      eventId: eventId ?? this.eventId,
+      homeChurchId: homeChurchId ?? this.homeChurchId,
+      actualAttendance: actualAttendance ?? this.actualAttendance,
+      expectedAtHc: expectedAtHc ?? this.expectedAtHc,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (eventId.present) {
+      map['event_id'] = Variable<int>(eventId.value);
+    }
+    if (homeChurchId.present) {
+      map['home_church_id'] = Variable<int>(homeChurchId.value);
+    }
+    if (actualAttendance.present) {
+      map['actual_attendance'] = Variable<int>(actualAttendance.value);
+    }
+    if (expectedAtHc.present) {
+      map['expected_at_hc'] = Variable<int>(expectedAtHc.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HolyCommunionAttendanceCompanion(')
+          ..write('id: $id, ')
+          ..write('eventId: $eventId, ')
+          ..write('homeChurchId: $homeChurchId, ')
+          ..write('actualAttendance: $actualAttendance, ')
+          ..write('expectedAtHc: $expectedAtHc')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $BusinessMeetingEventsTable extends BusinessMeetingEvents
+    with TableInfo<$BusinessMeetingEventsTable, BusinessMeetingEvent> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BusinessMeetingEventsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _churchIdMeta = const VerificationMeta(
+    'churchId',
+  );
+  @override
+  late final GeneratedColumn<int> churchId = GeneratedColumn<int>(
+    'church_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES churches (id)',
+    ),
+  );
+  static const VerificationMeta _createdByAdminIdMeta = const VerificationMeta(
+    'createdByAdminId',
+  );
+  @override
+  late final GeneratedColumn<int> createdByAdminId = GeneratedColumn<int>(
+    'created_by_admin_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES admin_users (id)',
+    ),
+  );
+  static const VerificationMeta _eventDateMeta = const VerificationMeta(
+    'eventDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> eventDate = GeneratedColumn<DateTime>(
+    'event_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _yearMeta = const VerificationMeta('year');
+  @override
+  late final GeneratedColumn<int> year = GeneratedColumn<int>(
+    'year',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _quarterMeta = const VerificationMeta(
+    'quarter',
+  );
+  @override
+  late final GeneratedColumn<int> quarter = GeneratedColumn<int>(
+    'quarter',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _meetingNumberMeta = const VerificationMeta(
+    'meetingNumber',
+  );
+  @override
+  late final GeneratedColumn<int> meetingNumber = GeneratedColumn<int>(
+    'meeting_number',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _totalExpectedAtKccMeta =
+      const VerificationMeta('totalExpectedAtKcc');
+  @override
+  late final GeneratedColumn<int> totalExpectedAtKcc = GeneratedColumn<int>(
+    'total_expected_at_kcc',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _notesMeta = const VerificationMeta('notes');
+  @override
+  late final GeneratedColumn<String> notes = GeneratedColumn<String>(
+    'notes',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> updatedAt = GeneratedColumn<DateTime>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    churchId,
+    createdByAdminId,
+    eventDate,
+    year,
+    quarter,
+    meetingNumber,
+    totalExpectedAtKcc,
+    notes,
+    createdAt,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'business_meeting_events';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BusinessMeetingEvent> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('church_id')) {
+      context.handle(
+        _churchIdMeta,
+        churchId.isAcceptableOrUnknown(data['church_id']!, _churchIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_churchIdMeta);
+    }
+    if (data.containsKey('created_by_admin_id')) {
+      context.handle(
+        _createdByAdminIdMeta,
+        createdByAdminId.isAcceptableOrUnknown(
+          data['created_by_admin_id']!,
+          _createdByAdminIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('event_date')) {
+      context.handle(
+        _eventDateMeta,
+        eventDate.isAcceptableOrUnknown(data['event_date']!, _eventDateMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventDateMeta);
+    }
+    if (data.containsKey('year')) {
+      context.handle(
+        _yearMeta,
+        year.isAcceptableOrUnknown(data['year']!, _yearMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_yearMeta);
+    }
+    if (data.containsKey('quarter')) {
+      context.handle(
+        _quarterMeta,
+        quarter.isAcceptableOrUnknown(data['quarter']!, _quarterMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_quarterMeta);
+    }
+    if (data.containsKey('meeting_number')) {
+      context.handle(
+        _meetingNumberMeta,
+        meetingNumber.isAcceptableOrUnknown(
+          data['meeting_number']!,
+          _meetingNumberMeta,
+        ),
+      );
+    }
+    if (data.containsKey('total_expected_at_kcc')) {
+      context.handle(
+        _totalExpectedAtKccMeta,
+        totalExpectedAtKcc.isAcceptableOrUnknown(
+          data['total_expected_at_kcc']!,
+          _totalExpectedAtKccMeta,
+        ),
+      );
+    }
+    if (data.containsKey('notes')) {
+      context.handle(
+        _notesMeta,
+        notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_createdAtMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {churchId, year, quarter, meetingNumber},
+  ];
+  @override
+  BusinessMeetingEvent map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BusinessMeetingEvent(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      churchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}church_id'],
+      )!,
+      createdByAdminId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}created_by_admin_id'],
+      ),
+      eventDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}event_date'],
+      )!,
+      year: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}year'],
+      )!,
+      quarter: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}quarter'],
+      )!,
+      meetingNumber: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}meeting_number'],
+      )!,
+      totalExpectedAtKcc: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}total_expected_at_kcc'],
+      )!,
+      notes: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}notes'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $BusinessMeetingEventsTable createAlias(String alias) {
+    return $BusinessMeetingEventsTable(attachedDatabase, alias);
+  }
+}
+
+class BusinessMeetingEvent extends DataClass
+    implements Insertable<BusinessMeetingEvent> {
+  final int id;
+  final int churchId;
+  final int? createdByAdminId;
+  final DateTime eventDate;
+  final int year;
+  final int quarter;
+  final int meetingNumber;
+  final int totalExpectedAtKcc;
+  final String? notes;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+  const BusinessMeetingEvent({
+    required this.id,
+    required this.churchId,
+    this.createdByAdminId,
+    required this.eventDate,
+    required this.year,
+    required this.quarter,
+    required this.meetingNumber,
+    required this.totalExpectedAtKcc,
+    this.notes,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['church_id'] = Variable<int>(churchId);
+    if (!nullToAbsent || createdByAdminId != null) {
+      map['created_by_admin_id'] = Variable<int>(createdByAdminId);
+    }
+    map['event_date'] = Variable<DateTime>(eventDate);
+    map['year'] = Variable<int>(year);
+    map['quarter'] = Variable<int>(quarter);
+    map['meeting_number'] = Variable<int>(meetingNumber);
+    map['total_expected_at_kcc'] = Variable<int>(totalExpectedAtKcc);
+    if (!nullToAbsent || notes != null) {
+      map['notes'] = Variable<String>(notes);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['updated_at'] = Variable<DateTime>(updatedAt);
+    return map;
+  }
+
+  BusinessMeetingEventsCompanion toCompanion(bool nullToAbsent) {
+    return BusinessMeetingEventsCompanion(
+      id: Value(id),
+      churchId: Value(churchId),
+      createdByAdminId: createdByAdminId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(createdByAdminId),
+      eventDate: Value(eventDate),
+      year: Value(year),
+      quarter: Value(quarter),
+      meetingNumber: Value(meetingNumber),
+      totalExpectedAtKcc: Value(totalExpectedAtKcc),
+      notes: notes == null && nullToAbsent
+          ? const Value.absent()
+          : Value(notes),
+      createdAt: Value(createdAt),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory BusinessMeetingEvent.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BusinessMeetingEvent(
+      id: serializer.fromJson<int>(json['id']),
+      churchId: serializer.fromJson<int>(json['churchId']),
+      createdByAdminId: serializer.fromJson<int?>(json['createdByAdminId']),
+      eventDate: serializer.fromJson<DateTime>(json['eventDate']),
+      year: serializer.fromJson<int>(json['year']),
+      quarter: serializer.fromJson<int>(json['quarter']),
+      meetingNumber: serializer.fromJson<int>(json['meetingNumber']),
+      totalExpectedAtKcc: serializer.fromJson<int>(json['totalExpectedAtKcc']),
+      notes: serializer.fromJson<String?>(json['notes']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'churchId': serializer.toJson<int>(churchId),
+      'createdByAdminId': serializer.toJson<int?>(createdByAdminId),
+      'eventDate': serializer.toJson<DateTime>(eventDate),
+      'year': serializer.toJson<int>(year),
+      'quarter': serializer.toJson<int>(quarter),
+      'meetingNumber': serializer.toJson<int>(meetingNumber),
+      'totalExpectedAtKcc': serializer.toJson<int>(totalExpectedAtKcc),
+      'notes': serializer.toJson<String?>(notes),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'updatedAt': serializer.toJson<DateTime>(updatedAt),
+    };
+  }
+
+  BusinessMeetingEvent copyWith({
+    int? id,
+    int? churchId,
+    Value<int?> createdByAdminId = const Value.absent(),
+    DateTime? eventDate,
+    int? year,
+    int? quarter,
+    int? meetingNumber,
+    int? totalExpectedAtKcc,
+    Value<String?> notes = const Value.absent(),
+    DateTime? createdAt,
+    DateTime? updatedAt,
+  }) => BusinessMeetingEvent(
+    id: id ?? this.id,
+    churchId: churchId ?? this.churchId,
+    createdByAdminId: createdByAdminId.present
+        ? createdByAdminId.value
+        : this.createdByAdminId,
+    eventDate: eventDate ?? this.eventDate,
+    year: year ?? this.year,
+    quarter: quarter ?? this.quarter,
+    meetingNumber: meetingNumber ?? this.meetingNumber,
+    totalExpectedAtKcc: totalExpectedAtKcc ?? this.totalExpectedAtKcc,
+    notes: notes.present ? notes.value : this.notes,
+    createdAt: createdAt ?? this.createdAt,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  BusinessMeetingEvent copyWithCompanion(BusinessMeetingEventsCompanion data) {
+    return BusinessMeetingEvent(
+      id: data.id.present ? data.id.value : this.id,
+      churchId: data.churchId.present ? data.churchId.value : this.churchId,
+      createdByAdminId: data.createdByAdminId.present
+          ? data.createdByAdminId.value
+          : this.createdByAdminId,
+      eventDate: data.eventDate.present ? data.eventDate.value : this.eventDate,
+      year: data.year.present ? data.year.value : this.year,
+      quarter: data.quarter.present ? data.quarter.value : this.quarter,
+      meetingNumber: data.meetingNumber.present
+          ? data.meetingNumber.value
+          : this.meetingNumber,
+      totalExpectedAtKcc: data.totalExpectedAtKcc.present
+          ? data.totalExpectedAtKcc.value
+          : this.totalExpectedAtKcc,
+      notes: data.notes.present ? data.notes.value : this.notes,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BusinessMeetingEvent(')
+          ..write('id: $id, ')
+          ..write('churchId: $churchId, ')
+          ..write('createdByAdminId: $createdByAdminId, ')
+          ..write('eventDate: $eventDate, ')
+          ..write('year: $year, ')
+          ..write('quarter: $quarter, ')
+          ..write('meetingNumber: $meetingNumber, ')
+          ..write('totalExpectedAtKcc: $totalExpectedAtKcc, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    churchId,
+    createdByAdminId,
+    eventDate,
+    year,
+    quarter,
+    meetingNumber,
+    totalExpectedAtKcc,
+    notes,
+    createdAt,
+    updatedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BusinessMeetingEvent &&
+          other.id == this.id &&
+          other.churchId == this.churchId &&
+          other.createdByAdminId == this.createdByAdminId &&
+          other.eventDate == this.eventDate &&
+          other.year == this.year &&
+          other.quarter == this.quarter &&
+          other.meetingNumber == this.meetingNumber &&
+          other.totalExpectedAtKcc == this.totalExpectedAtKcc &&
+          other.notes == this.notes &&
+          other.createdAt == this.createdAt &&
+          other.updatedAt == this.updatedAt);
+}
+
+class BusinessMeetingEventsCompanion
+    extends UpdateCompanion<BusinessMeetingEvent> {
+  final Value<int> id;
+  final Value<int> churchId;
+  final Value<int?> createdByAdminId;
+  final Value<DateTime> eventDate;
+  final Value<int> year;
+  final Value<int> quarter;
+  final Value<int> meetingNumber;
+  final Value<int> totalExpectedAtKcc;
+  final Value<String?> notes;
+  final Value<DateTime> createdAt;
+  final Value<DateTime> updatedAt;
+  const BusinessMeetingEventsCompanion({
+    this.id = const Value.absent(),
+    this.churchId = const Value.absent(),
+    this.createdByAdminId = const Value.absent(),
+    this.eventDate = const Value.absent(),
+    this.year = const Value.absent(),
+    this.quarter = const Value.absent(),
+    this.meetingNumber = const Value.absent(),
+    this.totalExpectedAtKcc = const Value.absent(),
+    this.notes = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+  });
+  BusinessMeetingEventsCompanion.insert({
+    this.id = const Value.absent(),
+    required int churchId,
+    this.createdByAdminId = const Value.absent(),
+    required DateTime eventDate,
+    required int year,
+    required int quarter,
+    this.meetingNumber = const Value.absent(),
+    this.totalExpectedAtKcc = const Value.absent(),
+    this.notes = const Value.absent(),
+    required DateTime createdAt,
+    required DateTime updatedAt,
+  }) : churchId = Value(churchId),
+       eventDate = Value(eventDate),
+       year = Value(year),
+       quarter = Value(quarter),
+       createdAt = Value(createdAt),
+       updatedAt = Value(updatedAt);
+  static Insertable<BusinessMeetingEvent> custom({
+    Expression<int>? id,
+    Expression<int>? churchId,
+    Expression<int>? createdByAdminId,
+    Expression<DateTime>? eventDate,
+    Expression<int>? year,
+    Expression<int>? quarter,
+    Expression<int>? meetingNumber,
+    Expression<int>? totalExpectedAtKcc,
+    Expression<String>? notes,
+    Expression<DateTime>? createdAt,
+    Expression<DateTime>? updatedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (churchId != null) 'church_id': churchId,
+      if (createdByAdminId != null) 'created_by_admin_id': createdByAdminId,
+      if (eventDate != null) 'event_date': eventDate,
+      if (year != null) 'year': year,
+      if (quarter != null) 'quarter': quarter,
+      if (meetingNumber != null) 'meeting_number': meetingNumber,
+      if (totalExpectedAtKcc != null)
+        'total_expected_at_kcc': totalExpectedAtKcc,
+      if (notes != null) 'notes': notes,
+      if (createdAt != null) 'created_at': createdAt,
+      if (updatedAt != null) 'updated_at': updatedAt,
+    });
+  }
+
+  BusinessMeetingEventsCompanion copyWith({
+    Value<int>? id,
+    Value<int>? churchId,
+    Value<int?>? createdByAdminId,
+    Value<DateTime>? eventDate,
+    Value<int>? year,
+    Value<int>? quarter,
+    Value<int>? meetingNumber,
+    Value<int>? totalExpectedAtKcc,
+    Value<String?>? notes,
+    Value<DateTime>? createdAt,
+    Value<DateTime>? updatedAt,
+  }) {
+    return BusinessMeetingEventsCompanion(
+      id: id ?? this.id,
+      churchId: churchId ?? this.churchId,
+      createdByAdminId: createdByAdminId ?? this.createdByAdminId,
+      eventDate: eventDate ?? this.eventDate,
+      year: year ?? this.year,
+      quarter: quarter ?? this.quarter,
+      meetingNumber: meetingNumber ?? this.meetingNumber,
+      totalExpectedAtKcc: totalExpectedAtKcc ?? this.totalExpectedAtKcc,
+      notes: notes ?? this.notes,
+      createdAt: createdAt ?? this.createdAt,
+      updatedAt: updatedAt ?? this.updatedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (churchId.present) {
+      map['church_id'] = Variable<int>(churchId.value);
+    }
+    if (createdByAdminId.present) {
+      map['created_by_admin_id'] = Variable<int>(createdByAdminId.value);
+    }
+    if (eventDate.present) {
+      map['event_date'] = Variable<DateTime>(eventDate.value);
+    }
+    if (year.present) {
+      map['year'] = Variable<int>(year.value);
+    }
+    if (quarter.present) {
+      map['quarter'] = Variable<int>(quarter.value);
+    }
+    if (meetingNumber.present) {
+      map['meeting_number'] = Variable<int>(meetingNumber.value);
+    }
+    if (totalExpectedAtKcc.present) {
+      map['total_expected_at_kcc'] = Variable<int>(totalExpectedAtKcc.value);
+    }
+    if (notes.present) {
+      map['notes'] = Variable<String>(notes.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<DateTime>(updatedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BusinessMeetingEventsCompanion(')
+          ..write('id: $id, ')
+          ..write('churchId: $churchId, ')
+          ..write('createdByAdminId: $createdByAdminId, ')
+          ..write('eventDate: $eventDate, ')
+          ..write('year: $year, ')
+          ..write('quarter: $quarter, ')
+          ..write('meetingNumber: $meetingNumber, ')
+          ..write('totalExpectedAtKcc: $totalExpectedAtKcc, ')
+          ..write('notes: $notes, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $BusinessMeetingAttendanceTable extends BusinessMeetingAttendance
+    with
+        TableInfo<
+          $BusinessMeetingAttendanceTable,
+          BusinessMeetingAttendanceData
+        > {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $BusinessMeetingAttendanceTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _eventIdMeta = const VerificationMeta(
+    'eventId',
+  );
+  @override
+  late final GeneratedColumn<int> eventId = GeneratedColumn<int>(
+    'event_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES business_meeting_events (id)',
+    ),
+  );
+  static const VerificationMeta _homeChurchIdMeta = const VerificationMeta(
+    'homeChurchId',
+  );
+  @override
+  late final GeneratedColumn<int> homeChurchId = GeneratedColumn<int>(
+    'home_church_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'REFERENCES home_churches (id)',
+    ),
+  );
+  static const VerificationMeta _actualAttendanceMeta = const VerificationMeta(
+    'actualAttendance',
+  );
+  @override
+  late final GeneratedColumn<int> actualAttendance = GeneratedColumn<int>(
+    'actual_attendance',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _expectedAtHcMeta = const VerificationMeta(
+    'expectedAtHc',
+  );
+  @override
+  late final GeneratedColumn<int> expectedAtHc = GeneratedColumn<int>(
+    'expected_at_hc',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    eventId,
+    homeChurchId,
+    actualAttendance,
+    expectedAtHc,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'business_meeting_attendance';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<BusinessMeetingAttendanceData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('event_id')) {
+      context.handle(
+        _eventIdMeta,
+        eventId.isAcceptableOrUnknown(data['event_id']!, _eventIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_eventIdMeta);
+    }
+    if (data.containsKey('home_church_id')) {
+      context.handle(
+        _homeChurchIdMeta,
+        homeChurchId.isAcceptableOrUnknown(
+          data['home_church_id']!,
+          _homeChurchIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_homeChurchIdMeta);
+    }
+    if (data.containsKey('actual_attendance')) {
+      context.handle(
+        _actualAttendanceMeta,
+        actualAttendance.isAcceptableOrUnknown(
+          data['actual_attendance']!,
+          _actualAttendanceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('expected_at_hc')) {
+      context.handle(
+        _expectedAtHcMeta,
+        expectedAtHc.isAcceptableOrUnknown(
+          data['expected_at_hc']!,
+          _expectedAtHcMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  List<Set<GeneratedColumn>> get uniqueKeys => [
+    {eventId, homeChurchId},
+  ];
+  @override
+  BusinessMeetingAttendanceData map(
+    Map<String, dynamic> data, {
+    String? tablePrefix,
+  }) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return BusinessMeetingAttendanceData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      eventId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}event_id'],
+      )!,
+      homeChurchId: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}home_church_id'],
+      )!,
+      actualAttendance: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}actual_attendance'],
+      )!,
+      expectedAtHc: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}expected_at_hc'],
+      )!,
+    );
+  }
+
+  @override
+  $BusinessMeetingAttendanceTable createAlias(String alias) {
+    return $BusinessMeetingAttendanceTable(attachedDatabase, alias);
+  }
+}
+
+class BusinessMeetingAttendanceData extends DataClass
+    implements Insertable<BusinessMeetingAttendanceData> {
+  final int id;
+  final int eventId;
+  final int homeChurchId;
+  final int actualAttendance;
+  final int expectedAtHc;
+  const BusinessMeetingAttendanceData({
+    required this.id,
+    required this.eventId,
+    required this.homeChurchId,
+    required this.actualAttendance,
+    required this.expectedAtHc,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['event_id'] = Variable<int>(eventId);
+    map['home_church_id'] = Variable<int>(homeChurchId);
+    map['actual_attendance'] = Variable<int>(actualAttendance);
+    map['expected_at_hc'] = Variable<int>(expectedAtHc);
+    return map;
+  }
+
+  BusinessMeetingAttendanceCompanion toCompanion(bool nullToAbsent) {
+    return BusinessMeetingAttendanceCompanion(
+      id: Value(id),
+      eventId: Value(eventId),
+      homeChurchId: Value(homeChurchId),
+      actualAttendance: Value(actualAttendance),
+      expectedAtHc: Value(expectedAtHc),
+    );
+  }
+
+  factory BusinessMeetingAttendanceData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return BusinessMeetingAttendanceData(
+      id: serializer.fromJson<int>(json['id']),
+      eventId: serializer.fromJson<int>(json['eventId']),
+      homeChurchId: serializer.fromJson<int>(json['homeChurchId']),
+      actualAttendance: serializer.fromJson<int>(json['actualAttendance']),
+      expectedAtHc: serializer.fromJson<int>(json['expectedAtHc']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'eventId': serializer.toJson<int>(eventId),
+      'homeChurchId': serializer.toJson<int>(homeChurchId),
+      'actualAttendance': serializer.toJson<int>(actualAttendance),
+      'expectedAtHc': serializer.toJson<int>(expectedAtHc),
+    };
+  }
+
+  BusinessMeetingAttendanceData copyWith({
+    int? id,
+    int? eventId,
+    int? homeChurchId,
+    int? actualAttendance,
+    int? expectedAtHc,
+  }) => BusinessMeetingAttendanceData(
+    id: id ?? this.id,
+    eventId: eventId ?? this.eventId,
+    homeChurchId: homeChurchId ?? this.homeChurchId,
+    actualAttendance: actualAttendance ?? this.actualAttendance,
+    expectedAtHc: expectedAtHc ?? this.expectedAtHc,
+  );
+  BusinessMeetingAttendanceData copyWithCompanion(
+    BusinessMeetingAttendanceCompanion data,
+  ) {
+    return BusinessMeetingAttendanceData(
+      id: data.id.present ? data.id.value : this.id,
+      eventId: data.eventId.present ? data.eventId.value : this.eventId,
+      homeChurchId: data.homeChurchId.present
+          ? data.homeChurchId.value
+          : this.homeChurchId,
+      actualAttendance: data.actualAttendance.present
+          ? data.actualAttendance.value
+          : this.actualAttendance,
+      expectedAtHc: data.expectedAtHc.present
+          ? data.expectedAtHc.value
+          : this.expectedAtHc,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BusinessMeetingAttendanceData(')
+          ..write('id: $id, ')
+          ..write('eventId: $eventId, ')
+          ..write('homeChurchId: $homeChurchId, ')
+          ..write('actualAttendance: $actualAttendance, ')
+          ..write('expectedAtHc: $expectedAtHc')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(id, eventId, homeChurchId, actualAttendance, expectedAtHc);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is BusinessMeetingAttendanceData &&
+          other.id == this.id &&
+          other.eventId == this.eventId &&
+          other.homeChurchId == this.homeChurchId &&
+          other.actualAttendance == this.actualAttendance &&
+          other.expectedAtHc == this.expectedAtHc);
+}
+
+class BusinessMeetingAttendanceCompanion
+    extends UpdateCompanion<BusinessMeetingAttendanceData> {
+  final Value<int> id;
+  final Value<int> eventId;
+  final Value<int> homeChurchId;
+  final Value<int> actualAttendance;
+  final Value<int> expectedAtHc;
+  const BusinessMeetingAttendanceCompanion({
+    this.id = const Value.absent(),
+    this.eventId = const Value.absent(),
+    this.homeChurchId = const Value.absent(),
+    this.actualAttendance = const Value.absent(),
+    this.expectedAtHc = const Value.absent(),
+  });
+  BusinessMeetingAttendanceCompanion.insert({
+    this.id = const Value.absent(),
+    required int eventId,
+    required int homeChurchId,
+    this.actualAttendance = const Value.absent(),
+    this.expectedAtHc = const Value.absent(),
+  }) : eventId = Value(eventId),
+       homeChurchId = Value(homeChurchId);
+  static Insertable<BusinessMeetingAttendanceData> custom({
+    Expression<int>? id,
+    Expression<int>? eventId,
+    Expression<int>? homeChurchId,
+    Expression<int>? actualAttendance,
+    Expression<int>? expectedAtHc,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (eventId != null) 'event_id': eventId,
+      if (homeChurchId != null) 'home_church_id': homeChurchId,
+      if (actualAttendance != null) 'actual_attendance': actualAttendance,
+      if (expectedAtHc != null) 'expected_at_hc': expectedAtHc,
+    });
+  }
+
+  BusinessMeetingAttendanceCompanion copyWith({
+    Value<int>? id,
+    Value<int>? eventId,
+    Value<int>? homeChurchId,
+    Value<int>? actualAttendance,
+    Value<int>? expectedAtHc,
+  }) {
+    return BusinessMeetingAttendanceCompanion(
+      id: id ?? this.id,
+      eventId: eventId ?? this.eventId,
+      homeChurchId: homeChurchId ?? this.homeChurchId,
+      actualAttendance: actualAttendance ?? this.actualAttendance,
+      expectedAtHc: expectedAtHc ?? this.expectedAtHc,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (eventId.present) {
+      map['event_id'] = Variable<int>(eventId.value);
+    }
+    if (homeChurchId.present) {
+      map['home_church_id'] = Variable<int>(homeChurchId.value);
+    }
+    if (actualAttendance.present) {
+      map['actual_attendance'] = Variable<int>(actualAttendance.value);
+    }
+    if (expectedAtHc.present) {
+      map['expected_at_hc'] = Variable<int>(expectedAtHc.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('BusinessMeetingAttendanceCompanion(')
+          ..write('id: $id, ')
+          ..write('eventId: $eventId, ')
+          ..write('homeChurchId: $homeChurchId, ')
+          ..write('actualAttendance: $actualAttendance, ')
+          ..write('expectedAtHc: $expectedAtHc')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -3395,6 +7274,17 @@ abstract class _$AppDatabase extends GeneratedDatabase {
       $DerivedMetricsListTable(this);
   late final $ExportHistoryListTable exportHistoryList =
       $ExportHistoryListTable(this);
+  late final $HomeChurchesTable homeChurches = $HomeChurchesTable(this);
+  late final $BoardMeetingRecordsTable boardMeetingRecords =
+      $BoardMeetingRecordsTable(this);
+  late final $HolyCommunionEventsTable holyCommunionEvents =
+      $HolyCommunionEventsTable(this);
+  late final $HolyCommunionAttendanceTable holyCommunionAttendance =
+      $HolyCommunionAttendanceTable(this);
+  late final $BusinessMeetingEventsTable businessMeetingEvents =
+      $BusinessMeetingEventsTable(this);
+  late final $BusinessMeetingAttendanceTable businessMeetingAttendance =
+      $BusinessMeetingAttendanceTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3405,6 +7295,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     weeklyRecords,
     derivedMetricsList,
     exportHistoryList,
+    homeChurches,
+    boardMeetingRecords,
+    holyCommunionEvents,
+    holyCommunionAttendance,
+    businessMeetingEvents,
+    businessMeetingAttendance,
   ];
 }
 
@@ -3416,6 +7312,9 @@ typedef $$ChurchesTableCreateCompanionBuilder =
       Value<String?> contactEmail,
       Value<String?> contactPhone,
       Value<String> currency,
+      Value<String?> website,
+      Value<int> boardMemberCount,
+      Value<int> totalMembership,
       required DateTime createdAt,
       required DateTime updatedAt,
     });
@@ -3427,6 +7326,9 @@ typedef $$ChurchesTableUpdateCompanionBuilder =
       Value<String?> contactEmail,
       Value<String?> contactPhone,
       Value<String> currency,
+      Value<String?> website,
+      Value<int> boardMemberCount,
+      Value<int> totalMembership,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -3524,6 +7426,106 @@ final class $$ChurchesTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
+
+  static MultiTypedResultKey<$HomeChurchesTable, List<HomeChurche>>
+  _homeChurchesRefsTable(_$AppDatabase db) => MultiTypedResultKey.fromTable(
+    db.homeChurches,
+    aliasName: $_aliasNameGenerator(db.churches.id, db.homeChurches.churchId),
+  );
+
+  $$HomeChurchesTableProcessedTableManager get homeChurchesRefs {
+    final manager = $$HomeChurchesTableTableManager(
+      $_db,
+      $_db.homeChurches,
+    ).filter((f) => f.churchId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(_homeChurchesRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $BoardMeetingRecordsTable,
+    List<BoardMeetingRecord>
+  >
+  _boardMeetingRecordsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.boardMeetingRecords,
+        aliasName: $_aliasNameGenerator(
+          db.churches.id,
+          db.boardMeetingRecords.churchId,
+        ),
+      );
+
+  $$BoardMeetingRecordsTableProcessedTableManager get boardMeetingRecordsRefs {
+    final manager = $$BoardMeetingRecordsTableTableManager(
+      $_db,
+      $_db.boardMeetingRecords,
+    ).filter((f) => f.churchId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _boardMeetingRecordsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $HolyCommunionEventsTable,
+    List<HolyCommunionEvent>
+  >
+  _holyCommunionEventsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.holyCommunionEvents,
+        aliasName: $_aliasNameGenerator(
+          db.churches.id,
+          db.holyCommunionEvents.churchId,
+        ),
+      );
+
+  $$HolyCommunionEventsTableProcessedTableManager get holyCommunionEventsRefs {
+    final manager = $$HolyCommunionEventsTableTableManager(
+      $_db,
+      $_db.holyCommunionEvents,
+    ).filter((f) => f.churchId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _holyCommunionEventsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $BusinessMeetingEventsTable,
+    List<BusinessMeetingEvent>
+  >
+  _businessMeetingEventsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.businessMeetingEvents,
+        aliasName: $_aliasNameGenerator(
+          db.churches.id,
+          db.businessMeetingEvents.churchId,
+        ),
+      );
+
+  $$BusinessMeetingEventsTableProcessedTableManager
+  get businessMeetingEventsRefs {
+    final manager = $$BusinessMeetingEventsTableTableManager(
+      $_db,
+      $_db.businessMeetingEvents,
+    ).filter((f) => f.churchId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _businessMeetingEventsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
 }
 
 class $$ChurchesTableFilterComposer
@@ -3562,6 +7564,21 @@ class $$ChurchesTableFilterComposer
 
   ColumnFilters<String> get currency => $composableBuilder(
     column: $table.currency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get website => $composableBuilder(
+    column: $table.website,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get boardMemberCount => $composableBuilder(
+    column: $table.boardMemberCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalMembership => $composableBuilder(
+    column: $table.totalMembership,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3674,6 +7691,107 @@ class $$ChurchesTableFilterComposer
     );
     return f(composer);
   }
+
+  Expression<bool> homeChurchesRefs(
+    Expression<bool> Function($$HomeChurchesTableFilterComposer f) f,
+  ) {
+    final $$HomeChurchesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.homeChurches,
+      getReferencedColumn: (t) => t.churchId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HomeChurchesTableFilterComposer(
+            $db: $db,
+            $table: $db.homeChurches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> boardMeetingRecordsRefs(
+    Expression<bool> Function($$BoardMeetingRecordsTableFilterComposer f) f,
+  ) {
+    final $$BoardMeetingRecordsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.boardMeetingRecords,
+      getReferencedColumn: (t) => t.churchId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BoardMeetingRecordsTableFilterComposer(
+            $db: $db,
+            $table: $db.boardMeetingRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> holyCommunionEventsRefs(
+    Expression<bool> Function($$HolyCommunionEventsTableFilterComposer f) f,
+  ) {
+    final $$HolyCommunionEventsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.holyCommunionEvents,
+      getReferencedColumn: (t) => t.churchId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HolyCommunionEventsTableFilterComposer(
+            $db: $db,
+            $table: $db.holyCommunionEvents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> businessMeetingEventsRefs(
+    Expression<bool> Function($$BusinessMeetingEventsTableFilterComposer f) f,
+  ) {
+    final $$BusinessMeetingEventsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.businessMeetingEvents,
+          getReferencedColumn: (t) => t.churchId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$BusinessMeetingEventsTableFilterComposer(
+                $db: $db,
+                $table: $db.businessMeetingEvents,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$ChurchesTableOrderingComposer
@@ -3712,6 +7830,21 @@ class $$ChurchesTableOrderingComposer
 
   ColumnOrderings<String> get currency => $composableBuilder(
     column: $table.currency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get website => $composableBuilder(
+    column: $table.website,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get boardMemberCount => $composableBuilder(
+    column: $table.boardMemberCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalMembership => $composableBuilder(
+    column: $table.totalMembership,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3756,6 +7889,19 @@ class $$ChurchesTableAnnotationComposer
 
   GeneratedColumn<String> get currency =>
       $composableBuilder(column: $table.currency, builder: (column) => column);
+
+  GeneratedColumn<String> get website =>
+      $composableBuilder(column: $table.website, builder: (column) => column);
+
+  GeneratedColumn<int> get boardMemberCount => $composableBuilder(
+    column: $table.boardMemberCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalMembership => $composableBuilder(
+    column: $table.totalMembership,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -3864,6 +8010,109 @@ class $$ChurchesTableAnnotationComposer
         );
     return f(composer);
   }
+
+  Expression<T> homeChurchesRefs<T extends Object>(
+    Expression<T> Function($$HomeChurchesTableAnnotationComposer a) f,
+  ) {
+    final $$HomeChurchesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.homeChurches,
+      getReferencedColumn: (t) => t.churchId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HomeChurchesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.homeChurches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<T> boardMeetingRecordsRefs<T extends Object>(
+    Expression<T> Function($$BoardMeetingRecordsTableAnnotationComposer a) f,
+  ) {
+    final $$BoardMeetingRecordsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.boardMeetingRecords,
+          getReferencedColumn: (t) => t.churchId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$BoardMeetingRecordsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.boardMeetingRecords,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> holyCommunionEventsRefs<T extends Object>(
+    Expression<T> Function($$HolyCommunionEventsTableAnnotationComposer a) f,
+  ) {
+    final $$HolyCommunionEventsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.holyCommunionEvents,
+          getReferencedColumn: (t) => t.churchId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$HolyCommunionEventsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.holyCommunionEvents,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> businessMeetingEventsRefs<T extends Object>(
+    Expression<T> Function($$BusinessMeetingEventsTableAnnotationComposer a) f,
+  ) {
+    final $$BusinessMeetingEventsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.businessMeetingEvents,
+          getReferencedColumn: (t) => t.churchId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$BusinessMeetingEventsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.businessMeetingEvents,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$ChurchesTableTableManager
@@ -3884,6 +8133,10 @@ class $$ChurchesTableTableManager
             bool weeklyRecordsRefs,
             bool derivedMetricsListRefs,
             bool exportHistoryListRefs,
+            bool homeChurchesRefs,
+            bool boardMeetingRecordsRefs,
+            bool holyCommunionEventsRefs,
+            bool businessMeetingEventsRefs,
           })
         > {
   $$ChurchesTableTableManager(_$AppDatabase db, $ChurchesTable table)
@@ -3905,6 +8158,9 @@ class $$ChurchesTableTableManager
                 Value<String?> contactEmail = const Value.absent(),
                 Value<String?> contactPhone = const Value.absent(),
                 Value<String> currency = const Value.absent(),
+                Value<String?> website = const Value.absent(),
+                Value<int> boardMemberCount = const Value.absent(),
+                Value<int> totalMembership = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => ChurchesCompanion(
@@ -3914,6 +8170,9 @@ class $$ChurchesTableTableManager
                 contactEmail: contactEmail,
                 contactPhone: contactPhone,
                 currency: currency,
+                website: website,
+                boardMemberCount: boardMemberCount,
+                totalMembership: totalMembership,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -3925,6 +8184,9 @@ class $$ChurchesTableTableManager
                 Value<String?> contactEmail = const Value.absent(),
                 Value<String?> contactPhone = const Value.absent(),
                 Value<String> currency = const Value.absent(),
+                Value<String?> website = const Value.absent(),
+                Value<int> boardMemberCount = const Value.absent(),
+                Value<int> totalMembership = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
               }) => ChurchesCompanion.insert(
@@ -3934,6 +8196,9 @@ class $$ChurchesTableTableManager
                 contactEmail: contactEmail,
                 contactPhone: contactPhone,
                 currency: currency,
+                website: website,
+                boardMemberCount: boardMemberCount,
+                totalMembership: totalMembership,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -3951,6 +8216,10 @@ class $$ChurchesTableTableManager
                 weeklyRecordsRefs = false,
                 derivedMetricsListRefs = false,
                 exportHistoryListRefs = false,
+                homeChurchesRefs = false,
+                boardMeetingRecordsRefs = false,
+                holyCommunionEventsRefs = false,
+                businessMeetingEventsRefs = false,
               }) {
                 return PrefetchHooks(
                   db: db,
@@ -3959,6 +8228,10 @@ class $$ChurchesTableTableManager
                     if (weeklyRecordsRefs) db.weeklyRecords,
                     if (derivedMetricsListRefs) db.derivedMetricsList,
                     if (exportHistoryListRefs) db.exportHistoryList,
+                    if (homeChurchesRefs) db.homeChurches,
+                    if (boardMeetingRecordsRefs) db.boardMeetingRecords,
+                    if (holyCommunionEventsRefs) db.holyCommunionEvents,
+                    if (businessMeetingEventsRefs) db.businessMeetingEvents,
                   ],
                   addJoins: null,
                   getPrefetchedDataCallback: (items) async {
@@ -4047,6 +8320,90 @@ class $$ChurchesTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (homeChurchesRefs)
+                        await $_getPrefetchedData<
+                          Churche,
+                          $ChurchesTable,
+                          HomeChurche
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ChurchesTableReferences
+                              ._homeChurchesRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ChurchesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).homeChurchesRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.churchId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (boardMeetingRecordsRefs)
+                        await $_getPrefetchedData<
+                          Churche,
+                          $ChurchesTable,
+                          BoardMeetingRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ChurchesTableReferences
+                              ._boardMeetingRecordsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ChurchesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).boardMeetingRecordsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.churchId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (holyCommunionEventsRefs)
+                        await $_getPrefetchedData<
+                          Churche,
+                          $ChurchesTable,
+                          HolyCommunionEvent
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ChurchesTableReferences
+                              ._holyCommunionEventsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ChurchesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).holyCommunionEventsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.churchId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (businessMeetingEventsRefs)
+                        await $_getPrefetchedData<
+                          Churche,
+                          $ChurchesTable,
+                          BusinessMeetingEvent
+                        >(
+                          currentTable: table,
+                          referencedTable: $$ChurchesTableReferences
+                              ._businessMeetingEventsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$ChurchesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).businessMeetingEventsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.churchId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -4072,6 +8429,10 @@ typedef $$ChurchesTableProcessedTableManager =
         bool weeklyRecordsRefs,
         bool derivedMetricsListRefs,
         bool exportHistoryListRefs,
+        bool homeChurchesRefs,
+        bool boardMeetingRecordsRefs,
+        bool holyCommunionEventsRefs,
+        bool businessMeetingEventsRefs,
       })
     >;
 typedef $$AdminUsersTableCreateCompanionBuilder =
@@ -4084,6 +8445,7 @@ typedef $$AdminUsersTableCreateCompanionBuilder =
       Value<bool> isActive,
       required DateTime createdAt,
       required DateTime lastLoginAt,
+      Value<String?> pinHash,
     });
 typedef $$AdminUsersTableUpdateCompanionBuilder =
     AdminUsersCompanion Function({
@@ -4095,6 +8457,7 @@ typedef $$AdminUsersTableUpdateCompanionBuilder =
       Value<bool> isActive,
       Value<DateTime> createdAt,
       Value<DateTime> lastLoginAt,
+      Value<String?> pinHash,
     });
 
 final class $$AdminUsersTableReferences
@@ -4136,6 +8499,88 @@ final class $$AdminUsersTableReferences
     ).filter((f) => f.createdByAdminId.id.sqlEquals($_itemColumn<int>('id')!));
 
     final cache = $_typedResult.readTableOrNull(_weeklyRecordsRefsTable($_db));
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $BoardMeetingRecordsTable,
+    List<BoardMeetingRecord>
+  >
+  _boardMeetingRecordsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.boardMeetingRecords,
+        aliasName: $_aliasNameGenerator(
+          db.adminUsers.id,
+          db.boardMeetingRecords.createdByAdminId,
+        ),
+      );
+
+  $$BoardMeetingRecordsTableProcessedTableManager get boardMeetingRecordsRefs {
+    final manager = $$BoardMeetingRecordsTableTableManager(
+      $_db,
+      $_db.boardMeetingRecords,
+    ).filter((f) => f.createdByAdminId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _boardMeetingRecordsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $HolyCommunionEventsTable,
+    List<HolyCommunionEvent>
+  >
+  _holyCommunionEventsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.holyCommunionEvents,
+        aliasName: $_aliasNameGenerator(
+          db.adminUsers.id,
+          db.holyCommunionEvents.createdByAdminId,
+        ),
+      );
+
+  $$HolyCommunionEventsTableProcessedTableManager get holyCommunionEventsRefs {
+    final manager = $$HolyCommunionEventsTableTableManager(
+      $_db,
+      $_db.holyCommunionEvents,
+    ).filter((f) => f.createdByAdminId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _holyCommunionEventsRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $BusinessMeetingEventsTable,
+    List<BusinessMeetingEvent>
+  >
+  _businessMeetingEventsRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.businessMeetingEvents,
+        aliasName: $_aliasNameGenerator(
+          db.adminUsers.id,
+          db.businessMeetingEvents.createdByAdminId,
+        ),
+      );
+
+  $$BusinessMeetingEventsTableProcessedTableManager
+  get businessMeetingEventsRefs {
+    final manager = $$BusinessMeetingEventsTableTableManager(
+      $_db,
+      $_db.businessMeetingEvents,
+    ).filter((f) => f.createdByAdminId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _businessMeetingEventsRefsTable($_db),
+    );
     return ProcessedTableManager(
       manager.$state.copyWith(prefetchedData: cache),
     );
@@ -4186,6 +8631,11 @@ class $$AdminUsersTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get pinHash => $composableBuilder(
+    column: $table.pinHash,
+    builder: (column) => ColumnFilters(column),
+  );
+
   $$ChurchesTableFilterComposer get churchId {
     final $$ChurchesTableFilterComposer composer = $composerBuilder(
       composer: this,
@@ -4233,6 +8683,82 @@ class $$AdminUsersTableFilterComposer
     );
     return f(composer);
   }
+
+  Expression<bool> boardMeetingRecordsRefs(
+    Expression<bool> Function($$BoardMeetingRecordsTableFilterComposer f) f,
+  ) {
+    final $$BoardMeetingRecordsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.boardMeetingRecords,
+      getReferencedColumn: (t) => t.createdByAdminId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$BoardMeetingRecordsTableFilterComposer(
+            $db: $db,
+            $table: $db.boardMeetingRecords,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> holyCommunionEventsRefs(
+    Expression<bool> Function($$HolyCommunionEventsTableFilterComposer f) f,
+  ) {
+    final $$HolyCommunionEventsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.id,
+      referencedTable: $db.holyCommunionEvents,
+      getReferencedColumn: (t) => t.createdByAdminId,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HolyCommunionEventsTableFilterComposer(
+            $db: $db,
+            $table: $db.holyCommunionEvents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return f(composer);
+  }
+
+  Expression<bool> businessMeetingEventsRefs(
+    Expression<bool> Function($$BusinessMeetingEventsTableFilterComposer f) f,
+  ) {
+    final $$BusinessMeetingEventsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.businessMeetingEvents,
+          getReferencedColumn: (t) => t.createdByAdminId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$BusinessMeetingEventsTableFilterComposer(
+                $db: $db,
+                $table: $db.businessMeetingEvents,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$AdminUsersTableOrderingComposer
@@ -4276,6 +8802,11 @@ class $$AdminUsersTableOrderingComposer
 
   ColumnOrderings<DateTime> get lastLoginAt => $composableBuilder(
     column: $table.lastLoginAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get pinHash => $composableBuilder(
+    column: $table.pinHash,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4335,6 +8866,9 @@ class $$AdminUsersTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get pinHash =>
+      $composableBuilder(column: $table.pinHash, builder: (column) => column);
+
   $$ChurchesTableAnnotationComposer get churchId {
     final $$ChurchesTableAnnotationComposer composer = $composerBuilder(
       composer: this,
@@ -4382,6 +8916,84 @@ class $$AdminUsersTableAnnotationComposer
     );
     return f(composer);
   }
+
+  Expression<T> boardMeetingRecordsRefs<T extends Object>(
+    Expression<T> Function($$BoardMeetingRecordsTableAnnotationComposer a) f,
+  ) {
+    final $$BoardMeetingRecordsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.boardMeetingRecords,
+          getReferencedColumn: (t) => t.createdByAdminId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$BoardMeetingRecordsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.boardMeetingRecords,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> holyCommunionEventsRefs<T extends Object>(
+    Expression<T> Function($$HolyCommunionEventsTableAnnotationComposer a) f,
+  ) {
+    final $$HolyCommunionEventsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.holyCommunionEvents,
+          getReferencedColumn: (t) => t.createdByAdminId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$HolyCommunionEventsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.holyCommunionEvents,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> businessMeetingEventsRefs<T extends Object>(
+    Expression<T> Function($$BusinessMeetingEventsTableAnnotationComposer a) f,
+  ) {
+    final $$BusinessMeetingEventsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.businessMeetingEvents,
+          getReferencedColumn: (t) => t.createdByAdminId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$BusinessMeetingEventsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.businessMeetingEvents,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
 }
 
 class $$AdminUsersTableTableManager
@@ -4397,7 +9009,13 @@ class $$AdminUsersTableTableManager
           $$AdminUsersTableUpdateCompanionBuilder,
           (AdminUser, $$AdminUsersTableReferences),
           AdminUser,
-          PrefetchHooks Function({bool churchId, bool weeklyRecordsRefs})
+          PrefetchHooks Function({
+            bool churchId,
+            bool weeklyRecordsRefs,
+            bool boardMeetingRecordsRefs,
+            bool holyCommunionEventsRefs,
+            bool businessMeetingEventsRefs,
+          })
         > {
   $$AdminUsersTableTableManager(_$AppDatabase db, $AdminUsersTable table)
     : super(
@@ -4420,6 +9038,7 @@ class $$AdminUsersTableTableManager
                 Value<bool> isActive = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> lastLoginAt = const Value.absent(),
+                Value<String?> pinHash = const Value.absent(),
               }) => AdminUsersCompanion(
                 id: id,
                 username: username,
@@ -4429,6 +9048,7 @@ class $$AdminUsersTableTableManager
                 isActive: isActive,
                 createdAt: createdAt,
                 lastLoginAt: lastLoginAt,
+                pinHash: pinHash,
               ),
           createCompanionCallback:
               ({
@@ -4440,6 +9060,7 @@ class $$AdminUsersTableTableManager
                 Value<bool> isActive = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime lastLoginAt,
+                Value<String?> pinHash = const Value.absent(),
               }) => AdminUsersCompanion.insert(
                 id: id,
                 username: username,
@@ -4449,6 +9070,7 @@ class $$AdminUsersTableTableManager
                 isActive: isActive,
                 createdAt: createdAt,
                 lastLoginAt: lastLoginAt,
+                pinHash: pinHash,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -4459,11 +9081,20 @@ class $$AdminUsersTableTableManager
               )
               .toList(),
           prefetchHooksCallback:
-              ({churchId = false, weeklyRecordsRefs = false}) {
+              ({
+                churchId = false,
+                weeklyRecordsRefs = false,
+                boardMeetingRecordsRefs = false,
+                holyCommunionEventsRefs = false,
+                businessMeetingEventsRefs = false,
+              }) {
                 return PrefetchHooks(
                   db: db,
                   explicitlyWatchedTables: [
                     if (weeklyRecordsRefs) db.weeklyRecords,
+                    if (boardMeetingRecordsRefs) db.boardMeetingRecords,
+                    if (holyCommunionEventsRefs) db.holyCommunionEvents,
+                    if (businessMeetingEventsRefs) db.businessMeetingEvents,
                   ],
                   addJoins:
                       <
@@ -4521,6 +9152,69 @@ class $$AdminUsersTableTableManager
                               ),
                           typedResults: items,
                         ),
+                      if (boardMeetingRecordsRefs)
+                        await $_getPrefetchedData<
+                          AdminUser,
+                          $AdminUsersTable,
+                          BoardMeetingRecord
+                        >(
+                          currentTable: table,
+                          referencedTable: $$AdminUsersTableReferences
+                              ._boardMeetingRecordsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$AdminUsersTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).boardMeetingRecordsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.createdByAdminId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (holyCommunionEventsRefs)
+                        await $_getPrefetchedData<
+                          AdminUser,
+                          $AdminUsersTable,
+                          HolyCommunionEvent
+                        >(
+                          currentTable: table,
+                          referencedTable: $$AdminUsersTableReferences
+                              ._holyCommunionEventsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$AdminUsersTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).holyCommunionEventsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.createdByAdminId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (businessMeetingEventsRefs)
+                        await $_getPrefetchedData<
+                          AdminUser,
+                          $AdminUsersTable,
+                          BusinessMeetingEvent
+                        >(
+                          currentTable: table,
+                          referencedTable: $$AdminUsersTableReferences
+                              ._businessMeetingEventsRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$AdminUsersTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).businessMeetingEventsRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.createdByAdminId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
                     ];
                   },
                 );
@@ -4541,7 +9235,13 @@ typedef $$AdminUsersTableProcessedTableManager =
       $$AdminUsersTableUpdateCompanionBuilder,
       (AdminUser, $$AdminUsersTableReferences),
       AdminUser,
-      PrefetchHooks Function({bool churchId, bool weeklyRecordsRefs})
+      PrefetchHooks Function({
+        bool churchId,
+        bool weeklyRecordsRefs,
+        bool boardMeetingRecordsRefs,
+        bool holyCommunionEventsRefs,
+        bool businessMeetingEventsRefs,
+      })
     >;
 typedef $$WeeklyRecordsTableCreateCompanionBuilder =
     WeeklyRecordsCompanion Function({
@@ -4554,10 +9254,16 @@ typedef $$WeeklyRecordsTableCreateCompanionBuilder =
       Value<int> youth,
       Value<int> children,
       Value<int> sundayHomeChurch,
+      Value<int?> baptisms,
+      Value<int?> holyCommunion,
       Value<double> tithe,
       Value<double> offerings,
       Value<double> emergencyCollection,
       Value<double> plannedCollection,
+      Value<int?> sabbathSchoolAttendance,
+      Value<int?> visitorsCount,
+      Value<double?> missionOffering,
+      Value<double?> localChurchBudget,
       required DateTime createdAt,
       required DateTime updatedAt,
     });
@@ -4572,10 +9278,16 @@ typedef $$WeeklyRecordsTableUpdateCompanionBuilder =
       Value<int> youth,
       Value<int> children,
       Value<int> sundayHomeChurch,
+      Value<int?> baptisms,
+      Value<int?> holyCommunion,
       Value<double> tithe,
       Value<double> offerings,
       Value<double> emergencyCollection,
       Value<double> plannedCollection,
+      Value<int?> sabbathSchoolAttendance,
+      Value<int?> visitorsCount,
+      Value<double?> missionOffering,
+      Value<double?> localChurchBudget,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
     });
@@ -4674,6 +9386,16 @@ class $$WeeklyRecordsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get baptisms => $composableBuilder(
+    column: $table.baptisms,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get holyCommunion => $composableBuilder(
+    column: $table.holyCommunion,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<double> get tithe => $composableBuilder(
     column: $table.tithe,
     builder: (column) => ColumnFilters(column),
@@ -4691,6 +9413,26 @@ class $$WeeklyRecordsTableFilterComposer
 
   ColumnFilters<double> get plannedCollection => $composableBuilder(
     column: $table.plannedCollection,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sabbathSchoolAttendance => $composableBuilder(
+    column: $table.sabbathSchoolAttendance,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get visitorsCount => $composableBuilder(
+    column: $table.visitorsCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get missionOffering => $composableBuilder(
+    column: $table.missionOffering,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get localChurchBudget => $composableBuilder(
+    column: $table.localChurchBudget,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4795,6 +9537,16 @@ class $$WeeklyRecordsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get baptisms => $composableBuilder(
+    column: $table.baptisms,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get holyCommunion => $composableBuilder(
+    column: $table.holyCommunion,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<double> get tithe => $composableBuilder(
     column: $table.tithe,
     builder: (column) => ColumnOrderings(column),
@@ -4812,6 +9564,26 @@ class $$WeeklyRecordsTableOrderingComposer
 
   ColumnOrderings<double> get plannedCollection => $composableBuilder(
     column: $table.plannedCollection,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sabbathSchoolAttendance => $composableBuilder(
+    column: $table.sabbathSchoolAttendance,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get visitorsCount => $composableBuilder(
+    column: $table.visitorsCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get missionOffering => $composableBuilder(
+    column: $table.missionOffering,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get localChurchBudget => $composableBuilder(
+    column: $table.localChurchBudget,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4906,6 +9678,14 @@ class $$WeeklyRecordsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get baptisms =>
+      $composableBuilder(column: $table.baptisms, builder: (column) => column);
+
+  GeneratedColumn<int> get holyCommunion => $composableBuilder(
+    column: $table.holyCommunion,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<double> get tithe =>
       $composableBuilder(column: $table.tithe, builder: (column) => column);
 
@@ -4919,6 +9699,26 @@ class $$WeeklyRecordsTableAnnotationComposer
 
   GeneratedColumn<double> get plannedCollection => $composableBuilder(
     column: $table.plannedCollection,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get sabbathSchoolAttendance => $composableBuilder(
+    column: $table.sabbathSchoolAttendance,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get visitorsCount => $composableBuilder(
+    column: $table.visitorsCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get missionOffering => $composableBuilder(
+    column: $table.missionOffering,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get localChurchBudget => $composableBuilder(
+    column: $table.localChurchBudget,
     builder: (column) => column,
   );
 
@@ -5012,10 +9812,16 @@ class $$WeeklyRecordsTableTableManager
                 Value<int> youth = const Value.absent(),
                 Value<int> children = const Value.absent(),
                 Value<int> sundayHomeChurch = const Value.absent(),
+                Value<int?> baptisms = const Value.absent(),
+                Value<int?> holyCommunion = const Value.absent(),
                 Value<double> tithe = const Value.absent(),
                 Value<double> offerings = const Value.absent(),
                 Value<double> emergencyCollection = const Value.absent(),
                 Value<double> plannedCollection = const Value.absent(),
+                Value<int?> sabbathSchoolAttendance = const Value.absent(),
+                Value<int?> visitorsCount = const Value.absent(),
+                Value<double?> missionOffering = const Value.absent(),
+                Value<double?> localChurchBudget = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
               }) => WeeklyRecordsCompanion(
@@ -5028,10 +9834,16 @@ class $$WeeklyRecordsTableTableManager
                 youth: youth,
                 children: children,
                 sundayHomeChurch: sundayHomeChurch,
+                baptisms: baptisms,
+                holyCommunion: holyCommunion,
                 tithe: tithe,
                 offerings: offerings,
                 emergencyCollection: emergencyCollection,
                 plannedCollection: plannedCollection,
+                sabbathSchoolAttendance: sabbathSchoolAttendance,
+                visitorsCount: visitorsCount,
+                missionOffering: missionOffering,
+                localChurchBudget: localChurchBudget,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -5046,10 +9858,16 @@ class $$WeeklyRecordsTableTableManager
                 Value<int> youth = const Value.absent(),
                 Value<int> children = const Value.absent(),
                 Value<int> sundayHomeChurch = const Value.absent(),
+                Value<int?> baptisms = const Value.absent(),
+                Value<int?> holyCommunion = const Value.absent(),
                 Value<double> tithe = const Value.absent(),
                 Value<double> offerings = const Value.absent(),
                 Value<double> emergencyCollection = const Value.absent(),
                 Value<double> plannedCollection = const Value.absent(),
+                Value<int?> sabbathSchoolAttendance = const Value.absent(),
+                Value<int?> visitorsCount = const Value.absent(),
+                Value<double?> missionOffering = const Value.absent(),
+                Value<double?> localChurchBudget = const Value.absent(),
                 required DateTime createdAt,
                 required DateTime updatedAt,
               }) => WeeklyRecordsCompanion.insert(
@@ -5062,10 +9880,16 @@ class $$WeeklyRecordsTableTableManager
                 youth: youth,
                 children: children,
                 sundayHomeChurch: sundayHomeChurch,
+                baptisms: baptisms,
+                holyCommunion: holyCommunion,
                 tithe: tithe,
                 offerings: offerings,
                 emergencyCollection: emergencyCollection,
                 plannedCollection: plannedCollection,
+                sabbathSchoolAttendance: sabbathSchoolAttendance,
+                visitorsCount: visitorsCount,
+                missionOffering: missionOffering,
+                localChurchBudget: localChurchBudget,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
               ),
@@ -6112,6 +10936,3380 @@ typedef $$ExportHistoryListTableProcessedTableManager =
       ExportHistoryListData,
       PrefetchHooks Function({bool churchId})
     >;
+typedef $$HomeChurchesTableCreateCompanionBuilder =
+    HomeChurchesCompanion Function({
+      Value<int> id,
+      required int churchId,
+      required String name,
+      Value<String> category,
+      Value<int> expectedMembership,
+      Value<int> expectedAtKcc,
+      Value<bool> isActive,
+      Value<int> sortOrder,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+    });
+typedef $$HomeChurchesTableUpdateCompanionBuilder =
+    HomeChurchesCompanion Function({
+      Value<int> id,
+      Value<int> churchId,
+      Value<String> name,
+      Value<String> category,
+      Value<int> expectedMembership,
+      Value<int> expectedAtKcc,
+      Value<bool> isActive,
+      Value<int> sortOrder,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+final class $$HomeChurchesTableReferences
+    extends BaseReferences<_$AppDatabase, $HomeChurchesTable, HomeChurche> {
+  $$HomeChurchesTableReferences(super.$_db, super.$_table, super.$_typedResult);
+
+  static $ChurchesTable _churchIdTable(_$AppDatabase db) =>
+      db.churches.createAlias(
+        $_aliasNameGenerator(db.homeChurches.churchId, db.churches.id),
+      );
+
+  $$ChurchesTableProcessedTableManager get churchId {
+    final $_column = $_itemColumn<int>('church_id')!;
+
+    final manager = $$ChurchesTableTableManager(
+      $_db,
+      $_db.churches,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_churchIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $HolyCommunionAttendanceTable,
+    List<HolyCommunionAttendanceData>
+  >
+  _holyCommunionAttendanceRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.holyCommunionAttendance,
+        aliasName: $_aliasNameGenerator(
+          db.homeChurches.id,
+          db.holyCommunionAttendance.homeChurchId,
+        ),
+      );
+
+  $$HolyCommunionAttendanceTableProcessedTableManager
+  get holyCommunionAttendanceRefs {
+    final manager = $$HolyCommunionAttendanceTableTableManager(
+      $_db,
+      $_db.holyCommunionAttendance,
+    ).filter((f) => f.homeChurchId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _holyCommunionAttendanceRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $BusinessMeetingAttendanceTable,
+    List<BusinessMeetingAttendanceData>
+  >
+  _businessMeetingAttendanceRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.businessMeetingAttendance,
+        aliasName: $_aliasNameGenerator(
+          db.homeChurches.id,
+          db.businessMeetingAttendance.homeChurchId,
+        ),
+      );
+
+  $$BusinessMeetingAttendanceTableProcessedTableManager
+  get businessMeetingAttendanceRefs {
+    final manager = $$BusinessMeetingAttendanceTableTableManager(
+      $_db,
+      $_db.businessMeetingAttendance,
+    ).filter((f) => f.homeChurchId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _businessMeetingAttendanceRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$HomeChurchesTableFilterComposer
+    extends Composer<_$AppDatabase, $HomeChurchesTable> {
+  $$HomeChurchesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expectedMembership => $composableBuilder(
+    column: $table.expectedMembership,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expectedAtKcc => $composableBuilder(
+    column: $table.expectedAtKcc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ChurchesTableFilterComposer get churchId {
+    final $$ChurchesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.churchId,
+      referencedTable: $db.churches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChurchesTableFilterComposer(
+            $db: $db,
+            $table: $db.churches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> holyCommunionAttendanceRefs(
+    Expression<bool> Function($$HolyCommunionAttendanceTableFilterComposer f) f,
+  ) {
+    final $$HolyCommunionAttendanceTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.holyCommunionAttendance,
+          getReferencedColumn: (t) => t.homeChurchId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$HolyCommunionAttendanceTableFilterComposer(
+                $db: $db,
+                $table: $db.holyCommunionAttendance,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<bool> businessMeetingAttendanceRefs(
+    Expression<bool> Function($$BusinessMeetingAttendanceTableFilterComposer f)
+    f,
+  ) {
+    final $$BusinessMeetingAttendanceTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.businessMeetingAttendance,
+          getReferencedColumn: (t) => t.homeChurchId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$BusinessMeetingAttendanceTableFilterComposer(
+                $db: $db,
+                $table: $db.businessMeetingAttendance,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$HomeChurchesTableOrderingComposer
+    extends Composer<_$AppDatabase, $HomeChurchesTable> {
+  $$HomeChurchesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get category => $composableBuilder(
+    column: $table.category,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expectedMembership => $composableBuilder(
+    column: $table.expectedMembership,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expectedAtKcc => $composableBuilder(
+    column: $table.expectedAtKcc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isActive => $composableBuilder(
+    column: $table.isActive,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sortOrder => $composableBuilder(
+    column: $table.sortOrder,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ChurchesTableOrderingComposer get churchId {
+    final $$ChurchesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.churchId,
+      referencedTable: $db.churches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChurchesTableOrderingComposer(
+            $db: $db,
+            $table: $db.churches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$HomeChurchesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $HomeChurchesTable> {
+  $$HomeChurchesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get category =>
+      $composableBuilder(column: $table.category, builder: (column) => column);
+
+  GeneratedColumn<int> get expectedMembership => $composableBuilder(
+    column: $table.expectedMembership,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get expectedAtKcc => $composableBuilder(
+    column: $table.expectedAtKcc,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isActive =>
+      $composableBuilder(column: $table.isActive, builder: (column) => column);
+
+  GeneratedColumn<int> get sortOrder =>
+      $composableBuilder(column: $table.sortOrder, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$ChurchesTableAnnotationComposer get churchId {
+    final $$ChurchesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.churchId,
+      referencedTable: $db.churches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChurchesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.churches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> holyCommunionAttendanceRefs<T extends Object>(
+    Expression<T> Function($$HolyCommunionAttendanceTableAnnotationComposer a)
+    f,
+  ) {
+    final $$HolyCommunionAttendanceTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.holyCommunionAttendance,
+          getReferencedColumn: (t) => t.homeChurchId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$HolyCommunionAttendanceTableAnnotationComposer(
+                $db: $db,
+                $table: $db.holyCommunionAttendance,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+
+  Expression<T> businessMeetingAttendanceRefs<T extends Object>(
+    Expression<T> Function($$BusinessMeetingAttendanceTableAnnotationComposer a)
+    f,
+  ) {
+    final $$BusinessMeetingAttendanceTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.businessMeetingAttendance,
+          getReferencedColumn: (t) => t.homeChurchId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$BusinessMeetingAttendanceTableAnnotationComposer(
+                $db: $db,
+                $table: $db.businessMeetingAttendance,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$HomeChurchesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $HomeChurchesTable,
+          HomeChurche,
+          $$HomeChurchesTableFilterComposer,
+          $$HomeChurchesTableOrderingComposer,
+          $$HomeChurchesTableAnnotationComposer,
+          $$HomeChurchesTableCreateCompanionBuilder,
+          $$HomeChurchesTableUpdateCompanionBuilder,
+          (HomeChurche, $$HomeChurchesTableReferences),
+          HomeChurche,
+          PrefetchHooks Function({
+            bool churchId,
+            bool holyCommunionAttendanceRefs,
+            bool businessMeetingAttendanceRefs,
+          })
+        > {
+  $$HomeChurchesTableTableManager(_$AppDatabase db, $HomeChurchesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HomeChurchesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$HomeChurchesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$HomeChurchesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> churchId = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> category = const Value.absent(),
+                Value<int> expectedMembership = const Value.absent(),
+                Value<int> expectedAtKcc = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => HomeChurchesCompanion(
+                id: id,
+                churchId: churchId,
+                name: name,
+                category: category,
+                expectedMembership: expectedMembership,
+                expectedAtKcc: expectedAtKcc,
+                isActive: isActive,
+                sortOrder: sortOrder,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int churchId,
+                required String name,
+                Value<String> category = const Value.absent(),
+                Value<int> expectedMembership = const Value.absent(),
+                Value<int> expectedAtKcc = const Value.absent(),
+                Value<bool> isActive = const Value.absent(),
+                Value<int> sortOrder = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+              }) => HomeChurchesCompanion.insert(
+                id: id,
+                churchId: churchId,
+                name: name,
+                category: category,
+                expectedMembership: expectedMembership,
+                expectedAtKcc: expectedAtKcc,
+                isActive: isActive,
+                sortOrder: sortOrder,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$HomeChurchesTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                churchId = false,
+                holyCommunionAttendanceRefs = false,
+                businessMeetingAttendanceRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (holyCommunionAttendanceRefs) db.holyCommunionAttendance,
+                    if (businessMeetingAttendanceRefs)
+                      db.businessMeetingAttendance,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (churchId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.churchId,
+                                    referencedTable:
+                                        $$HomeChurchesTableReferences
+                                            ._churchIdTable(db),
+                                    referencedColumn:
+                                        $$HomeChurchesTableReferences
+                                            ._churchIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (holyCommunionAttendanceRefs)
+                        await $_getPrefetchedData<
+                          HomeChurche,
+                          $HomeChurchesTable,
+                          HolyCommunionAttendanceData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$HomeChurchesTableReferences
+                              ._holyCommunionAttendanceRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$HomeChurchesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).holyCommunionAttendanceRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.homeChurchId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                      if (businessMeetingAttendanceRefs)
+                        await $_getPrefetchedData<
+                          HomeChurche,
+                          $HomeChurchesTable,
+                          BusinessMeetingAttendanceData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$HomeChurchesTableReferences
+                              ._businessMeetingAttendanceRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$HomeChurchesTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).businessMeetingAttendanceRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.homeChurchId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$HomeChurchesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $HomeChurchesTable,
+      HomeChurche,
+      $$HomeChurchesTableFilterComposer,
+      $$HomeChurchesTableOrderingComposer,
+      $$HomeChurchesTableAnnotationComposer,
+      $$HomeChurchesTableCreateCompanionBuilder,
+      $$HomeChurchesTableUpdateCompanionBuilder,
+      (HomeChurche, $$HomeChurchesTableReferences),
+      HomeChurche,
+      PrefetchHooks Function({
+        bool churchId,
+        bool holyCommunionAttendanceRefs,
+        bool businessMeetingAttendanceRefs,
+      })
+    >;
+typedef $$BoardMeetingRecordsTableCreateCompanionBuilder =
+    BoardMeetingRecordsCompanion Function({
+      Value<int> id,
+      required int churchId,
+      Value<int?> createdByAdminId,
+      required DateTime meetingDate,
+      required int year,
+      required int month,
+      Value<int> actualAttendance,
+      Value<int> expectedAttendance,
+      Value<String?> notes,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+    });
+typedef $$BoardMeetingRecordsTableUpdateCompanionBuilder =
+    BoardMeetingRecordsCompanion Function({
+      Value<int> id,
+      Value<int> churchId,
+      Value<int?> createdByAdminId,
+      Value<DateTime> meetingDate,
+      Value<int> year,
+      Value<int> month,
+      Value<int> actualAttendance,
+      Value<int> expectedAttendance,
+      Value<String?> notes,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+final class $$BoardMeetingRecordsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $BoardMeetingRecordsTable,
+          BoardMeetingRecord
+        > {
+  $$BoardMeetingRecordsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ChurchesTable _churchIdTable(_$AppDatabase db) =>
+      db.churches.createAlias(
+        $_aliasNameGenerator(db.boardMeetingRecords.churchId, db.churches.id),
+      );
+
+  $$ChurchesTableProcessedTableManager get churchId {
+    final $_column = $_itemColumn<int>('church_id')!;
+
+    final manager = $$ChurchesTableTableManager(
+      $_db,
+      $_db.churches,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_churchIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $AdminUsersTable _createdByAdminIdTable(_$AppDatabase db) =>
+      db.adminUsers.createAlias(
+        $_aliasNameGenerator(
+          db.boardMeetingRecords.createdByAdminId,
+          db.adminUsers.id,
+        ),
+      );
+
+  $$AdminUsersTableProcessedTableManager? get createdByAdminId {
+    final $_column = $_itemColumn<int>('created_by_admin_id');
+    if ($_column == null) return null;
+    final manager = $$AdminUsersTableTableManager(
+      $_db,
+      $_db.adminUsers,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_createdByAdminIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$BoardMeetingRecordsTableFilterComposer
+    extends Composer<_$AppDatabase, $BoardMeetingRecordsTable> {
+  $$BoardMeetingRecordsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get meetingDate => $composableBuilder(
+    column: $table.meetingDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get month => $composableBuilder(
+    column: $table.month,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get actualAttendance => $composableBuilder(
+    column: $table.actualAttendance,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expectedAttendance => $composableBuilder(
+    column: $table.expectedAttendance,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ChurchesTableFilterComposer get churchId {
+    final $$ChurchesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.churchId,
+      referencedTable: $db.churches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChurchesTableFilterComposer(
+            $db: $db,
+            $table: $db.churches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AdminUsersTableFilterComposer get createdByAdminId {
+    final $$AdminUsersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.createdByAdminId,
+      referencedTable: $db.adminUsers,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AdminUsersTableFilterComposer(
+            $db: $db,
+            $table: $db.adminUsers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BoardMeetingRecordsTableOrderingComposer
+    extends Composer<_$AppDatabase, $BoardMeetingRecordsTable> {
+  $$BoardMeetingRecordsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get meetingDate => $composableBuilder(
+    column: $table.meetingDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get month => $composableBuilder(
+    column: $table.month,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get actualAttendance => $composableBuilder(
+    column: $table.actualAttendance,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expectedAttendance => $composableBuilder(
+    column: $table.expectedAttendance,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ChurchesTableOrderingComposer get churchId {
+    final $$ChurchesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.churchId,
+      referencedTable: $db.churches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChurchesTableOrderingComposer(
+            $db: $db,
+            $table: $db.churches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AdminUsersTableOrderingComposer get createdByAdminId {
+    final $$AdminUsersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.createdByAdminId,
+      referencedTable: $db.adminUsers,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AdminUsersTableOrderingComposer(
+            $db: $db,
+            $table: $db.adminUsers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BoardMeetingRecordsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BoardMeetingRecordsTable> {
+  $$BoardMeetingRecordsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get meetingDate => $composableBuilder(
+    column: $table.meetingDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get year =>
+      $composableBuilder(column: $table.year, builder: (column) => column);
+
+  GeneratedColumn<int> get month =>
+      $composableBuilder(column: $table.month, builder: (column) => column);
+
+  GeneratedColumn<int> get actualAttendance => $composableBuilder(
+    column: $table.actualAttendance,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get expectedAttendance => $composableBuilder(
+    column: $table.expectedAttendance,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$ChurchesTableAnnotationComposer get churchId {
+    final $$ChurchesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.churchId,
+      referencedTable: $db.churches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChurchesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.churches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AdminUsersTableAnnotationComposer get createdByAdminId {
+    final $$AdminUsersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.createdByAdminId,
+      referencedTable: $db.adminUsers,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AdminUsersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.adminUsers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BoardMeetingRecordsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BoardMeetingRecordsTable,
+          BoardMeetingRecord,
+          $$BoardMeetingRecordsTableFilterComposer,
+          $$BoardMeetingRecordsTableOrderingComposer,
+          $$BoardMeetingRecordsTableAnnotationComposer,
+          $$BoardMeetingRecordsTableCreateCompanionBuilder,
+          $$BoardMeetingRecordsTableUpdateCompanionBuilder,
+          (BoardMeetingRecord, $$BoardMeetingRecordsTableReferences),
+          BoardMeetingRecord,
+          PrefetchHooks Function({bool churchId, bool createdByAdminId})
+        > {
+  $$BoardMeetingRecordsTableTableManager(
+    _$AppDatabase db,
+    $BoardMeetingRecordsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BoardMeetingRecordsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$BoardMeetingRecordsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$BoardMeetingRecordsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> churchId = const Value.absent(),
+                Value<int?> createdByAdminId = const Value.absent(),
+                Value<DateTime> meetingDate = const Value.absent(),
+                Value<int> year = const Value.absent(),
+                Value<int> month = const Value.absent(),
+                Value<int> actualAttendance = const Value.absent(),
+                Value<int> expectedAttendance = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => BoardMeetingRecordsCompanion(
+                id: id,
+                churchId: churchId,
+                createdByAdminId: createdByAdminId,
+                meetingDate: meetingDate,
+                year: year,
+                month: month,
+                actualAttendance: actualAttendance,
+                expectedAttendance: expectedAttendance,
+                notes: notes,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int churchId,
+                Value<int?> createdByAdminId = const Value.absent(),
+                required DateTime meetingDate,
+                required int year,
+                required int month,
+                Value<int> actualAttendance = const Value.absent(),
+                Value<int> expectedAttendance = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+              }) => BoardMeetingRecordsCompanion.insert(
+                id: id,
+                churchId: churchId,
+                createdByAdminId: createdByAdminId,
+                meetingDate: meetingDate,
+                year: year,
+                month: month,
+                actualAttendance: actualAttendance,
+                expectedAttendance: expectedAttendance,
+                notes: notes,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$BoardMeetingRecordsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({churchId = false, createdByAdminId = false}) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (churchId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.churchId,
+                                    referencedTable:
+                                        $$BoardMeetingRecordsTableReferences
+                                            ._churchIdTable(db),
+                                    referencedColumn:
+                                        $$BoardMeetingRecordsTableReferences
+                                            ._churchIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (createdByAdminId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.createdByAdminId,
+                                    referencedTable:
+                                        $$BoardMeetingRecordsTableReferences
+                                            ._createdByAdminIdTable(db),
+                                    referencedColumn:
+                                        $$BoardMeetingRecordsTableReferences
+                                            ._createdByAdminIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$BoardMeetingRecordsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BoardMeetingRecordsTable,
+      BoardMeetingRecord,
+      $$BoardMeetingRecordsTableFilterComposer,
+      $$BoardMeetingRecordsTableOrderingComposer,
+      $$BoardMeetingRecordsTableAnnotationComposer,
+      $$BoardMeetingRecordsTableCreateCompanionBuilder,
+      $$BoardMeetingRecordsTableUpdateCompanionBuilder,
+      (BoardMeetingRecord, $$BoardMeetingRecordsTableReferences),
+      BoardMeetingRecord,
+      PrefetchHooks Function({bool churchId, bool createdByAdminId})
+    >;
+typedef $$HolyCommunionEventsTableCreateCompanionBuilder =
+    HolyCommunionEventsCompanion Function({
+      Value<int> id,
+      required int churchId,
+      Value<int?> createdByAdminId,
+      required DateTime eventDate,
+      required int year,
+      required int quarter,
+      Value<int> totalExpectedAtKcc,
+      Value<String?> notes,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+    });
+typedef $$HolyCommunionEventsTableUpdateCompanionBuilder =
+    HolyCommunionEventsCompanion Function({
+      Value<int> id,
+      Value<int> churchId,
+      Value<int?> createdByAdminId,
+      Value<DateTime> eventDate,
+      Value<int> year,
+      Value<int> quarter,
+      Value<int> totalExpectedAtKcc,
+      Value<String?> notes,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+final class $$HolyCommunionEventsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $HolyCommunionEventsTable,
+          HolyCommunionEvent
+        > {
+  $$HolyCommunionEventsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ChurchesTable _churchIdTable(_$AppDatabase db) =>
+      db.churches.createAlias(
+        $_aliasNameGenerator(db.holyCommunionEvents.churchId, db.churches.id),
+      );
+
+  $$ChurchesTableProcessedTableManager get churchId {
+    final $_column = $_itemColumn<int>('church_id')!;
+
+    final manager = $$ChurchesTableTableManager(
+      $_db,
+      $_db.churches,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_churchIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $AdminUsersTable _createdByAdminIdTable(_$AppDatabase db) =>
+      db.adminUsers.createAlias(
+        $_aliasNameGenerator(
+          db.holyCommunionEvents.createdByAdminId,
+          db.adminUsers.id,
+        ),
+      );
+
+  $$AdminUsersTableProcessedTableManager? get createdByAdminId {
+    final $_column = $_itemColumn<int>('created_by_admin_id');
+    if ($_column == null) return null;
+    final manager = $$AdminUsersTableTableManager(
+      $_db,
+      $_db.adminUsers,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_createdByAdminIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $HolyCommunionAttendanceTable,
+    List<HolyCommunionAttendanceData>
+  >
+  _holyCommunionAttendanceRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.holyCommunionAttendance,
+        aliasName: $_aliasNameGenerator(
+          db.holyCommunionEvents.id,
+          db.holyCommunionAttendance.eventId,
+        ),
+      );
+
+  $$HolyCommunionAttendanceTableProcessedTableManager
+  get holyCommunionAttendanceRefs {
+    final manager = $$HolyCommunionAttendanceTableTableManager(
+      $_db,
+      $_db.holyCommunionAttendance,
+    ).filter((f) => f.eventId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _holyCommunionAttendanceRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$HolyCommunionEventsTableFilterComposer
+    extends Composer<_$AppDatabase, $HolyCommunionEventsTable> {
+  $$HolyCommunionEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get eventDate => $composableBuilder(
+    column: $table.eventDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quarter => $composableBuilder(
+    column: $table.quarter,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalExpectedAtKcc => $composableBuilder(
+    column: $table.totalExpectedAtKcc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ChurchesTableFilterComposer get churchId {
+    final $$ChurchesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.churchId,
+      referencedTable: $db.churches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChurchesTableFilterComposer(
+            $db: $db,
+            $table: $db.churches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AdminUsersTableFilterComposer get createdByAdminId {
+    final $$AdminUsersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.createdByAdminId,
+      referencedTable: $db.adminUsers,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AdminUsersTableFilterComposer(
+            $db: $db,
+            $table: $db.adminUsers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> holyCommunionAttendanceRefs(
+    Expression<bool> Function($$HolyCommunionAttendanceTableFilterComposer f) f,
+  ) {
+    final $$HolyCommunionAttendanceTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.holyCommunionAttendance,
+          getReferencedColumn: (t) => t.eventId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$HolyCommunionAttendanceTableFilterComposer(
+                $db: $db,
+                $table: $db.holyCommunionAttendance,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$HolyCommunionEventsTableOrderingComposer
+    extends Composer<_$AppDatabase, $HolyCommunionEventsTable> {
+  $$HolyCommunionEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get eventDate => $composableBuilder(
+    column: $table.eventDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quarter => $composableBuilder(
+    column: $table.quarter,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalExpectedAtKcc => $composableBuilder(
+    column: $table.totalExpectedAtKcc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ChurchesTableOrderingComposer get churchId {
+    final $$ChurchesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.churchId,
+      referencedTable: $db.churches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChurchesTableOrderingComposer(
+            $db: $db,
+            $table: $db.churches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AdminUsersTableOrderingComposer get createdByAdminId {
+    final $$AdminUsersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.createdByAdminId,
+      referencedTable: $db.adminUsers,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AdminUsersTableOrderingComposer(
+            $db: $db,
+            $table: $db.adminUsers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$HolyCommunionEventsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $HolyCommunionEventsTable> {
+  $$HolyCommunionEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get eventDate =>
+      $composableBuilder(column: $table.eventDate, builder: (column) => column);
+
+  GeneratedColumn<int> get year =>
+      $composableBuilder(column: $table.year, builder: (column) => column);
+
+  GeneratedColumn<int> get quarter =>
+      $composableBuilder(column: $table.quarter, builder: (column) => column);
+
+  GeneratedColumn<int> get totalExpectedAtKcc => $composableBuilder(
+    column: $table.totalExpectedAtKcc,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$ChurchesTableAnnotationComposer get churchId {
+    final $$ChurchesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.churchId,
+      referencedTable: $db.churches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChurchesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.churches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AdminUsersTableAnnotationComposer get createdByAdminId {
+    final $$AdminUsersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.createdByAdminId,
+      referencedTable: $db.adminUsers,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AdminUsersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.adminUsers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> holyCommunionAttendanceRefs<T extends Object>(
+    Expression<T> Function($$HolyCommunionAttendanceTableAnnotationComposer a)
+    f,
+  ) {
+    final $$HolyCommunionAttendanceTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.holyCommunionAttendance,
+          getReferencedColumn: (t) => t.eventId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$HolyCommunionAttendanceTableAnnotationComposer(
+                $db: $db,
+                $table: $db.holyCommunionAttendance,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$HolyCommunionEventsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $HolyCommunionEventsTable,
+          HolyCommunionEvent,
+          $$HolyCommunionEventsTableFilterComposer,
+          $$HolyCommunionEventsTableOrderingComposer,
+          $$HolyCommunionEventsTableAnnotationComposer,
+          $$HolyCommunionEventsTableCreateCompanionBuilder,
+          $$HolyCommunionEventsTableUpdateCompanionBuilder,
+          (HolyCommunionEvent, $$HolyCommunionEventsTableReferences),
+          HolyCommunionEvent,
+          PrefetchHooks Function({
+            bool churchId,
+            bool createdByAdminId,
+            bool holyCommunionAttendanceRefs,
+          })
+        > {
+  $$HolyCommunionEventsTableTableManager(
+    _$AppDatabase db,
+    $HolyCommunionEventsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HolyCommunionEventsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$HolyCommunionEventsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$HolyCommunionEventsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> churchId = const Value.absent(),
+                Value<int?> createdByAdminId = const Value.absent(),
+                Value<DateTime> eventDate = const Value.absent(),
+                Value<int> year = const Value.absent(),
+                Value<int> quarter = const Value.absent(),
+                Value<int> totalExpectedAtKcc = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => HolyCommunionEventsCompanion(
+                id: id,
+                churchId: churchId,
+                createdByAdminId: createdByAdminId,
+                eventDate: eventDate,
+                year: year,
+                quarter: quarter,
+                totalExpectedAtKcc: totalExpectedAtKcc,
+                notes: notes,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int churchId,
+                Value<int?> createdByAdminId = const Value.absent(),
+                required DateTime eventDate,
+                required int year,
+                required int quarter,
+                Value<int> totalExpectedAtKcc = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+              }) => HolyCommunionEventsCompanion.insert(
+                id: id,
+                churchId: churchId,
+                createdByAdminId: createdByAdminId,
+                eventDate: eventDate,
+                year: year,
+                quarter: quarter,
+                totalExpectedAtKcc: totalExpectedAtKcc,
+                notes: notes,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$HolyCommunionEventsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                churchId = false,
+                createdByAdminId = false,
+                holyCommunionAttendanceRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (holyCommunionAttendanceRefs) db.holyCommunionAttendance,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (churchId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.churchId,
+                                    referencedTable:
+                                        $$HolyCommunionEventsTableReferences
+                                            ._churchIdTable(db),
+                                    referencedColumn:
+                                        $$HolyCommunionEventsTableReferences
+                                            ._churchIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (createdByAdminId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.createdByAdminId,
+                                    referencedTable:
+                                        $$HolyCommunionEventsTableReferences
+                                            ._createdByAdminIdTable(db),
+                                    referencedColumn:
+                                        $$HolyCommunionEventsTableReferences
+                                            ._createdByAdminIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (holyCommunionAttendanceRefs)
+                        await $_getPrefetchedData<
+                          HolyCommunionEvent,
+                          $HolyCommunionEventsTable,
+                          HolyCommunionAttendanceData
+                        >(
+                          currentTable: table,
+                          referencedTable: $$HolyCommunionEventsTableReferences
+                              ._holyCommunionAttendanceRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$HolyCommunionEventsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).holyCommunionAttendanceRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.eventId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$HolyCommunionEventsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $HolyCommunionEventsTable,
+      HolyCommunionEvent,
+      $$HolyCommunionEventsTableFilterComposer,
+      $$HolyCommunionEventsTableOrderingComposer,
+      $$HolyCommunionEventsTableAnnotationComposer,
+      $$HolyCommunionEventsTableCreateCompanionBuilder,
+      $$HolyCommunionEventsTableUpdateCompanionBuilder,
+      (HolyCommunionEvent, $$HolyCommunionEventsTableReferences),
+      HolyCommunionEvent,
+      PrefetchHooks Function({
+        bool churchId,
+        bool createdByAdminId,
+        bool holyCommunionAttendanceRefs,
+      })
+    >;
+typedef $$HolyCommunionAttendanceTableCreateCompanionBuilder =
+    HolyCommunionAttendanceCompanion Function({
+      Value<int> id,
+      required int eventId,
+      required int homeChurchId,
+      Value<int> actualAttendance,
+      Value<int> expectedAtHc,
+    });
+typedef $$HolyCommunionAttendanceTableUpdateCompanionBuilder =
+    HolyCommunionAttendanceCompanion Function({
+      Value<int> id,
+      Value<int> eventId,
+      Value<int> homeChurchId,
+      Value<int> actualAttendance,
+      Value<int> expectedAtHc,
+    });
+
+final class $$HolyCommunionAttendanceTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $HolyCommunionAttendanceTable,
+          HolyCommunionAttendanceData
+        > {
+  $$HolyCommunionAttendanceTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $HolyCommunionEventsTable _eventIdTable(_$AppDatabase db) =>
+      db.holyCommunionEvents.createAlias(
+        $_aliasNameGenerator(
+          db.holyCommunionAttendance.eventId,
+          db.holyCommunionEvents.id,
+        ),
+      );
+
+  $$HolyCommunionEventsTableProcessedTableManager get eventId {
+    final $_column = $_itemColumn<int>('event_id')!;
+
+    final manager = $$HolyCommunionEventsTableTableManager(
+      $_db,
+      $_db.holyCommunionEvents,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_eventIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $HomeChurchesTable _homeChurchIdTable(_$AppDatabase db) =>
+      db.homeChurches.createAlias(
+        $_aliasNameGenerator(
+          db.holyCommunionAttendance.homeChurchId,
+          db.homeChurches.id,
+        ),
+      );
+
+  $$HomeChurchesTableProcessedTableManager get homeChurchId {
+    final $_column = $_itemColumn<int>('home_church_id')!;
+
+    final manager = $$HomeChurchesTableTableManager(
+      $_db,
+      $_db.homeChurches,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_homeChurchIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$HolyCommunionAttendanceTableFilterComposer
+    extends Composer<_$AppDatabase, $HolyCommunionAttendanceTable> {
+  $$HolyCommunionAttendanceTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get actualAttendance => $composableBuilder(
+    column: $table.actualAttendance,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expectedAtHc => $composableBuilder(
+    column: $table.expectedAtHc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$HolyCommunionEventsTableFilterComposer get eventId {
+    final $$HolyCommunionEventsTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.eventId,
+      referencedTable: $db.holyCommunionEvents,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HolyCommunionEventsTableFilterComposer(
+            $db: $db,
+            $table: $db.holyCommunionEvents,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$HomeChurchesTableFilterComposer get homeChurchId {
+    final $$HomeChurchesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.homeChurchId,
+      referencedTable: $db.homeChurches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HomeChurchesTableFilterComposer(
+            $db: $db,
+            $table: $db.homeChurches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$HolyCommunionAttendanceTableOrderingComposer
+    extends Composer<_$AppDatabase, $HolyCommunionAttendanceTable> {
+  $$HolyCommunionAttendanceTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get actualAttendance => $composableBuilder(
+    column: $table.actualAttendance,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expectedAtHc => $composableBuilder(
+    column: $table.expectedAtHc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$HolyCommunionEventsTableOrderingComposer get eventId {
+    final $$HolyCommunionEventsTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.eventId,
+          referencedTable: $db.holyCommunionEvents,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$HolyCommunionEventsTableOrderingComposer(
+                $db: $db,
+                $table: $db.holyCommunionEvents,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$HomeChurchesTableOrderingComposer get homeChurchId {
+    final $$HomeChurchesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.homeChurchId,
+      referencedTable: $db.homeChurches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HomeChurchesTableOrderingComposer(
+            $db: $db,
+            $table: $db.homeChurches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$HolyCommunionAttendanceTableAnnotationComposer
+    extends Composer<_$AppDatabase, $HolyCommunionAttendanceTable> {
+  $$HolyCommunionAttendanceTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get actualAttendance => $composableBuilder(
+    column: $table.actualAttendance,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get expectedAtHc => $composableBuilder(
+    column: $table.expectedAtHc,
+    builder: (column) => column,
+  );
+
+  $$HolyCommunionEventsTableAnnotationComposer get eventId {
+    final $$HolyCommunionEventsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.eventId,
+          referencedTable: $db.holyCommunionEvents,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$HolyCommunionEventsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.holyCommunionEvents,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$HomeChurchesTableAnnotationComposer get homeChurchId {
+    final $$HomeChurchesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.homeChurchId,
+      referencedTable: $db.homeChurches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HomeChurchesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.homeChurches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$HolyCommunionAttendanceTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $HolyCommunionAttendanceTable,
+          HolyCommunionAttendanceData,
+          $$HolyCommunionAttendanceTableFilterComposer,
+          $$HolyCommunionAttendanceTableOrderingComposer,
+          $$HolyCommunionAttendanceTableAnnotationComposer,
+          $$HolyCommunionAttendanceTableCreateCompanionBuilder,
+          $$HolyCommunionAttendanceTableUpdateCompanionBuilder,
+          (
+            HolyCommunionAttendanceData,
+            $$HolyCommunionAttendanceTableReferences,
+          ),
+          HolyCommunionAttendanceData,
+          PrefetchHooks Function({bool eventId, bool homeChurchId})
+        > {
+  $$HolyCommunionAttendanceTableTableManager(
+    _$AppDatabase db,
+    $HolyCommunionAttendanceTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HolyCommunionAttendanceTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$HolyCommunionAttendanceTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$HolyCommunionAttendanceTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> eventId = const Value.absent(),
+                Value<int> homeChurchId = const Value.absent(),
+                Value<int> actualAttendance = const Value.absent(),
+                Value<int> expectedAtHc = const Value.absent(),
+              }) => HolyCommunionAttendanceCompanion(
+                id: id,
+                eventId: eventId,
+                homeChurchId: homeChurchId,
+                actualAttendance: actualAttendance,
+                expectedAtHc: expectedAtHc,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int eventId,
+                required int homeChurchId,
+                Value<int> actualAttendance = const Value.absent(),
+                Value<int> expectedAtHc = const Value.absent(),
+              }) => HolyCommunionAttendanceCompanion.insert(
+                id: id,
+                eventId: eventId,
+                homeChurchId: homeChurchId,
+                actualAttendance: actualAttendance,
+                expectedAtHc: expectedAtHc,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$HolyCommunionAttendanceTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({eventId = false, homeChurchId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (eventId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.eventId,
+                                referencedTable:
+                                    $$HolyCommunionAttendanceTableReferences
+                                        ._eventIdTable(db),
+                                referencedColumn:
+                                    $$HolyCommunionAttendanceTableReferences
+                                        ._eventIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+                    if (homeChurchId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.homeChurchId,
+                                referencedTable:
+                                    $$HolyCommunionAttendanceTableReferences
+                                        ._homeChurchIdTable(db),
+                                referencedColumn:
+                                    $$HolyCommunionAttendanceTableReferences
+                                        ._homeChurchIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$HolyCommunionAttendanceTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $HolyCommunionAttendanceTable,
+      HolyCommunionAttendanceData,
+      $$HolyCommunionAttendanceTableFilterComposer,
+      $$HolyCommunionAttendanceTableOrderingComposer,
+      $$HolyCommunionAttendanceTableAnnotationComposer,
+      $$HolyCommunionAttendanceTableCreateCompanionBuilder,
+      $$HolyCommunionAttendanceTableUpdateCompanionBuilder,
+      (HolyCommunionAttendanceData, $$HolyCommunionAttendanceTableReferences),
+      HolyCommunionAttendanceData,
+      PrefetchHooks Function({bool eventId, bool homeChurchId})
+    >;
+typedef $$BusinessMeetingEventsTableCreateCompanionBuilder =
+    BusinessMeetingEventsCompanion Function({
+      Value<int> id,
+      required int churchId,
+      Value<int?> createdByAdminId,
+      required DateTime eventDate,
+      required int year,
+      required int quarter,
+      Value<int> meetingNumber,
+      Value<int> totalExpectedAtKcc,
+      Value<String?> notes,
+      required DateTime createdAt,
+      required DateTime updatedAt,
+    });
+typedef $$BusinessMeetingEventsTableUpdateCompanionBuilder =
+    BusinessMeetingEventsCompanion Function({
+      Value<int> id,
+      Value<int> churchId,
+      Value<int?> createdByAdminId,
+      Value<DateTime> eventDate,
+      Value<int> year,
+      Value<int> quarter,
+      Value<int> meetingNumber,
+      Value<int> totalExpectedAtKcc,
+      Value<String?> notes,
+      Value<DateTime> createdAt,
+      Value<DateTime> updatedAt,
+    });
+
+final class $$BusinessMeetingEventsTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $BusinessMeetingEventsTable,
+          BusinessMeetingEvent
+        > {
+  $$BusinessMeetingEventsTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $ChurchesTable _churchIdTable(_$AppDatabase db) =>
+      db.churches.createAlias(
+        $_aliasNameGenerator(db.businessMeetingEvents.churchId, db.churches.id),
+      );
+
+  $$ChurchesTableProcessedTableManager get churchId {
+    final $_column = $_itemColumn<int>('church_id')!;
+
+    final manager = $$ChurchesTableTableManager(
+      $_db,
+      $_db.churches,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_churchIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $AdminUsersTable _createdByAdminIdTable(_$AppDatabase db) =>
+      db.adminUsers.createAlias(
+        $_aliasNameGenerator(
+          db.businessMeetingEvents.createdByAdminId,
+          db.adminUsers.id,
+        ),
+      );
+
+  $$AdminUsersTableProcessedTableManager? get createdByAdminId {
+    final $_column = $_itemColumn<int>('created_by_admin_id');
+    if ($_column == null) return null;
+    final manager = $$AdminUsersTableTableManager(
+      $_db,
+      $_db.adminUsers,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_createdByAdminIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static MultiTypedResultKey<
+    $BusinessMeetingAttendanceTable,
+    List<BusinessMeetingAttendanceData>
+  >
+  _businessMeetingAttendanceRefsTable(_$AppDatabase db) =>
+      MultiTypedResultKey.fromTable(
+        db.businessMeetingAttendance,
+        aliasName: $_aliasNameGenerator(
+          db.businessMeetingEvents.id,
+          db.businessMeetingAttendance.eventId,
+        ),
+      );
+
+  $$BusinessMeetingAttendanceTableProcessedTableManager
+  get businessMeetingAttendanceRefs {
+    final manager = $$BusinessMeetingAttendanceTableTableManager(
+      $_db,
+      $_db.businessMeetingAttendance,
+    ).filter((f) => f.eventId.id.sqlEquals($_itemColumn<int>('id')!));
+
+    final cache = $_typedResult.readTableOrNull(
+      _businessMeetingAttendanceRefsTable($_db),
+    );
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: cache),
+    );
+  }
+}
+
+class $$BusinessMeetingEventsTableFilterComposer
+    extends Composer<_$AppDatabase, $BusinessMeetingEventsTable> {
+  $$BusinessMeetingEventsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get eventDate => $composableBuilder(
+    column: $table.eventDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get quarter => $composableBuilder(
+    column: $table.quarter,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get meetingNumber => $composableBuilder(
+    column: $table.meetingNumber,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get totalExpectedAtKcc => $composableBuilder(
+    column: $table.totalExpectedAtKcc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$ChurchesTableFilterComposer get churchId {
+    final $$ChurchesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.churchId,
+      referencedTable: $db.churches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChurchesTableFilterComposer(
+            $db: $db,
+            $table: $db.churches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AdminUsersTableFilterComposer get createdByAdminId {
+    final $$AdminUsersTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.createdByAdminId,
+      referencedTable: $db.adminUsers,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AdminUsersTableFilterComposer(
+            $db: $db,
+            $table: $db.adminUsers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<bool> businessMeetingAttendanceRefs(
+    Expression<bool> Function($$BusinessMeetingAttendanceTableFilterComposer f)
+    f,
+  ) {
+    final $$BusinessMeetingAttendanceTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.businessMeetingAttendance,
+          getReferencedColumn: (t) => t.eventId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$BusinessMeetingAttendanceTableFilterComposer(
+                $db: $db,
+                $table: $db.businessMeetingAttendance,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$BusinessMeetingEventsTableOrderingComposer
+    extends Composer<_$AppDatabase, $BusinessMeetingEventsTable> {
+  $$BusinessMeetingEventsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get eventDate => $composableBuilder(
+    column: $table.eventDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get year => $composableBuilder(
+    column: $table.year,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get quarter => $composableBuilder(
+    column: $table.quarter,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get meetingNumber => $composableBuilder(
+    column: $table.meetingNumber,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get totalExpectedAtKcc => $composableBuilder(
+    column: $table.totalExpectedAtKcc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get notes => $composableBuilder(
+    column: $table.notes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$ChurchesTableOrderingComposer get churchId {
+    final $$ChurchesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.churchId,
+      referencedTable: $db.churches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChurchesTableOrderingComposer(
+            $db: $db,
+            $table: $db.churches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AdminUsersTableOrderingComposer get createdByAdminId {
+    final $$AdminUsersTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.createdByAdminId,
+      referencedTable: $db.adminUsers,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AdminUsersTableOrderingComposer(
+            $db: $db,
+            $table: $db.adminUsers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BusinessMeetingEventsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BusinessMeetingEventsTable> {
+  $$BusinessMeetingEventsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get eventDate =>
+      $composableBuilder(column: $table.eventDate, builder: (column) => column);
+
+  GeneratedColumn<int> get year =>
+      $composableBuilder(column: $table.year, builder: (column) => column);
+
+  GeneratedColumn<int> get quarter =>
+      $composableBuilder(column: $table.quarter, builder: (column) => column);
+
+  GeneratedColumn<int> get meetingNumber => $composableBuilder(
+    column: $table.meetingNumber,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get totalExpectedAtKcc => $composableBuilder(
+    column: $table.totalExpectedAtKcc,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get notes =>
+      $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  $$ChurchesTableAnnotationComposer get churchId {
+    final $$ChurchesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.churchId,
+      referencedTable: $db.churches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$ChurchesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.churches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  $$AdminUsersTableAnnotationComposer get createdByAdminId {
+    final $$AdminUsersTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.createdByAdminId,
+      referencedTable: $db.adminUsers,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$AdminUsersTableAnnotationComposer(
+            $db: $db,
+            $table: $db.adminUsers,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+
+  Expression<T> businessMeetingAttendanceRefs<T extends Object>(
+    Expression<T> Function($$BusinessMeetingAttendanceTableAnnotationComposer a)
+    f,
+  ) {
+    final $$BusinessMeetingAttendanceTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.id,
+          referencedTable: $db.businessMeetingAttendance,
+          getReferencedColumn: (t) => t.eventId,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$BusinessMeetingAttendanceTableAnnotationComposer(
+                $db: $db,
+                $table: $db.businessMeetingAttendance,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return f(composer);
+  }
+}
+
+class $$BusinessMeetingEventsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BusinessMeetingEventsTable,
+          BusinessMeetingEvent,
+          $$BusinessMeetingEventsTableFilterComposer,
+          $$BusinessMeetingEventsTableOrderingComposer,
+          $$BusinessMeetingEventsTableAnnotationComposer,
+          $$BusinessMeetingEventsTableCreateCompanionBuilder,
+          $$BusinessMeetingEventsTableUpdateCompanionBuilder,
+          (BusinessMeetingEvent, $$BusinessMeetingEventsTableReferences),
+          BusinessMeetingEvent,
+          PrefetchHooks Function({
+            bool churchId,
+            bool createdByAdminId,
+            bool businessMeetingAttendanceRefs,
+          })
+        > {
+  $$BusinessMeetingEventsTableTableManager(
+    _$AppDatabase db,
+    $BusinessMeetingEventsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BusinessMeetingEventsTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$BusinessMeetingEventsTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$BusinessMeetingEventsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> churchId = const Value.absent(),
+                Value<int?> createdByAdminId = const Value.absent(),
+                Value<DateTime> eventDate = const Value.absent(),
+                Value<int> year = const Value.absent(),
+                Value<int> quarter = const Value.absent(),
+                Value<int> meetingNumber = const Value.absent(),
+                Value<int> totalExpectedAtKcc = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<DateTime> updatedAt = const Value.absent(),
+              }) => BusinessMeetingEventsCompanion(
+                id: id,
+                churchId: churchId,
+                createdByAdminId: createdByAdminId,
+                eventDate: eventDate,
+                year: year,
+                quarter: quarter,
+                meetingNumber: meetingNumber,
+                totalExpectedAtKcc: totalExpectedAtKcc,
+                notes: notes,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int churchId,
+                Value<int?> createdByAdminId = const Value.absent(),
+                required DateTime eventDate,
+                required int year,
+                required int quarter,
+                Value<int> meetingNumber = const Value.absent(),
+                Value<int> totalExpectedAtKcc = const Value.absent(),
+                Value<String?> notes = const Value.absent(),
+                required DateTime createdAt,
+                required DateTime updatedAt,
+              }) => BusinessMeetingEventsCompanion.insert(
+                id: id,
+                churchId: churchId,
+                createdByAdminId: createdByAdminId,
+                eventDate: eventDate,
+                year: year,
+                quarter: quarter,
+                meetingNumber: meetingNumber,
+                totalExpectedAtKcc: totalExpectedAtKcc,
+                notes: notes,
+                createdAt: createdAt,
+                updatedAt: updatedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$BusinessMeetingEventsTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback:
+              ({
+                churchId = false,
+                createdByAdminId = false,
+                businessMeetingAttendanceRefs = false,
+              }) {
+                return PrefetchHooks(
+                  db: db,
+                  explicitlyWatchedTables: [
+                    if (businessMeetingAttendanceRefs)
+                      db.businessMeetingAttendance,
+                  ],
+                  addJoins:
+                      <
+                        T extends TableManagerState<
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic,
+                          dynamic
+                        >
+                      >(state) {
+                        if (churchId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.churchId,
+                                    referencedTable:
+                                        $$BusinessMeetingEventsTableReferences
+                                            ._churchIdTable(db),
+                                    referencedColumn:
+                                        $$BusinessMeetingEventsTableReferences
+                                            ._churchIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+                        if (createdByAdminId) {
+                          state =
+                              state.withJoin(
+                                    currentTable: table,
+                                    currentColumn: table.createdByAdminId,
+                                    referencedTable:
+                                        $$BusinessMeetingEventsTableReferences
+                                            ._createdByAdminIdTable(db),
+                                    referencedColumn:
+                                        $$BusinessMeetingEventsTableReferences
+                                            ._createdByAdminIdTable(db)
+                                            .id,
+                                  )
+                                  as T;
+                        }
+
+                        return state;
+                      },
+                  getPrefetchedDataCallback: (items) async {
+                    return [
+                      if (businessMeetingAttendanceRefs)
+                        await $_getPrefetchedData<
+                          BusinessMeetingEvent,
+                          $BusinessMeetingEventsTable,
+                          BusinessMeetingAttendanceData
+                        >(
+                          currentTable: table,
+                          referencedTable:
+                              $$BusinessMeetingEventsTableReferences
+                                  ._businessMeetingAttendanceRefsTable(db),
+                          managerFromTypedResult: (p0) =>
+                              $$BusinessMeetingEventsTableReferences(
+                                db,
+                                table,
+                                p0,
+                              ).businessMeetingAttendanceRefs,
+                          referencedItemsForCurrentItem:
+                              (item, referencedItems) => referencedItems.where(
+                                (e) => e.eventId == item.id,
+                              ),
+                          typedResults: items,
+                        ),
+                    ];
+                  },
+                );
+              },
+        ),
+      );
+}
+
+typedef $$BusinessMeetingEventsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BusinessMeetingEventsTable,
+      BusinessMeetingEvent,
+      $$BusinessMeetingEventsTableFilterComposer,
+      $$BusinessMeetingEventsTableOrderingComposer,
+      $$BusinessMeetingEventsTableAnnotationComposer,
+      $$BusinessMeetingEventsTableCreateCompanionBuilder,
+      $$BusinessMeetingEventsTableUpdateCompanionBuilder,
+      (BusinessMeetingEvent, $$BusinessMeetingEventsTableReferences),
+      BusinessMeetingEvent,
+      PrefetchHooks Function({
+        bool churchId,
+        bool createdByAdminId,
+        bool businessMeetingAttendanceRefs,
+      })
+    >;
+typedef $$BusinessMeetingAttendanceTableCreateCompanionBuilder =
+    BusinessMeetingAttendanceCompanion Function({
+      Value<int> id,
+      required int eventId,
+      required int homeChurchId,
+      Value<int> actualAttendance,
+      Value<int> expectedAtHc,
+    });
+typedef $$BusinessMeetingAttendanceTableUpdateCompanionBuilder =
+    BusinessMeetingAttendanceCompanion Function({
+      Value<int> id,
+      Value<int> eventId,
+      Value<int> homeChurchId,
+      Value<int> actualAttendance,
+      Value<int> expectedAtHc,
+    });
+
+final class $$BusinessMeetingAttendanceTableReferences
+    extends
+        BaseReferences<
+          _$AppDatabase,
+          $BusinessMeetingAttendanceTable,
+          BusinessMeetingAttendanceData
+        > {
+  $$BusinessMeetingAttendanceTableReferences(
+    super.$_db,
+    super.$_table,
+    super.$_typedResult,
+  );
+
+  static $BusinessMeetingEventsTable _eventIdTable(_$AppDatabase db) =>
+      db.businessMeetingEvents.createAlias(
+        $_aliasNameGenerator(
+          db.businessMeetingAttendance.eventId,
+          db.businessMeetingEvents.id,
+        ),
+      );
+
+  $$BusinessMeetingEventsTableProcessedTableManager get eventId {
+    final $_column = $_itemColumn<int>('event_id')!;
+
+    final manager = $$BusinessMeetingEventsTableTableManager(
+      $_db,
+      $_db.businessMeetingEvents,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_eventIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+
+  static $HomeChurchesTable _homeChurchIdTable(_$AppDatabase db) =>
+      db.homeChurches.createAlias(
+        $_aliasNameGenerator(
+          db.businessMeetingAttendance.homeChurchId,
+          db.homeChurches.id,
+        ),
+      );
+
+  $$HomeChurchesTableProcessedTableManager get homeChurchId {
+    final $_column = $_itemColumn<int>('home_church_id')!;
+
+    final manager = $$HomeChurchesTableTableManager(
+      $_db,
+      $_db.homeChurches,
+    ).filter((f) => f.id.sqlEquals($_column));
+    final item = $_typedResult.readTableOrNull(_homeChurchIdTable($_db));
+    if (item == null) return manager;
+    return ProcessedTableManager(
+      manager.$state.copyWith(prefetchedData: [item]),
+    );
+  }
+}
+
+class $$BusinessMeetingAttendanceTableFilterComposer
+    extends Composer<_$AppDatabase, $BusinessMeetingAttendanceTable> {
+  $$BusinessMeetingAttendanceTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get actualAttendance => $composableBuilder(
+    column: $table.actualAttendance,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get expectedAtHc => $composableBuilder(
+    column: $table.expectedAtHc,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  $$BusinessMeetingEventsTableFilterComposer get eventId {
+    final $$BusinessMeetingEventsTableFilterComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.eventId,
+          referencedTable: $db.businessMeetingEvents,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$BusinessMeetingEventsTableFilterComposer(
+                $db: $db,
+                $table: $db.businessMeetingEvents,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$HomeChurchesTableFilterComposer get homeChurchId {
+    final $$HomeChurchesTableFilterComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.homeChurchId,
+      referencedTable: $db.homeChurches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HomeChurchesTableFilterComposer(
+            $db: $db,
+            $table: $db.homeChurches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BusinessMeetingAttendanceTableOrderingComposer
+    extends Composer<_$AppDatabase, $BusinessMeetingAttendanceTable> {
+  $$BusinessMeetingAttendanceTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get actualAttendance => $composableBuilder(
+    column: $table.actualAttendance,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get expectedAtHc => $composableBuilder(
+    column: $table.expectedAtHc,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  $$BusinessMeetingEventsTableOrderingComposer get eventId {
+    final $$BusinessMeetingEventsTableOrderingComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.eventId,
+          referencedTable: $db.businessMeetingEvents,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$BusinessMeetingEventsTableOrderingComposer(
+                $db: $db,
+                $table: $db.businessMeetingEvents,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$HomeChurchesTableOrderingComposer get homeChurchId {
+    final $$HomeChurchesTableOrderingComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.homeChurchId,
+      referencedTable: $db.homeChurches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HomeChurchesTableOrderingComposer(
+            $db: $db,
+            $table: $db.homeChurches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BusinessMeetingAttendanceTableAnnotationComposer
+    extends Composer<_$AppDatabase, $BusinessMeetingAttendanceTable> {
+  $$BusinessMeetingAttendanceTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<int> get actualAttendance => $composableBuilder(
+    column: $table.actualAttendance,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get expectedAtHc => $composableBuilder(
+    column: $table.expectedAtHc,
+    builder: (column) => column,
+  );
+
+  $$BusinessMeetingEventsTableAnnotationComposer get eventId {
+    final $$BusinessMeetingEventsTableAnnotationComposer composer =
+        $composerBuilder(
+          composer: this,
+          getCurrentColumn: (t) => t.eventId,
+          referencedTable: $db.businessMeetingEvents,
+          getReferencedColumn: (t) => t.id,
+          builder:
+              (
+                joinBuilder, {
+                $addJoinBuilderToRootComposer,
+                $removeJoinBuilderFromRootComposer,
+              }) => $$BusinessMeetingEventsTableAnnotationComposer(
+                $db: $db,
+                $table: $db.businessMeetingEvents,
+                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+                joinBuilder: joinBuilder,
+                $removeJoinBuilderFromRootComposer:
+                    $removeJoinBuilderFromRootComposer,
+              ),
+        );
+    return composer;
+  }
+
+  $$HomeChurchesTableAnnotationComposer get homeChurchId {
+    final $$HomeChurchesTableAnnotationComposer composer = $composerBuilder(
+      composer: this,
+      getCurrentColumn: (t) => t.homeChurchId,
+      referencedTable: $db.homeChurches,
+      getReferencedColumn: (t) => t.id,
+      builder:
+          (
+            joinBuilder, {
+            $addJoinBuilderToRootComposer,
+            $removeJoinBuilderFromRootComposer,
+          }) => $$HomeChurchesTableAnnotationComposer(
+            $db: $db,
+            $table: $db.homeChurches,
+            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
+            joinBuilder: joinBuilder,
+            $removeJoinBuilderFromRootComposer:
+                $removeJoinBuilderFromRootComposer,
+          ),
+    );
+    return composer;
+  }
+}
+
+class $$BusinessMeetingAttendanceTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $BusinessMeetingAttendanceTable,
+          BusinessMeetingAttendanceData,
+          $$BusinessMeetingAttendanceTableFilterComposer,
+          $$BusinessMeetingAttendanceTableOrderingComposer,
+          $$BusinessMeetingAttendanceTableAnnotationComposer,
+          $$BusinessMeetingAttendanceTableCreateCompanionBuilder,
+          $$BusinessMeetingAttendanceTableUpdateCompanionBuilder,
+          (
+            BusinessMeetingAttendanceData,
+            $$BusinessMeetingAttendanceTableReferences,
+          ),
+          BusinessMeetingAttendanceData,
+          PrefetchHooks Function({bool eventId, bool homeChurchId})
+        > {
+  $$BusinessMeetingAttendanceTableTableManager(
+    _$AppDatabase db,
+    $BusinessMeetingAttendanceTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$BusinessMeetingAttendanceTableFilterComposer(
+                $db: db,
+                $table: table,
+              ),
+          createOrderingComposer: () =>
+              $$BusinessMeetingAttendanceTableOrderingComposer(
+                $db: db,
+                $table: table,
+              ),
+          createComputedFieldComposer: () =>
+              $$BusinessMeetingAttendanceTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<int> eventId = const Value.absent(),
+                Value<int> homeChurchId = const Value.absent(),
+                Value<int> actualAttendance = const Value.absent(),
+                Value<int> expectedAtHc = const Value.absent(),
+              }) => BusinessMeetingAttendanceCompanion(
+                id: id,
+                eventId: eventId,
+                homeChurchId: homeChurchId,
+                actualAttendance: actualAttendance,
+                expectedAtHc: expectedAtHc,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required int eventId,
+                required int homeChurchId,
+                Value<int> actualAttendance = const Value.absent(),
+                Value<int> expectedAtHc = const Value.absent(),
+              }) => BusinessMeetingAttendanceCompanion.insert(
+                id: id,
+                eventId: eventId,
+                homeChurchId: homeChurchId,
+                actualAttendance: actualAttendance,
+                expectedAtHc: expectedAtHc,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable(table),
+                  $$BusinessMeetingAttendanceTableReferences(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: ({eventId = false, homeChurchId = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [],
+              addJoins:
+                  <
+                    T extends TableManagerState<
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic,
+                      dynamic
+                    >
+                  >(state) {
+                    if (eventId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.eventId,
+                                referencedTable:
+                                    $$BusinessMeetingAttendanceTableReferences
+                                        ._eventIdTable(db),
+                                referencedColumn:
+                                    $$BusinessMeetingAttendanceTableReferences
+                                        ._eventIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+                    if (homeChurchId) {
+                      state =
+                          state.withJoin(
+                                currentTable: table,
+                                currentColumn: table.homeChurchId,
+                                referencedTable:
+                                    $$BusinessMeetingAttendanceTableReferences
+                                        ._homeChurchIdTable(db),
+                                referencedColumn:
+                                    $$BusinessMeetingAttendanceTableReferences
+                                        ._homeChurchIdTable(db)
+                                        .id,
+                              )
+                              as T;
+                    }
+
+                    return state;
+                  },
+              getPrefetchedDataCallback: (items) async {
+                return [];
+              },
+            );
+          },
+        ),
+      );
+}
+
+typedef $$BusinessMeetingAttendanceTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $BusinessMeetingAttendanceTable,
+      BusinessMeetingAttendanceData,
+      $$BusinessMeetingAttendanceTableFilterComposer,
+      $$BusinessMeetingAttendanceTableOrderingComposer,
+      $$BusinessMeetingAttendanceTableAnnotationComposer,
+      $$BusinessMeetingAttendanceTableCreateCompanionBuilder,
+      $$BusinessMeetingAttendanceTableUpdateCompanionBuilder,
+      (
+        BusinessMeetingAttendanceData,
+        $$BusinessMeetingAttendanceTableReferences,
+      ),
+      BusinessMeetingAttendanceData,
+      PrefetchHooks Function({bool eventId, bool homeChurchId})
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -6126,4 +14324,22 @@ class $AppDatabaseManager {
       $$DerivedMetricsListTableTableManager(_db, _db.derivedMetricsList);
   $$ExportHistoryListTableTableManager get exportHistoryList =>
       $$ExportHistoryListTableTableManager(_db, _db.exportHistoryList);
+  $$HomeChurchesTableTableManager get homeChurches =>
+      $$HomeChurchesTableTableManager(_db, _db.homeChurches);
+  $$BoardMeetingRecordsTableTableManager get boardMeetingRecords =>
+      $$BoardMeetingRecordsTableTableManager(_db, _db.boardMeetingRecords);
+  $$HolyCommunionEventsTableTableManager get holyCommunionEvents =>
+      $$HolyCommunionEventsTableTableManager(_db, _db.holyCommunionEvents);
+  $$HolyCommunionAttendanceTableTableManager get holyCommunionAttendance =>
+      $$HolyCommunionAttendanceTableTableManager(
+        _db,
+        _db.holyCommunionAttendance,
+      );
+  $$BusinessMeetingEventsTableTableManager get businessMeetingEvents =>
+      $$BusinessMeetingEventsTableTableManager(_db, _db.businessMeetingEvents);
+  $$BusinessMeetingAttendanceTableTableManager get businessMeetingAttendance =>
+      $$BusinessMeetingAttendanceTableTableManager(
+        _db,
+        _db.businessMeetingAttendance,
+      );
 }

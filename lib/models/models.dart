@@ -1,11 +1,16 @@
 // Export all data models
+export 'charts/charts.dart';
 export 'activity_log_entry.dart';
 export 'admin_user.dart';
 export 'app_settings.dart';
+export 'board_meeting_record.dart';
+export 'business_meeting_event.dart';
 export 'church.dart';
 export 'dashboard_config.dart';
 export 'derived_metrics.dart';
 export 'export_history.dart';
+export 'home_church.dart';
+export 'holy_communion_event.dart';
 export 'update_error_messages.dart';
 export 'update_error_type.dart';
 export 'update_manifest.dart';
