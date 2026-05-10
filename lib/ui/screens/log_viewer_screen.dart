@@ -3,7 +3,10 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
+import '../../config/app_secrets.dart';
 import '../../services/log_service.dart';
 
 /// Shows recent in-memory log entries and allows exporting logs for a
@@ -43,11 +46,16 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
 
   Color _levelColor(LogLevel level) {
     switch (level) {
-      case LogLevel.debug:   return Colors.grey;
-      case LogLevel.info:    return Colors.blue;
-      case LogLevel.warning: return Colors.orange;
-      case LogLevel.error:   return Colors.red;
-      case LogLevel.crash:   return Colors.purple;
+      case LogLevel.debug:
+        return Colors.grey;
+      case LogLevel.info:
+        return Colors.blue;
+      case LogLevel.warning:
+        return Colors.orange;
+      case LogLevel.error:
+        return Colors.red;
+      case LogLevel.crash:
+        return Colors.purple;
     }
   }
 
@@ -77,7 +85,8 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
 
       // Ask user where to save.
       String? destPath;
-      if (!kIsWeb && (Platform.isLinux || Platform.isMacOS || Platform.isWindows)) {
+      if (!kIsWeb &&
+          (Platform.isLinux || Platform.isMacOS || Platform.isWindows)) {
         // Use a temp path in documents when no file picker is integrated here.
         // In production this would call fileService.pickSaveLocation().
         final dir = await _getExportsDir();
@@ -178,9 +187,7 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
                           onTap: _pickDateRange,
                           child: Text(
                             '${_dateFmt.format(_exportFrom)}  →  ${_dateFmt.format(_exportTo)}',
-                            style: Theme.of(context)
-                                .textTheme
-                                .bodyMedium
+                            style: Theme.of(context).textTheme.bodyMedium
                                 ?.copyWith(
                                   color: Theme.of(context).colorScheme.primary,
                                   decoration: TextDecoration.underline,
@@ -296,16 +303,16 @@ class _LogEntryTile extends StatelessWidget {
                     Text(
                       timeFmt.format(entry.timestamp),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.outline,
-                          ),
+                        color: Theme.of(context).colorScheme.outline,
+                      ),
                     ),
                     const SizedBox(width: 6),
                     Text(
                       '[${entry.tag}]',
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: Theme.of(context).colorScheme.primary,
-                            fontWeight: FontWeight.w500,
-                          ),
+                        color: Theme.of(context).colorScheme.primary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
@@ -319,9 +326,9 @@ class _LogEntryTile extends StatelessWidget {
                   Text(
                     entry.error!,
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: Colors.red,
-                          fontFamily: 'monospace',
-                        ),
+                      color: Colors.red,
+                      fontFamily: 'monospace',
+                    ),
                   ),
                 ],
               ],
@@ -343,30 +350,94 @@ Future<void> showCrashRecoveryDialogIfNeeded(BuildContext context) async {
   await showDialog<void>(
     context: context,
     barrierDismissible: false,
-    builder: (ctx) => AlertDialog(
-      title: const Text('App closed unexpectedly'),
-      content: const Text(
-        'The app crashed in the previous session. '
-        'Would you like to view or export the logs to help diagnose the issue?',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(ctx),
-          child: const Text('Dismiss'),
-        ),
-        FilledButton(
-          onPressed: () {
-            Navigator.pop(ctx);
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) => const LogViewerScreen(),
-              ),
-            );
-          },
-          child: const Text('View Logs'),
-        ),
-      ],
-    ),
+    builder: (ctx) => const _CrashRecoveryDialog(),
   );
+}
+
+class _CrashRecoveryDialog extends StatefulWidget {
+  const _CrashRecoveryDialog();
+
+  @override
+  State<_CrashRecoveryDialog> createState() => _CrashRecoveryDialogState();
+}
+
+class _CrashRecoveryDialogState extends State<_CrashRecoveryDialog> {
+  bool _sending = false;
+
+  Future<void> _sendReport() async {
+    setState(() => _sending = true);
+
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final destPath =
+          '${tempDir.path}/crash_report_${DateTime.now().millisecondsSinceEpoch}.log';
+      final now = DateTime.now();
+      await LogService.exportLogs(
+        from: now.subtract(const Duration(days: 7)),
+        to: now,
+        destPath: destPath,
+      );
+
+      await Share.shareXFiles(
+        [XFile(destPath)],
+        subject: 'Church Analytics Crash Report',
+        text: 'Crash log from Church Analytics. Please send to: $kCrashEmail',
+      );
+    } catch (e) {
+      LogService.error('CrashDialog', 'Failed to send crash report', error: e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not share logs. You can export them manually from App Settings → View Logs.',
+            ),
+          ),
+        );
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _sending = false);
+        Navigator.pop(context);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text('App closed unexpectedly'),
+      content: _sending
+          ? const SizedBox(
+              height: 80,
+              child: Center(child: CircularProgressIndicator()),
+            )
+          : const Text(
+              'The app crashed in the previous session. '
+              'Would you like to view the logs or send a report?',
+            ),
+      actions: _sending
+          ? []
+          : [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Dismiss'),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const LogViewerScreen()),
+                  );
+                },
+                child: const Text('View Logs'),
+              ),
+              if (kCrashEmail.isNotEmpty)
+                FilledButton(
+                  onPressed: _sendReport,
+                  child: const Text('Send Report'),
+                ),
+            ],
+    );
+  }
 }

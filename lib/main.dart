@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'config/app_secrets.dart';
 import 'services/log_service.dart';
 import 'services/settings_service.dart';
 import 'services/theme_service.dart';
@@ -62,9 +63,6 @@ void main() async {
   // In CI: flutter build apk --dart-define=SYNCFUSION_LICENSE_KEY=<secret>
   // Local builds without the key will show the community watermark, which is
   // acceptable for development. Never put a real key in this file.
-  const kSyncfusionLicenseKey = String.fromEnvironment(
-    'SYNCFUSION_LICENSE_KEY',
-  );
   if (kSyncfusionLicenseKey.isNotEmpty) {
     // SfLicenseKey.registerLicense(kSyncfusionLicenseKey);
   }
