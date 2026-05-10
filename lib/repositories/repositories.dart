@@ -1,6 +1,9 @@
-// Export all repositories
 export 'admin_user_repository.dart';
+export 'board_meeting_repository.dart';
+export 'business_meeting_repository.dart';
 export 'church_repository.dart';
 export 'derived_metrics_repository.dart';
+export 'holy_communion_repository.dart';
+export 'home_church_repository.dart';
 export 'settings_repository.dart';
 export 'weekly_record_repository.dart';

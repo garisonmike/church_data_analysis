@@ -1,4 +1,8 @@
 import 'dart:math' as math;
+import 'package:church_analytics/models/board_meeting_record.dart';
+import 'package:church_analytics/models/business_meeting_event.dart';
+import 'package:church_analytics/models/home_church.dart';
+import 'package:church_analytics/models/holy_communion_event.dart';
 
 import 'package:church_analytics/models/charts/charts.dart';
 import 'package:church_analytics/models/weekly_record.dart';
@@ -691,6 +695,7 @@ class AnalyticsService {
         'Home Church': r.sundayHomeChurch.toDouble(),
         'Tithe': r.tithe,
         'Offerings': r.offerings,
+        'Baptisms': (r.baptisms ?? 0).toDouble(),
       };
       actuals.forEach((key, value) {
         if (targets.containsKey(key)) {
@@ -732,6 +737,7 @@ class AnalyticsService {
         'Home Church': r.sundayHomeChurch.toDouble(),
         'Tithe': r.tithe,
         'Offerings': r.offerings,
+        'Baptisms': (r.baptisms ?? 0).toDouble(),
       };
       actuals.forEach((key, value) {
         if (targets.containsKey(key)) {
@@ -1500,4 +1506,200 @@ class AnalyticsService {
     final year = date.year.toString();
     return '$day-$month-$year';
   }
+
+  // ---------------------------------------------------------------------------
+  // Event tracking trends
+  // ---------------------------------------------------------------------------
+
+  /// Returns weekly baptism counts as a time series.
+  /// Weeks with no baptism event (null) are represented as 0.
+  List<TimeSeriesPoint> baptismsTrend(List<WeeklyRecord> records) {
+    return records
+        .map((r) => TimeSeriesPoint(x: r.weekStartDate, y: (r.baptisms ?? 0).toDouble()))
+        .toList();
+  }
+
+  /// Returns weekly Holy Communion participant counts as a time series.
+  /// Weeks with no communion event (null) are represented as 0.
+  List<TimeSeriesPoint> holyCommunionTrend(List<WeeklyRecord> records) {
+    return records
+        .map((r) => TimeSeriesPoint(x: r.weekStartDate, y: (r.holyCommunion ?? 0).toDouble()))
+        .toList();
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phase 1: Board Meeting Analytics
+  // ---------------------------------------------------------------------------
+
+  /// Monthly board meeting attendance as a time series.
+  List<TimeSeriesPoint> boardMeetingTrend(List<BoardMeetingRecord> records) {
+    final sorted = List<BoardMeetingRecord>.from(records)
+      ..sort((a, b) => a.meetingDate.compareTo(b.meetingDate));
+    return sorted.map((r) =>
+        TimeSeriesPoint(x: r.meetingDate, y: r.actualAttendance.toDouble())).toList();
+  }
+
+  /// Board meeting attendance rate (%) as a time series.
+  List<TimeSeriesPoint> boardMeetingRateTrend(List<BoardMeetingRecord> records) {
+    final sorted = List<BoardMeetingRecord>.from(records)
+      ..sort((a, b) => a.meetingDate.compareTo(b.meetingDate));
+    return sorted.map((r) =>
+        TimeSeriesPoint(x: r.meetingDate, y: r.attendanceRate)).toList();
+  }
+
+  /// Average board meeting attendance rate over all records.
+  double averageBoardMeetingRate(List<BoardMeetingRecord> records) {
+    if (records.isEmpty) return 0.0;
+    return records.map((r) => r.attendanceRate).reduce((a, b) => a + b) /
+        records.length;
+  }
+
+  /// Actual vs expected for each board meeting month — for bar chart.
+  Map<String, List<CategoryPoint>> boardMeetingActualVsExpected(
+      List<BoardMeetingRecord> records) {
+    final sorted = List<BoardMeetingRecord>.from(records)
+      ..sort((a, b) => a.meetingDate.compareTo(b.meetingDate));
+    return {
+      'Actual': sorted.map((r) =>
+          CategoryPoint(label: r.displayLabel, value: r.actualAttendance.toDouble())).toList(),
+      'Expected': sorted.map((r) =>
+          CategoryPoint(label: r.displayLabel, value: r.expectedAttendance.toDouble())).toList(),
+    };
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phase 1: Holy Communion Analytics
+  // ---------------------------------------------------------------------------
+
+  /// Overall HC attendance rate per event (quarterly trend).
+  List<TimeSeriesPoint> holyCommunionRateTrend(List<HolyCommunionEvent> events) {
+    final sorted = List<HolyCommunionEvent>.from(events)
+      ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
+    return sorted.map((e) =>
+        TimeSeriesPoint(x: e.eventDate, y: e.overallRate)).toList();
+  }
+
+  /// Total actual vs total expected per event.
+  Map<String, List<CategoryPoint>> holyCommunionActualVsExpected(
+      List<HolyCommunionEvent> events) {
+    final sorted = List<HolyCommunionEvent>.from(events)
+      ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
+    return {
+      'Actual': sorted.map((e) =>
+          CategoryPoint(label: e.quarterLabel, value: e.totalActual.toDouble())).toList(),
+      'Expected': sorted.map((e) =>
+          CategoryPoint(label: e.quarterLabel, value: e.totalExpectedAtKcc.toDouble())).toList(),
+    };
+  }
+
+  /// Per-home-church breakdown for the latest HC event.
+  Map<String, List<CategoryPoint>> holyCommunionByHomeChurch(
+      HolyCommunionEvent event) {
+    final sorted = List<HolyCommunionAttendanceRow>.from(event.attendance)
+      ..sort((a, b) => b.actualAttendance.compareTo(a.actualAttendance));
+    return {
+      'Actual': sorted.map((r) =>
+          CategoryPoint(label: r.homeChurchName, value: r.actualAttendance.toDouble())).toList(),
+      'Expected': sorted.map((r) =>
+          CategoryPoint(label: r.homeChurchName, value: r.expectedAtHc.toDouble())).toList(),
+    };
+  }
+
+  /// Average HC attendance rate across all events.
+  double averageHolyCommunionRate(List<HolyCommunionEvent> events) {
+    if (events.isEmpty) return 0.0;
+    return events.map((e) => e.overallRate).reduce((a, b) => a + b) /
+        events.length;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phase 1: Business Meeting Analytics
+  // ---------------------------------------------------------------------------
+
+  /// Overall business meeting attendance rate per event.
+  List<TimeSeriesPoint> businessMeetingRateTrend(List<BusinessMeetingEvent> events) {
+    final sorted = List<BusinessMeetingEvent>.from(events)
+      ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
+    return sorted.map((e) =>
+        TimeSeriesPoint(x: e.eventDate, y: e.overallRate)).toList();
+  }
+
+  /// Actual vs expected per business meeting.
+  Map<String, List<CategoryPoint>> businessMeetingActualVsExpected(
+      List<BusinessMeetingEvent> events) {
+    final sorted = List<BusinessMeetingEvent>.from(events)
+      ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
+    return {
+      'Actual': sorted.map((e) =>
+          CategoryPoint(label: e.meetingLabel, value: e.totalActual.toDouble())).toList(),
+      'Expected': sorted.map((e) =>
+          CategoryPoint(label: e.meetingLabel, value: e.totalExpectedAtKcc.toDouble())).toList(),
+    };
+  }
+
+  /// Per-home-church breakdown for a business meeting event.
+  Map<String, List<CategoryPoint>> businessMeetingByHomeChurch(
+      BusinessMeetingEvent event) {
+    final sorted = List<BusinessMeetingAttendanceRow>.from(event.attendance)
+      ..sort((a, b) => b.actualAttendance.compareTo(a.actualAttendance));
+    return {
+      'Actual': sorted.map((r) =>
+          CategoryPoint(label: r.homeChurchName, value: r.actualAttendance.toDouble())).toList(),
+      'Expected': sorted.map((r) =>
+          CategoryPoint(label: r.homeChurchName, value: r.expectedAtHc.toDouble())).toList(),
+    };
+  }
+
+  /// Average business meeting attendance rate.
+  double averageBusinessMeetingRate(List<BusinessMeetingEvent> events) {
+    if (events.isEmpty) return 0.0;
+    return events.map((e) => e.overallRate).reduce((a, b) => a + b) /
+        events.length;
+  }
+
+  // ---------------------------------------------------------------------------
+  // Phase 1: Home Church Analytics
+  // ---------------------------------------------------------------------------
+
+  /// Attendance rate per home church from a list of HC attendance rows.
+  List<CategoryPoint> homeChurchAttendanceRates(
+      List<HolyCommunionAttendanceRow> rows) {
+    final sorted = List<HolyCommunionAttendanceRow>.from(rows)
+      ..sort((a, b) => b.attendanceRate.compareTo(a.attendanceRate));
+    return sorted.map((r) =>
+        CategoryPoint(label: r.homeChurchName, value: r.attendanceRate)).toList();
+  }
+
+  /// Total expected membership per category from the home church list.
+  Map<String, double> homeChurchMembershipByCategory(List<HomeChurch> homeChurches) {
+    final result = <String, double>{};
+    for (final hc in homeChurches) {
+      final key = hc.category.displayName;
+      result[key] = (result[key] ?? 0) + hc.expectedMembership;
+    }
+    return result;
+  }
+
+  /// Sabbath School attendance trend from weekly records.
+  List<TimeSeriesPoint> sabbathSchoolTrend(List<WeeklyRecord> records) {
+    return records
+        .where((r) => r.sabbathSchoolAttendance != null)
+        .map((r) => TimeSeriesPoint(
+              x: r.weekStartDate,
+              y: (r.sabbathSchoolAttendance ?? 0).toDouble(),
+            ))
+        .toList();
+  }
+
+  /// Mission offering trend from weekly records.
+  List<TimeSeriesPoint> missionOfferingTrend(List<WeeklyRecord> records) {
+    return records
+        .where((r) => r.missionOffering != null)
+        .map((r) => TimeSeriesPoint(
+              x: r.weekStartDate,
+              y: r.missionOffering ?? 0.0,
+            ))
+        .toList();
+  }
+
 }

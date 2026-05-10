@@ -32,6 +32,7 @@ class ChurchRepository {
             contactEmail: Value(church.contactEmail),
             contactPhone: Value(church.contactPhone),
             currency: Value(church.currency),
+            boardMemberCount: Value(church.boardMemberCount),
             createdAt: church.createdAt,
             updatedAt: church.updatedAt,
           ),
@@ -52,6 +53,7 @@ class ChurchRepository {
             contactEmail: Value(church.contactEmail),
             contactPhone: Value(church.contactPhone),
             currency: Value(church.currency),
+            boardMemberCount: Value(church.boardMemberCount),
             createdAt: Value(church.createdAt),
             updatedAt: Value(DateTime.now()),
           ),
@@ -80,6 +82,7 @@ class ChurchRepository {
       contactEmail: data.contactEmail,
       contactPhone: data.contactPhone,
       currency: data.currency,
+      boardMemberCount: data.boardMemberCount,
       createdAt: data.createdAt,
       updatedAt: data.updatedAt,
     );

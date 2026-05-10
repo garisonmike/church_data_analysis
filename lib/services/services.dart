@@ -12,6 +12,7 @@ export 'file_service.dart';
 export 'import_service.dart';
 export 'installer_launch_result.dart';
 export 'installer_launch_service.dart';
+export 'log_service.dart';
 export 'pdf_report_service.dart';
 export 'performance_monitor.dart';
 export 'settings_service.dart';

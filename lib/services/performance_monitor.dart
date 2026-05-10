@@ -9,6 +9,17 @@ class PerformanceMonitor {
   final Map<String, Stopwatch> _stopwatches = {};
   final Map<String, List<Duration>> _measurements = {};
 
+  /// Maximum number of recorded measurements to keep per operation name.
+  /// Older measurements are dropped when this limit is exceeded.
+  static const int _kMaxMeasurementsPerKey = 100;
+
+  /// Clears all stored measurements and running stopwatches. Call on significant
+  /// navigation events (e.g., switching churches) to prevent unbounded memory growth.
+  void clearAll() {
+    _stopwatches.clear();
+    _measurements.clear();
+  }
+
   /// Start timing an operation
   void startTiming(String operationName) {
     _stopwatches[operationName] = Stopwatch()..start();
@@ -24,6 +35,14 @@ class PerformanceMonitor {
 
     _measurements.putIfAbsent(operationName, () => []);
     _measurements[operationName]!.add(elapsed);
+
+    // Evict oldest measurements to prevent unbounded memory growth
+    if (_measurements[operationName]!.length > _kMaxMeasurementsPerKey) {
+      _measurements[operationName]!.removeRange(
+        0,
+        _measurements[operationName]!.length - _kMaxMeasurementsPerKey,
+      );
+    }
 
     _stopwatches.remove(operationName);
 

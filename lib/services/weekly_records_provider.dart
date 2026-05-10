@@ -1,5 +1,10 @@
 import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/models/models.dart' as models;
+import 'package:church_analytics/repositories/board_meeting_repository.dart';
+import 'package:church_analytics/repositories/business_meeting_repository.dart';
+import 'package:church_analytics/repositories/holy_communion_repository.dart';
+import 'package:church_analytics/repositories/home_church_repository.dart';
+import 'package:church_analytics/repositories/church_repository.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -201,3 +206,77 @@ class WeeklyRecordsNotifier extends StateNotifier<WeeklyRecordsState> {
     }
   }
 }
+
+
+// ── Church provider ───────────────────────────────────────────────────────────
+
+/// Provides [ChurchRepository] backed by the local Drift database.
+final churchRepositoryProvider = Provider<ChurchRepository>((ref) {
+  return ChurchRepository(ref.read(databaseProvider));
+});
+
+// ── HomeChurch providers ──────────────────────────────────────────────────────
+
+final homeChurchRepositoryProvider = Provider<HomeChurchRepository>((ref) {
+  return HomeChurchRepository(ref.read(databaseProvider));
+});
+
+final homeChurchesProvider =
+    FutureProvider.family<List<models.HomeChurch>, int>((ref, churchId) async {
+  final repo = ref.read(homeChurchRepositoryProvider);
+  return repo.getByChurch(churchId);
+});
+
+// ── BoardMeeting providers ────────────────────────────────────────────────────
+
+final boardMeetingRepositoryProvider = Provider<BoardMeetingRepository>((ref) {
+  return BoardMeetingRepository(ref.read(databaseProvider));
+});
+
+final boardMeetingRecordsProvider =
+    FutureProvider.family<List<models.BoardMeetingRecord>, int>((ref, churchId) async {
+  final repo = ref.read(boardMeetingRepositoryProvider);
+  return repo.getByChurch(churchId);
+});
+
+// ── HolyCommunion providers ───────────────────────────────────────────────────
+
+final holyCommunionRepositoryProvider = Provider<HolyCommunionRepository>((ref) {
+  return HolyCommunionRepository(ref.read(databaseProvider));
+});
+
+final holyCommunionEventsProvider =
+    FutureProvider.family<List<models.HolyCommunionEvent>, int>((ref, churchId) async {
+  final repo = ref.read(holyCommunionRepositoryProvider);
+  // Enrich with home church names
+  final hcRepo = ref.read(homeChurchRepositoryProvider);
+  final hcList = await hcRepo.getByChurch(churchId, activeOnly: false);
+  final hcMap = {for (final hc in hcList) hc.id!: hc.name};
+  final events = await repo.getByChurch(churchId);
+  return events.map((e) => e.copyWith(
+    attendance: e.attendance.map((r) => r.copyWith(
+      homeChurchName: hcMap[r.homeChurchId] ?? 'Unknown',
+    )).toList(),
+  )).toList();
+});
+
+// ── BusinessMeeting providers ─────────────────────────────────────────────────
+
+final businessMeetingRepositoryProvider = Provider<BusinessMeetingRepository>((ref) {
+  return BusinessMeetingRepository(ref.read(databaseProvider));
+});
+
+final businessMeetingEventsProvider =
+    FutureProvider.family<List<models.BusinessMeetingEvent>, int>((ref, churchId) async {
+  final repo = ref.read(businessMeetingRepositoryProvider);
+  final hcRepo = ref.read(homeChurchRepositoryProvider);
+  final hcList = await hcRepo.getByChurch(churchId, activeOnly: false);
+  final hcMap = {for (final hc in hcList) hc.id!: hc.name};
+  final events = await repo.getByChurch(churchId);
+  return events.map((e) => e.copyWith(
+    attendance: e.attendance.map((r) => r.copyWith(
+      homeChurchName: hcMap[r.homeChurchId] ?? 'Unknown',
+    )).toList(),
+  )).toList();
+});
+

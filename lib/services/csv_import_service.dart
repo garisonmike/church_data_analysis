@@ -148,6 +148,18 @@ class CsvImportService {
         required: !optionalFields.contains('plannedCollection'),
       );
 
+      // Optional nullable int fields
+      int? parseOptionalIntField(String fieldName) {
+        final index = columnMapping[fieldName];
+        if (index == null || index >= row.length) return null;
+        final valueStr = row[index]?.toString().trim();
+        if (valueStr == null || valueStr.isEmpty) return null;
+        return int.tryParse(valueStr);
+      }
+
+      final baptisms = parseOptionalIntField('baptisms');
+      final holyCommunion = parseOptionalIntField('holyCommunion');
+
       if (errors.isNotEmpty) {
         return WeeklyRecordImportResult.error(rowNumber, errors);
       }
@@ -166,6 +178,8 @@ class CsvImportService {
         offerings: offerings!,
         emergencyCollection: emergencyCollection!,
         plannedCollection: plannedCollection!,
+        baptisms: baptisms,
+        holyCommunion: holyCommunion,
         createdAt: now,
         updatedAt: now,
       );
@@ -183,22 +197,30 @@ class CsvImportService {
     final mapping = <String, int>{};
 
     final fieldVariations = {
-      'weekStartDate': ['date', 'week', 'weekdate', 'week_date', 'startdate'],
+      'weekStartDate': ['date', 'week', 'weekdate', 'week_date', 'startdate', 'week_start_date', 'weekstartdate'],
       'men': ['men', 'male', 'males', 'men_attendance'],
       'women': ['women', 'female', 'females', 'women_attendance'],
       'youth': ['youth', 'youths', 'youth_attendance', 'teenagers'],
       'children': ['children', 'kids', 'children_attendance'],
-      'sundayHomeChurch': ['sundayhomechurch', 'home_church', 'shc'],
+      'sundayHomeChurch': ['sundayhomechurch', 'home_church', 'shc', 'sunday_home_church'],
       'tithe': ['tithe', 'tithes', 'tithing'],
       'offerings': ['offerings', 'offering', 'offertory'],
-      'emergencyCollection': ['emergencycollection', 'emergency'],
-      'plannedCollection': ['plannedcollection', 'planned'],
+      'emergencyCollection': ['emergencycollection', 'emergency', 'emergency_collection'],
+      'plannedCollection': ['plannedcollection', 'planned', 'planned_collection'],
+      'baptisms': ['baptisms', 'baptism', 'baptised', 'baptized'],
+      'holyCommunion': ['holycommunion', 'holy_communion', 'communion', 'hc'],
     };
 
     final allFields = fieldVariations.keys.toList();
 
     final cleanedHeaders = headers
-        .map((h) => h.toLowerCase().replaceAll(' ', '').replaceAll('_', ''))
+        .map((h) => h
+            .toLowerCase()
+            // strip anything in parentheses e.g. "(KES)", "(USD)"
+            .replaceAll(RegExp(r'\s*\(.*?\)'), '')
+            .replaceAll(' ', '')
+            .replaceAll('_', '')
+            .trim())
         .toList();
 
     for (final fieldName in allFields) {

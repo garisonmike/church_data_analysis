@@ -112,12 +112,21 @@ class BackupData {
   final List<Map<String, dynamic>> churches;
   final List<Map<String, dynamic>> adminUsers;
   final List<Map<String, dynamic>> weeklyRecords;
+  // Phase 1 additions
+  final List<Map<String, dynamic>> homeChurches;
+  final List<Map<String, dynamic>> boardMeetingRecords;
+  final List<Map<String, dynamic>> holyCommunionEvents;
+  final List<Map<String, dynamic>> businessMeetingEvents;
 
   const BackupData({
     required this.metadata,
     required this.churches,
     required this.adminUsers,
     required this.weeklyRecords,
+    this.homeChurches = const [],
+    this.boardMeetingRecords = const [],
+    this.holyCommunionEvents = const [],
+    this.businessMeetingEvents = const [],
   });
 
   Map<String, dynamic> toJson() => {
@@ -125,17 +134,26 @@ class BackupData {
     'churches': churches,
     'adminUsers': adminUsers,
     'weeklyRecords': weeklyRecords,
+    'homeChurches': homeChurches,
+    'boardMeetingRecords': boardMeetingRecords,
+    'holyCommunionEvents': holyCommunionEvents,
+    'businessMeetingEvents': businessMeetingEvents,
   };
 
   factory BackupData.fromJson(Map<String, dynamic> json) {
+    List<Map<String, dynamic>> _castList(dynamic v) =>
+        v == null ? [] : (v as List).cast<Map<String, dynamic>>();
     return BackupData(
       metadata: BackupMetadata.fromJson(
         json['metadata'] as Map<String, dynamic>,
       ),
-      churches: (json['churches'] as List).cast<Map<String, dynamic>>(),
-      adminUsers: (json['adminUsers'] as List).cast<Map<String, dynamic>>(),
-      weeklyRecords: (json['weeklyRecords'] as List)
-          .cast<Map<String, dynamic>>(),
+      churches: _castList(json['churches']),
+      adminUsers: _castList(json['adminUsers']),
+      weeklyRecords: _castList(json['weeklyRecords']),
+      homeChurches: _castList(json['homeChurches']),
+      boardMeetingRecords: _castList(json['boardMeetingRecords']),
+      holyCommunionEvents: _castList(json['holyCommunionEvents']),
+      businessMeetingEvents: _castList(json['businessMeetingEvents']),
     );
   }
 }
@@ -249,6 +267,10 @@ class BackupService {
     required List<Church> churches,
     required List<AdminUser> admins,
     required List<WeeklyRecord> records,
+    List<HomeChurch> homeChurches = const [],
+    List<BoardMeetingRecord> boardMeetingRecords = const [],
+    List<HolyCommunionEvent> holyCommunionEvents = const [],
+    List<BusinessMeetingEvent> businessMeetingEvents = const [],
     String? customPath,
   }) async {
     try {
@@ -266,6 +288,10 @@ class BackupService {
         churches: churches.map(churchToJson).toList(),
         adminUsers: admins.map(adminUserToJson).toList(),
         weeklyRecords: records.map(weeklyRecordToJson).toList(),
+        homeChurches: homeChurches.map((e) => e.toJson()).toList(),
+        boardMeetingRecords: boardMeetingRecords.map((e) => e.toJson()).toList(),
+        holyCommunionEvents: holyCommunionEvents.map((e) => e.toJson()).toList(),
+        businessMeetingEvents: businessMeetingEvents.map((e) => e.toJson()).toList(),
       );
 
       String fileName;

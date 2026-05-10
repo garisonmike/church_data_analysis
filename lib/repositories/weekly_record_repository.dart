@@ -143,6 +143,8 @@ class WeeklyRecordRepository {
             youth: Value(record.youth),
             children: Value(record.children),
             sundayHomeChurch: Value(record.sundayHomeChurch),
+            baptisms: Value(record.baptisms),
+            holyCommunion: Value(record.holyCommunion),
             tithe: Value(record.tithe),
             offerings: Value(record.offerings),
             emergencyCollection: Value(record.emergencyCollection),
@@ -170,6 +172,8 @@ class WeeklyRecordRepository {
             youth: Value(record.youth),
             children: Value(record.children),
             sundayHomeChurch: Value(record.sundayHomeChurch),
+            baptisms: Value(record.baptisms),
+            holyCommunion: Value(record.holyCommunion),
             tithe: Value(record.tithe),
             offerings: Value(record.offerings),
             emergencyCollection: Value(record.emergencyCollection),
@@ -198,7 +202,6 @@ class WeeklyRecordRepository {
 
   /// Get paginated records for a church
   /// [page] is 0-indexed
-  /// Returns a tuple of (records, totalCount) for pagination info
   Future<({List<WeeklyRecord> records, int totalCount})> getRecordsPaginated(
     int churchId, {
     int page = 0,
@@ -224,7 +227,6 @@ class WeeklyRecordRepository {
     int page = 0,
     int pageSize = 20,
   }) async {
-    // Get total count for this admin
     final countQuery = _db.selectOnly(_db.weeklyRecords)
       ..addColumns([_db.weeklyRecords.id.count()])
       ..where(
@@ -260,6 +262,8 @@ class WeeklyRecordRepository {
       youth: data.youth,
       children: data.children,
       sundayHomeChurch: data.sundayHomeChurch,
+      baptisms: data.baptisms,
+      holyCommunion: data.holyCommunion,
       tithe: data.tithe,
       offerings: data.offerings,
       emergencyCollection: data.emergencyCollection,

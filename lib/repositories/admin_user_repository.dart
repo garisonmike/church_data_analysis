@@ -74,8 +74,17 @@ class AdminUserRepository {
             isActive: Value(user.isActive),
             createdAt: Value(user.createdAt),
             lastLoginAt: Value(user.lastLoginAt),
+            pinHash: Value(user.pinHash),
           ),
         );
+  }
+
+  /// Updates the PIN hash for an admin user.
+  /// Pass null to remove the PIN.
+  Future<void> updatePinHash(int userId, String? pinHash) async {
+    await (_db.update(_db.adminUsers)
+      ..where((t) => t.id.equals(userId)))
+      .write(db.AdminUsersCompanion(pinHash: Value(pinHash)));
   }
 
   /// Update last login time for a user
@@ -120,6 +129,7 @@ class AdminUserRepository {
       isActive: data.isActive,
       createdAt: data.createdAt,
       lastLoginAt: data.lastLoginAt,
+      pinHash: data.pinHash,
     );
   }
 }

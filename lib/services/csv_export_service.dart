@@ -71,9 +71,14 @@ class CsvExportService {
     'emergency_collection',
     'planned_collection',
     'total_income',
+    'baptisms',
+    'holy_communion',
     'created_at',
     'updated_at',
   ];
+
+  /// Instance getter for default weekly record headers (used by tests and import service)
+  List<String> get defaultWeeklyRecordHeaders => weeklyRecordHeaders;
 
   /// CSV headers for churches export
   static const List<String> churchHeaders = [
@@ -126,6 +131,8 @@ class CsvExportService {
       record.emergencyCollection,
       record.plannedCollection,
       record.totalIncome,
+      record.baptisms ?? '',
+      record.holyCommunion ?? '',
       record.createdAt.toIso8601String(),
       record.updatedAt.toIso8601String(),
     ];
@@ -251,6 +258,13 @@ class CsvExportService {
       headers.add('total_income$suffix');
     }
 
+    if (options.includeAttendance) {
+      headers.addAll([
+        'baptisms',
+        'holy_communion',
+      ]);
+    }
+
     if (options.includeMetadata) {
       headers.addAll(['created_at', 'updated_at']);
     }
@@ -298,6 +312,13 @@ class CsvExportService {
 
     if (options.includeTotals) {
       row.add(record.totalIncome);
+    }
+
+    if (options.includeAttendance) {
+      row.addAll([
+        record.baptisms ?? '',
+        record.holyCommunion ?? '',
+      ]);
     }
 
     if (options.includeMetadata) {
@@ -446,12 +467,14 @@ class CsvExportService {
         youth: int.parse(row[6].toString()),
         children: int.parse(row[7].toString()),
         sundayHomeChurch: int.parse(row[8].toString()),
+        baptisms: row[15] != '' ? int.tryParse(row[15].toString()) : null,
+        holyCommunion: row[16] != '' ? int.tryParse(row[16].toString()) : null,
         tithe: double.parse(row[10].toString()),
         offerings: double.parse(row[11].toString()),
         emergencyCollection: double.parse(row[12].toString()),
         plannedCollection: double.parse(row[13].toString()),
-        createdAt: DateTime.parse(row[15].toString()),
-        updatedAt: DateTime.parse(row[16].toString()),
+        createdAt: DateTime.parse(row[17].toString()),
+        updatedAt: DateTime.parse(row[18].toString()),
       );
     }).toList();
   }

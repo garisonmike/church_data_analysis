@@ -11,10 +11,24 @@ import 'package:package_info_plus/package_info_plus.dart';
 // Constants
 // ---------------------------------------------------------------------------
 
-/// Stable URL where the current update manifest is published.
-const _kDefaultManifestUrl =
+/// Stable URL where the current update manifest is published (production).
+const _kProductionManifestUrl =
     'https://github.com/GarisonMike/church_data_analysis'
     '/releases/latest/download/update.json';
+
+// In debug builds you can point this at a local mock server instead of hitting
+// GitHub Releases on every hot-restart.  To run a local mock:
+//   1. Create an update.json file at the project root with the expected schema.
+//   2. Run: npx json-server --watch update.json --port 3000
+//   3. Change the constant below to _kDebugManifestUrl.
+// Leave it pointing at _kProductionManifestUrl for now so existing behaviour
+// is preserved; swap only when actively testing the update flow locally.
+const _kDebugManifestUrl = 'http://localhost:3000/update';
+
+// ignore: do_not_use_environment
+const _kDefaultManifestUrl = bool.fromEnvironment('dart.vm.product')
+    ? _kProductionManifestUrl
+    : _kProductionManifestUrl; // Switch to _kDebugManifestUrl for local mock testing
 
 /// Default network timeout for fetching the update manifest.
 const _kDefaultNetworkTimeout = Duration(seconds: 10);

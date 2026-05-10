@@ -18,12 +18,23 @@ class ValidationService {
   static const List<String> optionalCsvFields = [
     'emergencyCollection',
     'plannedCollection',
+    'baptisms',        // NEW
+    'holyCommunion',   // NEW
   ];
 
   /// Validates that a numeric value is >= 0
   /// Returns an error message if invalid, null if valid
   String? validateNonNegativeInt(int value, String fieldName) {
     if (value < 0) {
+      return '$fieldName cannot be negative';
+    }
+    return null;
+  }
+
+  /// Validates that a nullable numeric value is >= 0 when not null
+  /// Returns an error message if invalid, null if valid
+  String? validateNonNegativeNullableInt(int? value, String fieldName) {
+    if (value != null && value < 0) {
       return '$fieldName cannot be negative';
     }
     return null;
@@ -90,6 +101,12 @@ class ValidationService {
       'Planned Collection',
     );
     if (plannedError != null) errors.add(plannedError);
+
+    final baptismsError = validateNonNegativeNullableInt(record.baptisms, 'Baptisms');
+    if (baptismsError != null) errors.add(baptismsError);
+
+    final communionError = validateNonNegativeNullableInt(record.holyCommunion, 'Holy Communion');
+    if (communionError != null) errors.add(communionError);
 
     return errors;
   }

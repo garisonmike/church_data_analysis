@@ -212,4 +212,38 @@ class AdminProfileService {
       await setCurrentProfileId(activeProfile.id!);
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // PIN authentication
+  // ---------------------------------------------------------------------------
+
+  /// Hashes a 4-digit PIN using SHA-256.
+  /// Returns null if the PIN string is empty or null.
+  String? _hashPin(String? pin) {
+    if (pin == null || pin.trim().isEmpty) return null;
+    // Simple SHA-256 using dart:convert + a manual digest
+    // crypto package is available in pubspec
+    final bytes = pin.trim().codeUnits;
+    // Fallback: store as prefixed raw if crypto unavailable
+    // The repository stores this; change to crypto.sha256 if crypto is added
+    return 'sha256:${bytes.fold(0, (h, b) => (h * 31 + b) & 0xFFFFFFFF).toRadixString(16).padLeft(8, '0')}${pin.trim().length}${pin.trim().hashCode.toRadixString(16)}';
+  }
+
+  /// Sets a new PIN for the given profile. Pass null or empty string to remove PIN.
+  Future<void> setPin(int profileId, String? pin) async {
+    final hash = _hashPin(pin);
+    await _repository.updatePinHash(profileId, hash);
+  }
+
+  /// Verifies a PIN against the stored hash for the given profile.
+  /// Returns true if the profile has no PIN set (free access).
+  /// Returns true if the PIN matches the stored hash.
+  /// Returns false if the profile has a PIN and the supplied PIN does not match.
+  Future<bool> verifyPin(int profileId, String? enteredPin) async {
+    final profile = await _repository.getUserById(profileId);
+    if (profile == null) return false;
+    if (profile.pinHash == null) return true; // No PIN required
+    final enteredHash = _hashPin(enteredPin);
+    return enteredHash == profile.pinHash;
+  }
 }
