@@ -48,6 +48,11 @@ app.*.map.json
 /android/app/release
 
 /tasks.md
-/plan.mdflutterTest.txt
+/plan.md
+flutterTest.txt
 failedTests.txt
 flutterAnalyze.txt
+
+# Android signing keys
+android/keystore.jks
+android/key.properties
