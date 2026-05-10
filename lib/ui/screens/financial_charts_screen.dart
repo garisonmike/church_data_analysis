@@ -3,7 +3,7 @@ import 'package:church_analytics/models/weekly_record.dart';
 import 'package:church_analytics/services/analytics_service.dart';
 import 'package:church_analytics/services/weekly_records_provider.dart';
 import 'package:church_analytics/ui/widgets/widgets.dart';
-import 'package:church_analytics/widgets/charts/charts.dart';
+import 'package:church_analytics/ui/widgets/charts/charts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -18,6 +18,11 @@ class FinancialChartsScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Financial Charts'),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.menu_book_outlined),
+            tooltip: 'Financial Glossary',
+            onPressed: () => Navigator.pushNamed(context, '/financial-glossary'),
+          ),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
             child: const Padding(

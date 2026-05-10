@@ -2,7 +2,7 @@ import 'package:church_analytics/models/weekly_record.dart';
 import 'package:church_analytics/services/analytics_service.dart';
 import 'package:church_analytics/services/weekly_records_provider.dart';
 import 'package:church_analytics/ui/widgets/widgets.dart';
-import 'package:church_analytics/widgets/charts/charts.dart';
+import 'package:church_analytics/ui/widgets/charts/charts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

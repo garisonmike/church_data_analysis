@@ -115,11 +115,6 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   Future<void> _exportPdf() async {
-    final selectedOptions = await _promptReportOptions();
-    if (selectedOptions == null) {
-      return;
-    }
-    setState(() => _reportOptions = selectedOptions);
     setState(() => _isProcessing = true);
     try {
       final records = await _getRecords();
@@ -133,10 +128,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         churchName: churchName,
         records: records,
         chartImages: const {},
-        includeGraphs: selectedOptions.includeGraphs,
-        includeKpi: selectedOptions.includeKpi,
-        includeTable: selectedOptions.includeTable,
-        includeTrends: selectedOptions.includeTrends,
+        includeGraphs: _reportOptions.includeGraphs,
+        includeKpi: _reportOptions.includeKpi,
+        includeTable: _reportOptions.includeTable,
+        includeTrends: _reportOptions.includeTrends,
         locale: settings.locale,
         currencySymbol: settings.currency.symbol,
         formatCurrency: formatCurrency,
@@ -193,18 +188,15 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   Future<void> _exportCsv() async {
-    final selectedOptions = await _promptCsvOptions();
-    if (selectedOptions == null) {
+    if (!_hasCsvContent(_csvOptions)) {
+      _showStatus('Select at least one CSV column group first.');
       return;
     }
-    setState(() => _csvOptions = selectedOptions);
     setState(() => _isProcessing = true);
     try {
       final records = await _getRecords();
       final settings = ref.read(appSettingsProvider);
-      final suggestedName = _csvService.generateExportFilename(
-        'weekly_records',
-      );
+      final suggestedName = _csvService.generateExportFilename('weekly_records');
       final customPath = await _pickExportPath(
         suggestedName: suggestedName,
         allowedExtensions: const ['csv'],
@@ -217,7 +209,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       final result = await _csvService.exportWeeklyRecords(
         records,
         customPath: customPath,
-        options: selectedOptions,
+        options: _csvOptions,
         currencyCode: settings.currency.code,
       );
       if (result.success) {
@@ -226,15 +218,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           setState(() => _lastExportPath = savedPath);
           ExportResultSnackBar.show(context, ExportResult.success(savedPath));
         } else if (mounted) {
-          ExportResultSnackBar.show(
-            context,
-            ExportResult.failure('CSV export failed.'),
-          );
+          ExportResultSnackBar.show(context, ExportResult.failure('CSV export failed.'));
         }
       } else {
-        if (kDebugMode) {
-          debugPrint('CSV export error: ${result.error}');
-        }
+        if (kDebugMode) debugPrint('CSV export error: ${result.error}');
         if (mounted) {
           ExportResultSnackBar.show(
             context,
@@ -248,10 +235,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         debugPrint('Stack trace: $stack');
       }
       if (mounted) {
-        ExportResultSnackBar.show(
-          context,
-          ExportResult.failure('Export failed: $e'),
-        );
+        ExportResultSnackBar.show(context, ExportResult.failure('Export failed: $e'));
       }
     } finally {
       setState(() => _isProcessing = false);
@@ -430,10 +414,34 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _buildChip('Graphs', _reportOptions.includeGraphs),
-                _buildChip('KPI', _reportOptions.includeKpi),
-                _buildChip('Table', _reportOptions.includeTable),
-                _buildChip('Trends', _reportOptions.includeTrends),
+                FilterChip(
+                  label: const Text('Graphs'),
+                  selected: _reportOptions.includeGraphs,
+                  onSelected: (v) => setState(
+                    () => _reportOptions = _reportOptions.copyWith(includeGraphs: v),
+                  ),
+                ),
+                FilterChip(
+                  label: const Text('KPI'),
+                  selected: _reportOptions.includeKpi,
+                  onSelected: (v) => setState(
+                    () => _reportOptions = _reportOptions.copyWith(includeKpi: v),
+                  ),
+                ),
+                FilterChip(
+                  label: const Text('Table'),
+                  selected: _reportOptions.includeTable,
+                  onSelected: (v) => setState(
+                    () => _reportOptions = _reportOptions.copyWith(includeTable: v),
+                  ),
+                ),
+                FilterChip(
+                  label: const Text('Trends'),
+                  selected: _reportOptions.includeTrends,
+                  onSelected: (v) => setState(
+                    () => _reportOptions = _reportOptions.copyWith(includeTrends: v),
+                  ),
+                ),
               ],
             ),
           ],
@@ -463,10 +471,54 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
               spacing: 8,
               runSpacing: 8,
               children: [
-                _buildChip('Attendance', _csvOptions.includeAttendance),
-                _buildChip('Financial', _csvOptions.includeFinancial),
-                _buildChip('Totals', _csvOptions.includeTotals),
-                _buildChip('Metadata', _csvOptions.includeMetadata),
+                FilterChip(
+                  label: const Text('Attendance'),
+                  selected: _csvOptions.includeAttendance,
+                  onSelected: (v) => setState(
+                    () => _csvOptions = CsvExportOptions(
+                      includeAttendance: v,
+                      includeFinancial: _csvOptions.includeFinancial,
+                      includeTotals: _csvOptions.includeTotals,
+                      includeMetadata: _csvOptions.includeMetadata,
+                    ),
+                  ),
+                ),
+                FilterChip(
+                  label: const Text('Financial'),
+                  selected: _csvOptions.includeFinancial,
+                  onSelected: (v) => setState(
+                    () => _csvOptions = CsvExportOptions(
+                      includeAttendance: _csvOptions.includeAttendance,
+                      includeFinancial: v,
+                      includeTotals: _csvOptions.includeTotals,
+                      includeMetadata: _csvOptions.includeMetadata,
+                    ),
+                  ),
+                ),
+                FilterChip(
+                  label: const Text('Totals'),
+                  selected: _csvOptions.includeTotals,
+                  onSelected: (v) => setState(
+                    () => _csvOptions = CsvExportOptions(
+                      includeAttendance: _csvOptions.includeAttendance,
+                      includeFinancial: _csvOptions.includeFinancial,
+                      includeTotals: v,
+                      includeMetadata: _csvOptions.includeMetadata,
+                    ),
+                  ),
+                ),
+                FilterChip(
+                  label: const Text('Metadata'),
+                  selected: _csvOptions.includeMetadata,
+                  onSelected: (v) => setState(
+                    () => _csvOptions = CsvExportOptions(
+                      includeAttendance: _csvOptions.includeAttendance,
+                      includeFinancial: _csvOptions.includeFinancial,
+                      includeTotals: _csvOptions.includeTotals,
+                      includeMetadata: v,
+                    ),
+                  ),
+                ),
               ],
             ),
           ],
@@ -475,211 +527,11 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
-  Widget _buildChip(String label, bool enabled) {
-    return Chip(
-      label: Text(label),
-      backgroundColor: enabled
-          ? Theme.of(context).colorScheme.secondaryContainer
-          : Theme.of(context).colorScheme.surfaceContainerHighest,
-    );
-  }
-
-  Future<_ReportOptions?> _promptReportOptions() async {
-    var options = _reportOptions;
-
-    final result = await showDialog<_ReportOptions>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Customize PDF Report'),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        content: Builder(
-          builder: (context) => ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.7,
-              maxWidth: 560,
-            ),
-            child: SingleChildScrollView(
-              child: StatefulBuilder(
-                builder: (context, setState) {
-                  return FocusTraversalGroup(
-                    policy: OrderedTraversalPolicy(),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SwitchListTile(
-                          title: const Text('Include graphs'),
-                          value: options.includeGraphs,
-                          onChanged: (value) => setState(
-                            () => options = options.copyWith(
-                              includeGraphs: value,
-                            ),
-                          ),
-                        ),
-                        SwitchListTile(
-                          title: const Text('Include KPI metrics'),
-                          value: options.includeKpi,
-                          onChanged: (value) => setState(
-                            () => options = options.copyWith(includeKpi: value),
-                          ),
-                        ),
-                        SwitchListTile(
-                          title: const Text('Include records table'),
-                          value: options.includeTable,
-                          onChanged: (value) => setState(
-                            () =>
-                                options = options.copyWith(includeTable: value),
-                          ),
-                        ),
-                        SwitchListTile(
-                          title: const Text('Include trend summary'),
-                          value: options.includeTrends,
-                          onChanged: (value) => setState(
-                            () => options = options.copyWith(
-                              includeTrends: value,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, options),
-            child: const Text('Continue'),
-          ),
-        ],
-      ),
-    );
-
-    return result;
-  }
-
   bool _hasCsvContent(CsvExportOptions options) {
     return options.includeAttendance ||
         options.includeFinancial ||
         options.includeTotals ||
         options.includeMetadata;
-  }
-
-  Future<CsvExportOptions?> _promptCsvOptions() async {
-    var options = _csvOptions;
-
-    final result = await showDialog<CsvExportOptions>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Customize CSV Export'),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        content: Builder(
-          builder: (context) => ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(context).size.height * 0.7,
-              maxWidth: 560,
-            ),
-            child: SingleChildScrollView(
-              child: StatefulBuilder(
-                builder: (context, setState) {
-                  final hasContent = _hasCsvContent(options);
-                  return FocusTraversalGroup(
-                    policy: OrderedTraversalPolicy(),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SwitchListTile(
-                          title: const Text('Include attendance columns'),
-                          value: options.includeAttendance,
-                          onChanged: (value) => setState(
-                            () => options = CsvExportOptions(
-                              includeAttendance: value,
-                              includeFinancial: options.includeFinancial,
-                              includeTotals: options.includeTotals,
-                              includeMetadata: options.includeMetadata,
-                            ),
-                          ),
-                        ),
-                        SwitchListTile(
-                          title: const Text('Include financial columns'),
-                          value: options.includeFinancial,
-                          onChanged: (value) => setState(
-                            () => options = CsvExportOptions(
-                              includeAttendance: options.includeAttendance,
-                              includeFinancial: value,
-                              includeTotals: options.includeTotals,
-                              includeMetadata: options.includeMetadata,
-                            ),
-                          ),
-                        ),
-                        SwitchListTile(
-                          title: const Text('Include totals'),
-                          value: options.includeTotals,
-                          onChanged: (value) => setState(
-                            () => options = CsvExportOptions(
-                              includeAttendance: options.includeAttendance,
-                              includeFinancial: options.includeFinancial,
-                              includeTotals: value,
-                              includeMetadata: options.includeMetadata,
-                            ),
-                          ),
-                        ),
-                        SwitchListTile(
-                          title: const Text('Include metadata'),
-                          value: options.includeMetadata,
-                          onChanged: (value) => setState(
-                            () => options = CsvExportOptions(
-                              includeAttendance: options.includeAttendance,
-                              includeFinancial: options.includeFinancial,
-                              includeTotals: options.includeTotals,
-                              includeMetadata: value,
-                            ),
-                          ),
-                        ),
-                        if (!hasContent) ...[
-                          const SizedBox(height: 8),
-                          Row(
-                            children: [
-                              const Icon(Icons.warning, color: Colors.orange),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  'Select at least one column group',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: _hasCsvContent(options)
-                ? () => Navigator.pop(context, options)
-                : null,
-            child: const Text('Continue'),
-          ),
-        ],
-      ),
-    );
-
-    return result;
   }
 
   Future<String?> _pickExportPath({

@@ -3,6 +3,7 @@ import 'package:church_analytics/models/admin_user.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -61,7 +62,30 @@ class _ProfileSelectionScreenState
   Future<void> _selectProfile(AdminUser profile) async {
     if (profile.id == null) return;
 
+    // Capture context-dependent objects before any awaits
     final navigator = Navigator.of(context);
+    final messenger = ScaffoldMessenger.of(context);
+
+    // If this profile has a PIN, prompt for it
+    if (profile.pinHash != null) {
+      final enteredPin = await _showPinDialog(context, profile.username);
+      if (enteredPin == null) return; // User cancelled
+
+      final database = ref.read(db.databaseProvider);
+      final repo = AdminUserRepository(database);
+      final prefs = await SharedPreferences.getInstance();
+      final service = AdminProfileService(repo, prefs);
+
+      final valid = await service.verifyPin(profile.id!, enteredPin);
+      if (!valid) {
+        if (mounted) {
+          messenger.showSnackBar(
+            const SnackBar(content: Text('Incorrect PIN. Try again.')),
+          );
+        }
+        return;
+      }
+    }
 
     final prefs = await SharedPreferences.getInstance();
     final database = ref.read(db.databaseProvider);
@@ -73,6 +97,40 @@ class _ProfileSelectionScreenState
 
     if (!mounted) return;
     navigator.pushReplacementNamed('/');
+  }
+
+  /// Shows a PIN entry dialog. Returns the entered PIN string or null on cancel.
+  Future<String?> _showPinDialog(BuildContext context, String username) async {
+    final pinController = TextEditingController();
+    return showDialog<String>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Enter PIN for $username'),
+        content: TextField(
+          controller: pinController,
+          obscureText: true,
+          keyboardType: TextInputType.number,
+          maxLength: 4,
+          decoration: const InputDecoration(
+            labelText: 'PIN',
+            hintText: '••••',
+            border: OutlineInputBorder(),
+          ),
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(null),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(ctx).pop(pinController.text),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _createProfile() async {

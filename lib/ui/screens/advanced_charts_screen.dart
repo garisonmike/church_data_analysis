@@ -3,7 +3,8 @@ import 'package:church_analytics/models/weekly_record.dart';
 import 'package:church_analytics/services/analytics_service.dart';
 import 'package:church_analytics/services/weekly_records_provider.dart';
 import 'package:church_analytics/ui/widgets/widgets.dart';
-import 'package:church_analytics/widgets/charts/charts.dart';
+import 'package:church_analytics/ui/widgets/charts/charts.dart';
+import 'package:church_analytics/ui/widgets/charts/ctrl_scroll_zoom_wrapper.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
@@ -311,7 +312,6 @@ class _OutliersChart extends StatefulWidget {
 }
 
 class _OutliersChartState extends State<_OutliersChart> {
-  late final ZoomPanBehavior _zoomPan;
   late final TrackballBehavior _trackball;
   late final Map<String, List<TimeSeriesPoint>> _seriesData;
   int _outlierCount = 0;
@@ -319,13 +319,6 @@ class _OutliersChartState extends State<_OutliersChart> {
   @override
   void initState() {
     super.initState();
-    _zoomPan = ZoomPanBehavior(
-      enablePinching: true,
-      enableDoubleTapZooming: true,
-      enablePanning: true,
-      zoomMode: ZoomMode.x,
-      enableMouseWheelZooming: true,
-    );
     _trackball = TrackballBehavior(
       enable: true,
       activationMode: ActivationMode.singleTap,
@@ -363,17 +356,24 @@ class _OutliersChartState extends State<_OutliersChart> {
             ),
             const SizedBox(height: 12),
             Expanded(
-              child: SfCartesianChart(
-                zoomPanBehavior: _zoomPan,
-                trackballBehavior: _trackball,
-                legend: const Legend(
-                  isVisible: true,
-                  position: LegendPosition.bottom,
-                ),
-                primaryXAxis: const DateTimeAxis(
-                  intervalType: DateTimeIntervalType.days,
-                  interval: 7,
-                ),
+              child: CtrlScrollZoomWrapper(
+                builder: (ctrlHeld) => SfCartesianChart(
+                  zoomPanBehavior: ZoomPanBehavior(
+                    enablePinching: true,
+                    enableDoubleTapZooming: true,
+                    enablePanning: true,
+                    zoomMode: ZoomMode.x,
+                    enableMouseWheelZooming: ctrlHeld,
+                  ),
+                  trackballBehavior: _trackball,
+                  legend: const Legend(
+                    isVisible: true,
+                    position: LegendPosition.bottom,
+                  ),
+                  primaryXAxis: const DateTimeAxis(
+                    intervalType: DateTimeIntervalType.days,
+                    interval: 7,
+                  ),
                 primaryYAxis: const NumericAxis(
                   title: AxisTitle(text: 'Attendance'),
                 ),
@@ -405,6 +405,7 @@ class _OutliersChartState extends State<_OutliersChart> {
                   ),
                 ],
               ),
+            ),
             ),
             if (_outlierCount > 0) ...[
               const SizedBox(height: 12),

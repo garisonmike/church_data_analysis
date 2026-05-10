@@ -26,7 +26,6 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
   bool _isLoading = false;
   String? _errorMessage;
 
-  // Field names that need to be mapped
   final List<String> _requiredFields = [
     'weekStartDate',
     'men',
@@ -41,6 +40,8 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
   final List<String> _optionalFields = [
     'emergencyCollection',
     'plannedCollection',
+    'baptisms',
+    'holyCommunion',
   ];
 
   final Map<String, String> _fieldLabels = {
@@ -54,7 +55,11 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
     'offerings': 'Offerings',
     'emergencyCollection': 'Emergency Collection',
     'plannedCollection': 'Planned Collection',
+    'baptisms': 'Baptisms',
+    'holyCommunion': 'Holy Communion Count',
   };
+
+  // ── File picking ────────────────────────────────────────────────────────────
 
   Future<void> _pickFile() async {
     setState(() {
@@ -66,9 +71,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       final file = await _importService.pickFile();
 
       if (file == null) {
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() { _isLoading = false; });
         return;
       }
 
@@ -88,7 +91,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
         _rows = result.rows;
         _columnMapping = _importService.suggestColumnMapping(result.headers!);
         _isLoading = false;
-        _validationResults = null; // Reset validation
+        _validationResults = null;
       });
     } catch (e) {
       setState(() {
@@ -98,6 +101,8 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
     }
   }
 
+  // ── Validation ──────────────────────────────────────────────────────────────
+
   Future<void> _validateData() async {
     if (_rows == null || _headers == null) return;
 
@@ -106,13 +111,10 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       _errorMessage = null;
     });
 
-    // Check that all required fields are mapped
     final unmappedFields = _requiredFields
-        .where(
-          (field) =>
-              !_columnMapping.containsKey(field) ||
-              _columnMapping[field] == null,
-        )
+        .where((field) =>
+            !_columnMapping.containsKey(field) ||
+            _columnMapping[field] == null)
         .toList();
 
     if (unmappedFields.isNotEmpty) {
@@ -124,10 +126,8 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       return;
     }
 
-    // Validate each row
     final results = <WeeklyRecordImportResult>[];
 
-    // Get current admin ID
     final prefs = await SharedPreferences.getInstance();
     final database = ref.read(databaseProvider);
     final adminRepo = AdminUserRepository(database);
@@ -139,7 +139,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
         _rows![i],
         _columnMapping,
         widget.churchId,
-        i + 2, // +2 because row 1 is headers and display is 1-indexed
+        i + 2,
         currentAdminId,
         _optionalFields.toSet(),
       );
@@ -152,6 +152,8 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
     });
   }
 
+  // ── Import ──────────────────────────────────────────────────────────────────
+
   Future<void> _importData() async {
     if (_validationResults == null) return;
 
@@ -161,13 +163,11 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
         .toList();
 
     if (validRecords.isEmpty) {
-      setState(() {
-        _errorMessage = 'No valid records to import';
-      });
+      setState(() { _errorMessage = 'No valid records to import'; });
       return;
     }
 
-    // Show confirmation dialog
+    // Confirm before starting
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -201,23 +201,23 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
     );
 
     if (confirmed != true) return;
+    if (!mounted) return;
 
     setState(() {
       _isLoading = true;
       _errorMessage = null;
     });
 
+    int successCount = 0;
+    int skipCount = 0;
+    final errors = <String>[];
+
     try {
       final database = ref.read(databaseProvider);
       final repository = WeeklyRecordRepository(database);
 
-      int successCount = 0;
-      int skipCount = 0;
-      final errors = <String>[];
-
       for (final record in validRecords) {
         try {
-          // Check for duplicates
           final exists = await repository.weekExists(
             record.churchId,
             record.weekStartDate,
@@ -226,7 +226,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
           if (exists) {
             skipCount++;
             errors.add(
-              'Row skipped: duplicate week ${record.weekStartDate.toString().split(' ')[0]}',
+              'Skipped duplicate: week of ${record.weekStartDate.toString().split('T')[0]}',
             );
           } else {
             await repository.createRecord(record);
@@ -236,75 +236,92 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
           errors.add('Failed to import record: ${e.toString()}');
         }
       }
-
-      if (mounted) {
-        // Show results
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Import Complete'),
-            insetPadding: const EdgeInsets.symmetric(
-              horizontal: 16,
-              vertical: 12,
-            ),
-            content: LayoutBuilder(
-              builder: (context, constraints) => ConstrainedBox(
-                constraints: BoxConstraints(
-                  maxHeight: constraints.maxHeight * 0.8,
-                  maxWidth: 560,
-                ),
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Successfully imported: $successCount'),
-                      if (skipCount > 0)
-                        Text('Skipped (duplicates): $skipCount'),
-                      if (errors.isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Errors:',
-                          style: TextStyle(fontWeight: FontWeight.bold),
-                        ),
-                        ListView.builder(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: errors.length,
-                          itemBuilder: (context, index) => Text(
-                            '• ${errors[index]}',
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            actions: [
-              ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  Navigator.of(context).pop(true); // Return to previous screen
-                },
-                child: const Text('Done'),
-              ),
-            ],
-          ),
-        );
-      }
-
-      setState(() {
-        _isLoading = false;
-      });
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Import failed: ${e.toString()}';
-        _isLoading = false;
-      });
+      if (mounted) {
+        setState(() {
+          _errorMessage = 'Import failed: ${e.toString()}';
+          _isLoading = false;
+        });
+      }
+      return;
     }
+
+    if (!mounted) return;
+
+    // Stop spinner BEFORE opening result dialog to avoid semantics assertion
+    setState(() { _isLoading = false; });
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: Text(successCount > 0 ? 'Import Complete' : 'Nothing Imported'),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        content: LayoutBuilder(
+          builder: (context, constraints) => ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: constraints.maxHeight * 0.8,
+              maxWidth: 560,
+            ),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (successCount > 0)
+                    Text('Successfully imported: $successCount'),
+                  if (skipCount > 0)
+                    Text(
+                      'Skipped (already exist): $skipCount',
+                      style: const TextStyle(color: Colors.orange),
+                    ),
+                  if (successCount == 0 && skipCount > 0)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(
+                        'All records already exist in the database.',
+                        style: TextStyle(color: Colors.grey),
+                      ),
+                    ),
+                  if (errors.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Details:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: errors.length,
+                      itemBuilder: (context, index) => Text(
+                        '• ${errors[index]}',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () {
+              Navigator.of(context).pop();
+              // Only navigate back if records were actually imported
+              if (successCount > 0) {
+                Navigator.of(context).pop(true);
+              }
+            },
+            child: const Text('Done'),
+          ),
+        ],
+      ),
+    );
   }
+
+  // ── Reset ───────────────────────────────────────────────────────────────────
 
   void _reset() {
     setState(() {
@@ -317,6 +334,8 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       _errorMessage = null;
     });
   }
+
+  // ── Build ───────────────────────────────────────────────────────────────────
 
   @override
   Widget build(BuildContext context) {
@@ -350,9 +369,10 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
               const SizedBox(height: 16),
               Text(
                 _errorMessage!,
-                style: Theme.of(
-                  context,
-                ).textTheme.bodyLarge?.copyWith(color: Colors.red),
+                style: Theme.of(context)
+                    .textTheme
+                    .bodyLarge
+                    ?.copyWith(color: Colors.red),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -419,7 +439,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                 ),
               ),
             ] else ...[
-              const Text('Select a CSV or XLSX file to import weekly records.'),
+              const Text('Select a CSV file to import weekly records.'),
               const SizedBox(height: 16),
               Center(
                 child: ElevatedButton.icon(
@@ -433,7 +453,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             const Text(
               'Format Requirements:\n'
               '• First row must contain column headers\n'
-              '• Date format: YYYY-MM-DD\n'
+              '• Date format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS\n'
               '• Numbers should not have commas',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
@@ -603,9 +623,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
   }
 
   Widget _buildPreviewStep() {
-    if (_validationResults == null) {
-      return const SizedBox.shrink();
-    }
+    if (_validationResults == null) return const SizedBox.shrink();
 
     final validCount = _validationResults!.where((r) => r.success).length;
     final errorCount = _validationResults!.where((r) => !r.success).length;
@@ -628,9 +646,10 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             ),
             const SizedBox(height: 16),
             Card(
-              color: Theme.of(
-                context,
-              ).colorScheme.secondaryContainer.withValues(alpha: 0.5),
+              color: Theme.of(context)
+                  .colorScheme
+                  .secondaryContainer
+                  .withValues(alpha: 0.5),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(
@@ -639,23 +658,27 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                     Column(
                       children: [
                         Text(
-                          'Valid',
-                          style: TextStyle(
+                          '$validCount',
+                          style: const TextStyle(
                             color: Colors.green,
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
-                        Text('$validCount Valid'),
+                        const Text('Valid'),
                       ],
                     ),
                     Column(
                       children: [
                         Text(
-                          'X',
-                          style: TextStyle(color: Colors.red, fontSize: 24),
+                          '$errorCount',
+                          style: const TextStyle(
+                            color: Colors.red,
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        Text('$errorCount Invalid'),
+                        const Text('Invalid'),
                       ],
                     ),
                   ],

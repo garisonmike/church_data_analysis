@@ -76,23 +76,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       final database = ref.read(databaseProvider);
       final repository = WeeklyRecordRepository(database);
 
-      // Get current admin ID if profile service is initialized
-      final currentAdminId = _profileService?.getCurrentProfileId();
-
       // Time the database query
       perfMonitor.startTiming('dashboard_db_query');
 
-      // Get recent records (last 12 weeks) - filtered by admin if ID exists
-      List<models.WeeklyRecord> records;
-      if (currentAdminId != null) {
-        records = await repository.getRecentRecordsByAdmin(
-          widget.churchId,
-          currentAdminId,
-          12,
-        );
-      } else {
-        records = await repository.getRecentRecords(widget.churchId, 12);
-      }
+      // Get recent records (last 12 weeks) — always show all church records (BUG-05)
+      final records = await repository.getRecentRecords(widget.churchId, 12);
 
       perfMonitor.stopTiming('dashboard_db_query');
 
@@ -308,12 +296,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             const SizedBox(height: 8),
             TextButton.icon(
               onPressed: () {
-                Navigator.push(
+                Navigator.pushNamed(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        ReportsScreen(churchId: widget.churchId),
-                  ),
+                  '/reports',
+                  arguments: widget.churchId,
                 );
               },
               icon: const Icon(Icons.analytics),
@@ -864,12 +850,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   }
 
   void _openLayoutEditor() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => const DashboardLayoutEditorScreen(),
-      ),
-    );
+    Navigator.pushNamed(context, '/dashboard/layout');
   }
 
   void _openReports() {

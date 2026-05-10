@@ -11,8 +11,9 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class WeeklyEntryScreen extends ConsumerStatefulWidget {
   final models.WeeklyRecord? existingRecord;
+  final int? churchId;
 
-  const WeeklyEntryScreen({super.key, this.existingRecord});
+  const WeeklyEntryScreen({super.key, this.existingRecord, this.churchId});
 
   @override
   ConsumerState<WeeklyEntryScreen> createState() => _WeeklyEntryScreenState();
@@ -33,6 +34,15 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
   final _offeringsController = TextEditingController();
   final _emergencyCollectionController = TextEditingController();
   final _plannedCollectionController = TextEditingController();
+
+  // Controllers for event tracking fields
+  final _baptismsController = TextEditingController();
+  final _holyCommunionController = TextEditingController();
+  // Phase 1 new fields
+  final _sabbathSchoolController = TextEditingController();
+  final _visitorsController = TextEditingController();
+  final _missionOfferingController = TextEditingController();
+  final _localChurchBudgetController = TextEditingController();
 
   DateTime _selectedDate = DateTime.now();
   int? _selectedChurchId; // Will be loaded from ChurchService
@@ -64,6 +74,8 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
           .toStringAsFixed(2);
       _plannedCollectionController.text = record.plannedCollection
           .toStringAsFixed(2);
+      _baptismsController.text = record.baptisms?.toString() ?? '';
+      _holyCommunionController.text = record.holyCommunion?.toString() ?? '';
       _selectedDate = record.weekStartDate;
       _selectedChurchId = record.churchId;
     }
@@ -80,13 +92,14 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
 
     // If not editing existing record, get current church
     if (widget.existingRecord == null) {
-      final churchId = _churchService!.getCurrentChurchId();
-      if (churchId != null) {
+      // Prefer route-provided churchId (BUG-03 fix)
+      final resolvedChurchId = widget.churchId ?? _churchService!.getCurrentChurchId();
+      if (resolvedChurchId != null) {
         setState(() {
-          _selectedChurchId = churchId;
+          _selectedChurchId = resolvedChurchId;
         });
         // Load historical records for outlier detection
-        await _loadHistoricalRecords(churchId, db);
+        await _loadHistoricalRecords(resolvedChurchId, db);
       } else {
         // No church selected, show error
         setState(() {
@@ -175,6 +188,12 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
     _offeringsController.dispose();
     _emergencyCollectionController.dispose();
     _plannedCollectionController.dispose();
+    _baptismsController.dispose();
+    _holyCommunionController.dispose();
+    _sabbathSchoolController.dispose();
+    _visitorsController.dispose();
+    _missionOfferingController.dispose();
+    _localChurchBudgetController.dispose();
     super.dispose();
   }
 
@@ -285,6 +304,13 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
         _plannedCollectionController.text,
       );
 
+      final baptisms = _baptismsController.text.trim().isEmpty
+          ? null
+          : int.tryParse(_baptismsController.text.trim());
+      final holyCommunion = _holyCommunionController.text.trim().isEmpty
+          ? null
+          : int.tryParse(_holyCommunionController.text.trim());
+
       if (emergencyCollection > 0 && plannedCollection > 0) {
         setState(() {
           _errorMessage =
@@ -333,6 +359,16 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
         youth: int.parse(_youthController.text),
         children: int.parse(_childrenController.text),
         sundayHomeChurch: int.parse(_sundayHomeChurchController.text),
+        baptisms: baptisms,
+        holyCommunion: holyCommunion,
+        sabbathSchoolAttendance: _sabbathSchoolController.text.trim().isEmpty
+            ? null : int.tryParse(_sabbathSchoolController.text.trim()),
+        visitorsCount: _visitorsController.text.trim().isEmpty
+            ? null : int.tryParse(_visitorsController.text.trim()),
+        missionOffering: _missionOfferingController.text.trim().isEmpty
+            ? null : double.tryParse(_missionOfferingController.text.trim()),
+        localChurchBudget: _localChurchBudgetController.text.trim().isEmpty
+            ? null : double.tryParse(_localChurchBudgetController.text.trim()),
         tithe: double.parse(_titheController.text),
         offerings: double.parse(_offeringsController.text),
         emergencyCollection: emergencyCollection,
@@ -486,6 +522,38 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
                             ),
                             const SizedBox(height: 24),
 
+                            // Event Tracking Section
+                            const _SectionTitle('Event Tracking'),
+                            const SizedBox(height: 8),
+                            _buildOptionalIntegerField(
+                              controller: _baptismsController,
+                              label: 'Baptisms',
+                              icon: Icons.water_drop,
+                              helperText: 'Number of baptisms this week (leave blank if none)',
+                            ),
+                            const SizedBox(height: 8),
+                            _buildOptionalIntegerField(
+                              controller: _holyCommunionController,
+                              label: 'Holy Communion Participants',
+                              icon: Icons.local_dining,
+                              helperText: 'Number of participants (leave blank if none)',
+                            ),
+                            const SizedBox(height: 8),
+                            _buildOptionalIntegerField(
+                              controller: _sabbathSchoolController,
+                              label: 'Sabbath School Attendance',
+                              icon: Icons.school_outlined,
+                              helperText: 'SS attendance before main service (optional)',
+                            ),
+                            const SizedBox(height: 8),
+                            _buildOptionalIntegerField(
+                              controller: _visitorsController,
+                              label: 'Visitors Count',
+                              icon: Icons.directions_walk,
+                              helperText: 'Non-member guests this Sabbath (optional)',
+                            ),
+                            const SizedBox(height: 24),
+
                             // Financial Section
                             const _SectionTitle('Financial Data'),
                             const SizedBox(height: 8),
@@ -513,12 +581,30 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
                               label: 'Planned Collection',
                               icon: Icons.event_note,
                               validator: _validateOptionalDecimal,
+                              textInputAction: TextInputAction.next,
+                            ),
+                            const SizedBox(height: 8),
+                            _buildDecimalField(
+                              controller: _missionOfferingController,
+                              label: 'Mission Offering (optional)',
+                              icon: Icons.public,
+                              validator: _validateOptionalDecimal,
+                              helperText: '13th Sabbath, Ingathering, World Budget',
+                              textInputAction: TextInputAction.next,
+                            ),
+                            const SizedBox(height: 8),
+                            _buildDecimalField(
+                              controller: _localChurchBudgetController,
+                              label: 'Local Church Budget (optional)',
+                              icon: Icons.home_work_outlined,
+                              validator: _validateOptionalDecimal,
+                              helperText: 'Local operations and maintenance',
                               textInputAction: TextInputAction.done,
                               onFieldSubmitted: (_) => _saveRecord(),
                             ),
                             const SizedBox(height: 16),
 
-                            // Outlier check section — isolated with StatefulBuilder
+                            // Outlier check section
                             // so outlier button presses only rebuild this subtree
                             StatefulBuilder(
                               builder: (context, localSetState) {
@@ -665,11 +751,11 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
     );
   }
 
-  Widget _buildDecimalField({
+  Widget _buildOptionalIntegerField({
     required TextEditingController controller,
     required String label,
     required IconData icon,
-    String? Function(String?)? validator,
+    String? helperText,
     TextInputAction textInputAction = TextInputAction.next,
     void Function(String)? onFieldSubmitted,
   }) {
@@ -677,6 +763,43 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
       controller: controller,
       decoration: InputDecoration(
         labelText: label,
+        hintText: '0',
+        helperText: helperText,
+        prefixIcon: Icon(icon),
+        border: const OutlineInputBorder(),
+      ),
+      keyboardType: TextInputType.number,
+      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+      // Optional — blank is null, not 0
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) return null;
+        final n = int.tryParse(value.trim());
+        if (n == null) return 'Must be a valid integer';
+        if (n < 0) return 'Cannot be negative';
+        return null;
+      },
+      scrollPadding: EdgeInsets.only(
+        bottom: 24 + MediaQuery.viewInsetsOf(context).bottom,
+      ),
+      textInputAction: textInputAction,
+      onFieldSubmitted: onFieldSubmitted,
+    );
+  }
+
+  Widget _buildDecimalField({
+    required TextEditingController controller,
+    required String label,
+    required IconData icon,
+    String? Function(String?)? validator,
+    String? helperText,
+    TextInputAction textInputAction = TextInputAction.next,
+    void Function(String)? onFieldSubmitted,
+  }) {
+    return TextFormField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: label,
+        helperText: helperText,
         prefixIcon: Icon(icon),
         border: const OutlineInputBorder(),
       ),

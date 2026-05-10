@@ -11,6 +11,7 @@ class ChartItem {
   final Color color;
   final ChartCategory category;
   final Widget Function(int churchId) screenBuilder;
+  final String? route; // Named route (if registered)
 
   const ChartItem({
     required this.title,
@@ -19,6 +20,7 @@ class ChartItem {
     required this.color,
     required this.category,
     required this.screenBuilder,
+    this.route,
   });
 }
 
@@ -99,6 +101,7 @@ class _GraphCenterScreenState extends ConsumerState<GraphCenterScreen> {
         color: Colors.blueGrey,
         category: ChartCategory.attendance,
         screenBuilder: (churchId) => DetailedMetricsScreen(churchId: churchId),
+        route: '/charts/detail',
       ),
       ChartItem(
         title: 'Distributions',
@@ -108,6 +111,7 @@ class _GraphCenterScreenState extends ConsumerState<GraphCenterScreen> {
         color: Colors.amber.shade800,
         category: ChartCategory.analysis,
         screenBuilder: (churchId) => DistributionScreen(churchId: churchId),
+        route: '/charts/distribution',
       ),
       ChartItem(
         title: 'Target Analysis',
@@ -117,6 +121,7 @@ class _GraphCenterScreenState extends ConsumerState<GraphCenterScreen> {
         color: Colors.red.shade700,
         category: ChartCategory.analysis,
         screenBuilder: (churchId) => TargetAnalysisScreen(churchId: churchId),
+        route: '/charts/targets',
       ),
       ChartItem(
         title: 'Cross-Dataset Comparison',
@@ -126,6 +131,43 @@ class _GraphCenterScreenState extends ConsumerState<GraphCenterScreen> {
         color: Colors.cyan.shade800,
         category: ChartCategory.advanced,
         screenBuilder: (churchId) => CrossDatasetScreen(churchId: churchId),
+        route: '/charts/cross',
+      ),
+      ChartItem(
+        title: 'Board Meeting Analytics',
+        description: 'Monthly board attendance trends, rates, and actual vs expected',
+        icon: Icons.assignment,
+        color: Colors.blue.shade800,
+        category: ChartCategory.attendance,
+        screenBuilder: (_) => const BoardMeetingAnalyticsScreen(),
+        route: '/board-meeting',
+      ),
+      ChartItem(
+        title: 'Special Events',
+        description: 'Holy Communion and Business Meeting attendance by home church',
+        icon: Icons.church,
+        color: Colors.purple,
+        category: ChartCategory.attendance,
+        screenBuilder: (_) => const SpecialEventsScreen(),
+        route: '/special-events',
+      ),
+      ChartItem(
+        title: 'Home Church Analytics',
+        description: 'Membership breakdown, categories, and attendance rates per home church',
+        icon: Icons.home_work,
+        color: Colors.teal,
+        category: ChartCategory.attendance,
+        screenBuilder: (_) => const HomeChurchAnalyticsScreen(),
+        route: '/home-church-analytics',
+      ),
+      ChartItem(
+        title: 'Financial Glossary',
+        description: 'Explains every financial metric and how it is calculated',
+        icon: Icons.menu_book,
+        color: Colors.green.shade700,
+        category: ChartCategory.financial,
+        screenBuilder: (_) => const FinancialGlossaryScreen(),
+        route: '/financial-glossary',
       ),
     ];
   }
@@ -333,11 +375,15 @@ class _GraphCenterScreenState extends ConsumerState<GraphCenterScreen> {
   }
 
   void _navigateToChart(ChartItem chart) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => chart.screenBuilder(widget.churchId),
-      ),
-    );
+    if (chart.route != null) {
+      Navigator.pushNamed(context, chart.route!, arguments: widget.churchId);
+    } else {
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (context) => chart.screenBuilder(widget.churchId),
+        ),
+      );
+    }
   }
 }

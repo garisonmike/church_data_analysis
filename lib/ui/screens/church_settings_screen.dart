@@ -3,6 +3,7 @@ import 'package:church_analytics/models/models.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:flutter/material.dart';
+import 'package:church_analytics/ui/screens/home_church_screen.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -295,6 +296,22 @@ class _ChurchSettingsScreenState extends ConsumerState<ChurchSettingsScreen> {
                         ),
                       ),
                     ],
+
+                    const SizedBox(height: 24),
+
+                    // Home Churches management link
+                    Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.home_work_outlined),
+                        title: const Text('Home Churches'),
+                        subtitle: const Text('Manage sub-congregations and ministry groups'),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => const HomeChurchScreen()),
+                        ),
+                      ),
+                    ),
 
                     const SizedBox(height: 24),
 

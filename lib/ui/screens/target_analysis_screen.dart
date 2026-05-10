@@ -3,7 +3,7 @@ import 'package:church_analytics/models/weekly_record.dart';
 import 'package:church_analytics/services/analytics_service.dart';
 import 'package:church_analytics/services/weekly_records_provider.dart';
 import 'package:church_analytics/ui/widgets/widgets.dart';
-import 'package:church_analytics/widgets/charts/charts.dart';
+import 'package:church_analytics/ui/widgets/charts/charts.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
@@ -19,6 +19,7 @@ const Map<String, double> _kTargets = {
   'Home Church': 2000,
   'Tithe': 1050000,
   'Offerings': 450000,
+  'Baptisms': 500,  // from data.py DS2 targets
 };
 
 /// Screen housing G-49 through G-74 — DS2 Target Analysis charts.

@@ -7,6 +7,7 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 import '../../models/weekly_record.dart';
 import '../../services/settings_service.dart';
 import '../../services/weekly_records_provider.dart';
+import '../widgets/charts/ctrl_scroll_zoom_wrapper.dart';
 import '../widgets/responsive_chart_container.dart';
 import '../widgets/time_range_selector.dart';
 
@@ -487,24 +488,24 @@ class _DynamicChart extends StatefulWidget {
 }
 
 class _DynamicChartState extends State<_DynamicChart> {
-  late final ZoomPanBehavior _zoomPan;
   late final TrackballBehavior _trackball;
 
   @override
   void initState() {
     super.initState();
-    _zoomPan = ZoomPanBehavior(
-      enablePinching: true,
-      enableDoubleTapZooming: true,
-      enablePanning: true,
-      enableMouseWheelZooming: true,
-    );
     _trackball = TrackballBehavior(
       enable: true,
       activationMode: ActivationMode.singleTap,
       tooltipSettings: const InteractiveTooltip(enable: true),
     );
   }
+
+  ZoomPanBehavior _zoomPan(bool ctrlHeld) => ZoomPanBehavior(
+        enablePinching: true,
+        enableDoubleTapZooming: true,
+        enablePanning: true,
+        enableMouseWheelZooming: ctrlHeld,
+      );
 
   String _axisTitle(ChartMetric metric) {
     if (metric.isCurrency && widget.currencySymbol.isNotEmpty) {
@@ -526,31 +527,33 @@ class _DynamicChartState extends State<_DynamicChart> {
   }
 
   Widget _buildScatter() {
-    return SfCartesianChart(
-      zoomPanBehavior: _zoomPan,
-      trackballBehavior: _trackball,
-      primaryXAxis: NumericAxis(
-        title: AxisTitle(text: _axisTitle(widget.xMetric)),
-        decimalPlaces: 0,
-      ),
-      primaryYAxis: NumericAxis(
-        title: AxisTitle(text: _axisTitle(widget.yMetric)),
-        decimalPlaces: 0,
-      ),
-      series: [
-        ScatterSeries<WeeklyRecord, double>(
-          dataSource: widget.records,
-          xValueMapper: (r, _) => widget.xMetric.getValue(r),
-          yValueMapper: (r, _) => widget.yMetric.getValue(r),
-          color: widget.theme.colorScheme.primary,
-          markerSettings: const MarkerSettings(
-            isVisible: true,
-            height: 10,
-            width: 10,
-            shape: DataMarkerType.circle,
-          ),
+    return CtrlScrollZoomWrapper(
+      builder: (ctrlHeld) => SfCartesianChart(
+        zoomPanBehavior: _zoomPan(ctrlHeld),
+        trackballBehavior: _trackball,
+        primaryXAxis: NumericAxis(
+          title: AxisTitle(text: _axisTitle(widget.xMetric)),
+          decimalPlaces: 0,
         ),
-      ],
+        primaryYAxis: NumericAxis(
+          title: AxisTitle(text: _axisTitle(widget.yMetric)),
+          decimalPlaces: 0,
+        ),
+        series: [
+          ScatterSeries<WeeklyRecord, double>(
+            dataSource: widget.records,
+            xValueMapper: (r, _) => widget.xMetric.getValue(r),
+            yValueMapper: (r, _) => widget.yMetric.getValue(r),
+            color: widget.theme.colorScheme.primary,
+            markerSettings: const MarkerSettings(
+              isVisible: true,
+              height: 10,
+              width: 10,
+              shape: DataMarkerType.circle,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -560,55 +563,59 @@ class _DynamicChartState extends State<_DynamicChart> {
         (a, b) =>
             widget.xMetric.getValue(a).compareTo(widget.xMetric.getValue(b)),
       );
-    return SfCartesianChart(
-      zoomPanBehavior: _zoomPan,
-      trackballBehavior: _trackball,
-      primaryXAxis: NumericAxis(
-        title: AxisTitle(text: _axisTitle(widget.xMetric)),
-        decimalPlaces: 0,
-      ),
-      primaryYAxis: NumericAxis(
-        title: AxisTitle(text: _axisTitle(widget.yMetric)),
-        decimalPlaces: 0,
-      ),
-      series: [
-        SplineSeries<WeeklyRecord, double>(
-          dataSource: sorted,
-          xValueMapper: (r, _) => widget.xMetric.getValue(r),
-          yValueMapper: (r, _) => widget.yMetric.getValue(r),
-          color: widget.theme.colorScheme.primary,
-          width: 2,
-          markerSettings: const MarkerSettings(
-            isVisible: true,
-            shape: DataMarkerType.circle,
-          ),
+    return CtrlScrollZoomWrapper(
+      builder: (ctrlHeld) => SfCartesianChart(
+        zoomPanBehavior: _zoomPan(ctrlHeld),
+        trackballBehavior: _trackball,
+        primaryXAxis: NumericAxis(
+          title: AxisTitle(text: _axisTitle(widget.xMetric)),
+          decimalPlaces: 0,
         ),
-      ],
+        primaryYAxis: NumericAxis(
+          title: AxisTitle(text: _axisTitle(widget.yMetric)),
+          decimalPlaces: 0,
+        ),
+        series: [
+          SplineSeries<WeeklyRecord, double>(
+            dataSource: sorted,
+            xValueMapper: (r, _) => widget.xMetric.getValue(r),
+            yValueMapper: (r, _) => widget.yMetric.getValue(r),
+            color: widget.theme.colorScheme.primary,
+            width: 2,
+            markerSettings: const MarkerSettings(
+              isVisible: true,
+              shape: DataMarkerType.circle,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildBar() {
     final fmt = DateFormat.MMMd();
-    return SfCartesianChart(
-      zoomPanBehavior: _zoomPan,
-      trackballBehavior: _trackball,
-      primaryXAxis: CategoryAxis(
-        title: AxisTitle(text: widget.xMetric.displayName),
-        labelStyle: const TextStyle(fontSize: 10),
-        labelRotation: -45,
-      ),
-      primaryYAxis: NumericAxis(
-        title: AxisTitle(text: _axisTitle(widget.yMetric)),
-        decimalPlaces: 0,
-      ),
-      series: [
-        ColumnSeries<WeeklyRecord, String>(
-          dataSource: widget.records,
-          xValueMapper: (r, _) => fmt.format(r.weekStartDate),
-          yValueMapper: (r, _) => widget.yMetric.getValue(r),
-          color: widget.theme.colorScheme.primary,
+    return CtrlScrollZoomWrapper(
+      builder: (ctrlHeld) => SfCartesianChart(
+        zoomPanBehavior: _zoomPan(ctrlHeld),
+        trackballBehavior: _trackball,
+        primaryXAxis: CategoryAxis(
+          title: AxisTitle(text: widget.xMetric.displayName),
+          labelStyle: const TextStyle(fontSize: 10),
+          labelRotation: -45,
         ),
-      ],
+        primaryYAxis: NumericAxis(
+          title: AxisTitle(text: _axisTitle(widget.yMetric)),
+          decimalPlaces: 0,
+        ),
+        series: [
+          ColumnSeries<WeeklyRecord, String>(
+            dataSource: widget.records,
+            xValueMapper: (r, _) => fmt.format(r.weekStartDate),
+            yValueMapper: (r, _) => widget.yMetric.getValue(r),
+            color: widget.theme.colorScheme.primary,
+          ),
+        ],
+      ),
     );
   }
 }

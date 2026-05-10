@@ -13,6 +13,7 @@ import '../../services/file_service.dart' show resolvedExportPathProvider;
 import '../../services/settings_service.dart';
 import '../widgets/about_updates_card.dart';
 import '../widgets/activity_log_card.dart';
+import 'log_viewer_screen.dart';
 
 /// Screen for managing application settings like currency, locale etc.
 class AppSettingsScreen extends ConsumerWidget {
@@ -295,6 +296,22 @@ class AppSettingsScreen extends ConsumerWidget {
 
           // Recent Activity Card
           const ActivityLogCard(),
+
+          const SizedBox(height: 16),
+
+          // App Logs Card
+          Card(
+            child: ListTile(
+              leading: const Icon(Icons.bug_report_outlined),
+              title: const Text('App Logs'),
+              subtitle: const Text('View and export diagnostic logs'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const LogViewerScreen()),
+              ),
+            ),
+          ),
 
           const SizedBox(height: 16),
 
