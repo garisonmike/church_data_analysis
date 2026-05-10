@@ -2,20 +2,30 @@ import 'package:church_analytics/models/charts/time_series_point.dart';
 import 'package:church_analytics/models/weekly_record.dart';
 import 'package:church_analytics/services/analytics_service.dart';
 import 'package:church_analytics/services/weekly_records_provider.dart';
-import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:church_analytics/ui/widgets/charts/charts.dart';
 import 'package:church_analytics/ui/widgets/charts/ctrl_scroll_zoom_wrapper.dart';
+import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:syncfusion_flutter_charts/charts.dart';
 
-class AdvancedChartsScreen extends ConsumerWidget {
+class AdvancedChartsScreen extends ConsumerStatefulWidget {
   final int churchId;
   const AdvancedChartsScreen({super.key, required this.churchId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final recordsAsync = ref.watch(weeklyRecordsForChurchProvider(churchId));
+  ConsumerState<AdvancedChartsScreen> createState() =>
+      AdvancedChartsScreenState();
+}
+
+class AdvancedChartsScreenState extends ConsumerState<AdvancedChartsScreen> {
+  static final captureKey = GlobalKey(debugLabel: 'advanced_chart_capture');
+
+  @override
+  Widget build(BuildContext context) {
+    final recordsAsync = ref.watch(
+      weeklyRecordsForChurchProvider(widget.churchId),
+    );
     return Scaffold(
       appBar: AppBar(
         title: const Text('Advanced Charts'),
@@ -31,7 +41,7 @@ class AdvancedChartsScreen extends ConsumerWidget {
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
             onPressed: () =>
-                ref.invalidate(weeklyRecordsForChurchProvider(churchId)),
+                ref.invalidate(weeklyRecordsForChurchProvider(widget.churchId)),
           ),
         ],
       ),
@@ -40,7 +50,7 @@ class AdvancedChartsScreen extends ConsumerWidget {
         error: (error, _) => _ErrorView(
           message: error.toString(),
           onRetry: () =>
-              ref.invalidate(weeklyRecordsForChurchProvider(churchId)),
+              ref.invalidate(weeklyRecordsForChurchProvider(widget.churchId)),
         ),
         data: (records) => records.isEmpty
             ? const _EmptyView()
@@ -83,6 +93,7 @@ class _AdvancedContent extends StatelessWidget {
           minHeight: 220,
           maxHeight: 380,
           aspectRatio: 16 / 9,
+          captureKey: AdvancedChartsScreenState.captureKey,
           child: LineChartWidget(
             seriesData: analytics.attendanceMovingAverage(sorted),
             title: 'Attendance Moving Average (3-Week)',
@@ -374,38 +385,38 @@ class _OutliersChartState extends State<_OutliersChart> {
                     intervalType: DateTimeIntervalType.days,
                     interval: 7,
                   ),
-                primaryYAxis: const NumericAxis(
-                  title: AxisTitle(text: 'Attendance'),
+                  primaryYAxis: const NumericAxis(
+                    title: AxisTitle(text: 'Attendance'),
+                  ),
+                  series: [
+                    SplineSeries<TimeSeriesPoint, DateTime>(
+                      name: 'Normal',
+                      dataSource: normalPts,
+                      xValueMapper: (p, _) => p.x,
+                      yValueMapper: (p, _) => p.y,
+                      color: const Color(0xFF1565C0),
+                      width: 2,
+                      markerSettings: const MarkerSettings(
+                        isVisible: true,
+                        shape: DataMarkerType.circle,
+                      ),
+                    ),
+                    ScatterSeries<TimeSeriesPoint, DateTime>(
+                      name: 'Outliers',
+                      dataSource: outlierPts,
+                      xValueMapper: (p, _) => p.x,
+                      yValueMapper: (p, _) => p.y,
+                      color: const Color(0xFFC62828),
+                      markerSettings: const MarkerSettings(
+                        isVisible: true,
+                        height: 12,
+                        width: 12,
+                        shape: DataMarkerType.circle,
+                      ),
+                    ),
+                  ],
                 ),
-                series: [
-                  SplineSeries<TimeSeriesPoint, DateTime>(
-                    name: 'Normal',
-                    dataSource: normalPts,
-                    xValueMapper: (p, _) => p.x,
-                    yValueMapper: (p, _) => p.y,
-                    color: const Color(0xFF1565C0),
-                    width: 2,
-                    markerSettings: const MarkerSettings(
-                      isVisible: true,
-                      shape: DataMarkerType.circle,
-                    ),
-                  ),
-                  ScatterSeries<TimeSeriesPoint, DateTime>(
-                    name: 'Outliers',
-                    dataSource: outlierPts,
-                    xValueMapper: (p, _) => p.x,
-                    yValueMapper: (p, _) => p.y,
-                    color: const Color(0xFFC62828),
-                    markerSettings: const MarkerSettings(
-                      isVisible: true,
-                      height: 12,
-                      width: 12,
-                      shape: DataMarkerType.circle,
-                    ),
-                  ),
-                ],
               ),
-            ),
             ),
             if (_outlierCount > 0) ...[
               const SizedBox(height: 12),

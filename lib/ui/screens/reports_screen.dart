@@ -7,6 +7,10 @@ import '../../models/models.dart';
 import '../../platform/path_safety_guard.dart';
 import '../../repositories/repositories.dart';
 import '../../services/services.dart';
+import '../screens/advanced_charts_screen.dart';
+import '../screens/attendance_charts_screen.dart';
+import '../screens/correlation_charts_screen.dart';
+import '../screens/financial_charts_screen.dart';
 import '../widgets/export_result_snack_bar.dart';
 
 /// Normalizes a raw export file-system path by trimming whitespace.
@@ -114,6 +118,26 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
+  Future<Map<String, Uint8List>> _collectChartImages() async {
+    final images = <String, Uint8List>{};
+
+    final captureTargets = {
+      'Attendance': AttendanceChartsScreenState.captureKey,
+      'Financial': FinancialChartsScreenState.captureKey,
+      'Advanced Analytics': AdvancedChartsScreenState.captureKey,
+      'Correlations': CorrelationChartsScreenState.captureKey,
+    };
+
+    for (final entry in captureTargets.entries) {
+      final bytes = await ChartExportService.captureWidget(entry.value);
+      if (bytes != null) {
+        images[entry.key] = bytes;
+      }
+    }
+
+    return images;
+  }
+
   Future<void> _exportPdf() async {
     setState(() => _isProcessing = true);
     try {
@@ -124,10 +148,19 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       final formatCurrency = ref.read(currencyFormatterProvider);
       final formatCurrencyPrecise = ref.read(currencyFormatterPreciseProvider);
 
+      final chartImages = _reportOptions.includeGraphs
+          ? await _collectChartImages()
+          : const <String, Uint8List>{};
+      if (_reportOptions.includeGraphs && chartImages.isEmpty) {
+        _showStatus(
+          'Tip: Visit the chart screens first so graphs can be captured for the PDF.',
+        );
+      }
+
       final pdf = await PdfReportService.buildMultiChartReport(
         churchName: churchName,
         records: records,
-        chartImages: const {},
+        chartImages: chartImages,
         includeGraphs: _reportOptions.includeGraphs,
         includeKpi: _reportOptions.includeKpi,
         includeTable: _reportOptions.includeTable,
@@ -196,7 +229,9 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     try {
       final records = await _getRecords();
       final settings = ref.read(appSettingsProvider);
-      final suggestedName = _csvService.generateExportFilename('weekly_records');
+      final suggestedName = _csvService.generateExportFilename(
+        'weekly_records',
+      );
       final customPath = await _pickExportPath(
         suggestedName: suggestedName,
         allowedExtensions: const ['csv'],
@@ -218,7 +253,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
           setState(() => _lastExportPath = savedPath);
           ExportResultSnackBar.show(context, ExportResult.success(savedPath));
         } else if (mounted) {
-          ExportResultSnackBar.show(context, ExportResult.failure('CSV export failed.'));
+          ExportResultSnackBar.show(
+            context,
+            ExportResult.failure('CSV export failed.'),
+          );
         }
       } else {
         if (kDebugMode) debugPrint('CSV export error: ${result.error}');
@@ -235,7 +273,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         debugPrint('Stack trace: $stack');
       }
       if (mounted) {
-        ExportResultSnackBar.show(context, ExportResult.failure('Export failed: $e'));
+        ExportResultSnackBar.show(
+          context,
+          ExportResult.failure('Export failed: $e'),
+        );
       }
     } finally {
       setState(() => _isProcessing = false);
@@ -418,28 +459,35 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   label: const Text('Graphs'),
                   selected: _reportOptions.includeGraphs,
                   onSelected: (v) => setState(
-                    () => _reportOptions = _reportOptions.copyWith(includeGraphs: v),
+                    () => _reportOptions = _reportOptions.copyWith(
+                      includeGraphs: v,
+                    ),
                   ),
                 ),
                 FilterChip(
                   label: const Text('KPI'),
                   selected: _reportOptions.includeKpi,
                   onSelected: (v) => setState(
-                    () => _reportOptions = _reportOptions.copyWith(includeKpi: v),
+                    () =>
+                        _reportOptions = _reportOptions.copyWith(includeKpi: v),
                   ),
                 ),
                 FilterChip(
                   label: const Text('Table'),
                   selected: _reportOptions.includeTable,
                   onSelected: (v) => setState(
-                    () => _reportOptions = _reportOptions.copyWith(includeTable: v),
+                    () => _reportOptions = _reportOptions.copyWith(
+                      includeTable: v,
+                    ),
                   ),
                 ),
                 FilterChip(
                   label: const Text('Trends'),
                   selected: _reportOptions.includeTrends,
                   onSelected: (v) => setState(
-                    () => _reportOptions = _reportOptions.copyWith(includeTrends: v),
+                    () => _reportOptions = _reportOptions.copyWith(
+                      includeTrends: v,
+                    ),
                   ),
                 ),
               ],

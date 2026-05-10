@@ -2,18 +2,28 @@ import 'package:church_analytics/models/charts/time_series_point.dart';
 import 'package:church_analytics/models/weekly_record.dart';
 import 'package:church_analytics/services/analytics_service.dart';
 import 'package:church_analytics/services/weekly_records_provider.dart';
-import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:church_analytics/ui/widgets/charts/charts.dart';
+import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class FinancialChartsScreen extends ConsumerWidget {
+class FinancialChartsScreen extends ConsumerStatefulWidget {
   final int churchId;
   const FinancialChartsScreen({super.key, required this.churchId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final recordsAsync = ref.watch(weeklyRecordsForChurchProvider(churchId));
+  ConsumerState<FinancialChartsScreen> createState() =>
+      FinancialChartsScreenState();
+}
+
+class FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
+  static final captureKey = GlobalKey(debugLabel: 'financial_chart_capture');
+
+  @override
+  Widget build(BuildContext context) {
+    final recordsAsync = ref.watch(
+      weeklyRecordsForChurchProvider(widget.churchId),
+    );
     return Scaffold(
       appBar: AppBar(
         title: const Text('Financial Charts'),
@@ -21,7 +31,8 @@ class FinancialChartsScreen extends ConsumerWidget {
           IconButton(
             icon: const Icon(Icons.menu_book_outlined),
             tooltip: 'Financial Glossary',
-            onPressed: () => Navigator.pushNamed(context, '/financial-glossary'),
+            onPressed: () =>
+                Navigator.pushNamed(context, '/financial-glossary'),
           ),
           ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 400),
@@ -34,7 +45,7 @@ class FinancialChartsScreen extends ConsumerWidget {
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
             onPressed: () =>
-                ref.invalidate(weeklyRecordsForChurchProvider(churchId)),
+                ref.invalidate(weeklyRecordsForChurchProvider(widget.churchId)),
           ),
         ],
       ),
@@ -43,7 +54,7 @@ class FinancialChartsScreen extends ConsumerWidget {
         error: (error, _) => _ErrorView(
           message: error.toString(),
           onRetry: () =>
-              ref.invalidate(weeklyRecordsForChurchProvider(churchId)),
+              ref.invalidate(weeklyRecordsForChurchProvider(widget.churchId)),
         ),
         data: (records) => records.isEmpty
             ? const _EmptyView()
@@ -87,6 +98,7 @@ class _FinancialContent extends StatelessWidget {
           minHeight: 220,
           maxHeight: 380,
           aspectRatio: 16 / 9,
+          captureKey: FinancialChartsScreenState.captureKey,
           child: StackedAreaChartWidget(
             seriesData: analytics.titheOfferingsComposition(sorted),
             title: 'Income Composition Over Time',

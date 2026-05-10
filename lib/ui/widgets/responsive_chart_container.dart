@@ -120,6 +120,9 @@ class ResponsiveLazyChart extends StatelessWidget {
   /// Optional callback when visibility changes
   final ValueChanged<bool>? onVisibilityChanged;
 
+  /// Optional repaint boundary key for image capture
+  final GlobalKey? captureKey;
+
   /// Padding around the chart content
   final EdgeInsetsGeometry? padding;
 
@@ -137,6 +140,7 @@ class ResponsiveLazyChart extends StatelessWidget {
     this.onVisibilityChanged,
     this.padding,
     this.enableInteractive = false,
+    this.captureKey,
   });
 
   @override
@@ -164,6 +168,7 @@ class ResponsiveLazyChart extends StatelessWidget {
           placeholderHeight: height,
           fadeInDuration: fadeInDuration,
           onVisibilityChanged: onVisibilityChanged,
+          captureKey: captureKey,
           child: ResponsiveChartContainer(
             minHeight: minHeight,
             maxHeight: maxHeight,

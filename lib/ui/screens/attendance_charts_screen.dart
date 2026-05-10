@@ -2,18 +2,29 @@ import 'package:church_analytics/models/charts/category_point.dart';
 import 'package:church_analytics/models/weekly_record.dart';
 import 'package:church_analytics/services/analytics_service.dart';
 import 'package:church_analytics/services/weekly_records_provider.dart';
-import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:church_analytics/ui/widgets/charts/charts.dart';
+import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class AttendanceChartsScreen extends ConsumerWidget {
+class AttendanceChartsScreen extends ConsumerStatefulWidget {
   final int churchId;
   const AttendanceChartsScreen({super.key, required this.churchId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final recordsAsync = ref.watch(weeklyRecordsForChurchProvider(churchId));
+  ConsumerState<AttendanceChartsScreen> createState() =>
+      AttendanceChartsScreenState();
+}
+
+class AttendanceChartsScreenState
+    extends ConsumerState<AttendanceChartsScreen> {
+  static final captureKey = GlobalKey(debugLabel: 'attendance_chart_capture');
+
+  @override
+  Widget build(BuildContext context) {
+    final recordsAsync = ref.watch(
+      weeklyRecordsForChurchProvider(widget.churchId),
+    );
     return Scaffold(
       appBar: AppBar(
         title: const Text('Attendance Charts'),
@@ -29,7 +40,7 @@ class AttendanceChartsScreen extends ConsumerWidget {
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
             onPressed: () =>
-                ref.invalidate(weeklyRecordsForChurchProvider(churchId)),
+                ref.invalidate(weeklyRecordsForChurchProvider(widget.churchId)),
           ),
         ],
       ),
@@ -38,7 +49,7 @@ class AttendanceChartsScreen extends ConsumerWidget {
         error: (error, _) => _ErrorView(
           message: error.toString(),
           onRetry: () =>
-              ref.invalidate(weeklyRecordsForChurchProvider(churchId)),
+              ref.invalidate(weeklyRecordsForChurchProvider(widget.churchId)),
         ),
         data: (records) => records.isEmpty
             ? const _EmptyView()
@@ -103,6 +114,7 @@ class _AttendanceContent extends StatelessWidget {
           minHeight: 220,
           maxHeight: 380,
           aspectRatio: 16 / 9,
+          captureKey: AttendanceChartsScreenState.captureKey,
           child: LineChartWidget(
             seriesData: {
               'Total Attendance': analytics.totalAttendanceTrend(sorted),

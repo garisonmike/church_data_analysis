@@ -20,6 +20,9 @@ class LazyLoadChart extends StatefulWidget {
   /// Optional callback when visibility changes
   final ValueChanged<bool>? onVisibilityChanged;
 
+  /// Optional repaint boundary key for image capture
+  final GlobalKey? captureKey;
+
   const LazyLoadChart({
     super.key,
     required this.child,
@@ -27,6 +30,7 @@ class LazyLoadChart extends StatefulWidget {
     this.placeholder,
     this.fadeInDuration = const Duration(milliseconds: 300),
     this.onVisibilityChanged,
+    this.captureKey,
   });
 
   @override
@@ -130,13 +134,21 @@ class _LazyLoadChartState extends State<LazyLoadChart> {
 
   @override
   Widget build(BuildContext context) {
+    Widget renderedChild = widget.child;
+    if (widget.captureKey != null) {
+      renderedChild = RepaintBoundary(
+        key: widget.captureKey,
+        child: renderedChild,
+      );
+    }
+
     return SizedBox(
       key: _key,
       child: _hasBeenVisible
           ? AnimatedOpacity(
               duration: widget.fadeInDuration,
               opacity: _isVisible ? 1.0 : 0.0,
-              child: widget.child,
+              child: renderedChild,
             )
           : widget.placeholder ?? _buildDefaultPlaceholder(),
     );
