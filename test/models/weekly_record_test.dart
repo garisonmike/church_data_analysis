@@ -188,5 +188,133 @@ void main() {
       expect(updated.women, record.women);
       expect(updated.offerings, record.offerings);
     });
+
+    // ── Change 1k: baptisms / holyCommunion tests ─────────────────────────
+
+    test('WeeklyRecord accepts null baptisms and holyCommunion', () {
+      final record = WeeklyRecord(
+        churchId: 1,
+        weekStartDate: weekStart,
+        men: 50,
+        women: 60,
+        youth: 30,
+        children: 20,
+        sundayHomeChurch: 10,
+        tithe: 1000.0,
+        offerings: 500.0,
+        emergencyCollection: 0,
+        plannedCollection: 0,
+        createdAt: now,
+        updatedAt: now,
+      );
+      expect(record.baptisms, isNull);
+      expect(record.holyCommunion, isNull);
+    });
+
+    test('WeeklyRecord validate() rejects negative baptisms', () {
+      final record = WeeklyRecord(
+        churchId: 1,
+        weekStartDate: weekStart,
+        men: 50,
+        women: 60,
+        youth: 30,
+        children: 20,
+        sundayHomeChurch: 10,
+        baptisms: -1,
+        tithe: 1000.0,
+        offerings: 500.0,
+        emergencyCollection: 0,
+        plannedCollection: 0,
+        createdAt: now,
+        updatedAt: now,
+      );
+      expect(record.validate(), isNotNull);
+    });
+
+    test('WeeklyRecord validate() rejects negative holyCommunion', () {
+      final record = WeeklyRecord(
+        churchId: 1,
+        weekStartDate: weekStart,
+        men: 50,
+        women: 60,
+        youth: 30,
+        children: 20,
+        sundayHomeChurch: 10,
+        holyCommunion: -1,
+        tithe: 1000.0,
+        offerings: 500.0,
+        emergencyCollection: 0,
+        plannedCollection: 0,
+        createdAt: now,
+        updatedAt: now,
+      );
+      expect(record.validate(), isNotNull);
+    });
+
+    test('WeeklyRecord accepts non-null baptisms and holyCommunion', () {
+      final record = WeeklyRecord(
+        churchId: 1,
+        weekStartDate: weekStart,
+        men: 50,
+        women: 60,
+        youth: 30,
+        children: 20,
+        sundayHomeChurch: 10,
+        baptisms: 5,
+        holyCommunion: 120,
+        tithe: 1000.0,
+        offerings: 500.0,
+        emergencyCollection: 0,
+        plannedCollection: 0,
+        createdAt: now,
+        updatedAt: now,
+      );
+      expect(record.baptisms, 5);
+      expect(record.holyCommunion, 120);
+      expect(record.validate(), isNull);
+    });
+
+    // ── Change 5a: date validation grace window tests ─────────────────────
+
+    test('WeeklyRecord validate() allows dates up to 2 days in the future', () {
+      final tomorrow = DateTime.now().add(const Duration(days: 1));
+      final record = WeeklyRecord(
+        churchId: 1,
+        weekStartDate: tomorrow,
+        men: 50,
+        women: 60,
+        youth: 30,
+        children: 20,
+        sundayHomeChurch: 10,
+        tithe: 1000.0,
+        offerings: 500.0,
+        emergencyCollection: 0,
+        plannedCollection: 0,
+        createdAt: now,
+        updatedAt: now,
+      );
+      expect(record.validate(), isNull);
+    });
+
+    test('WeeklyRecord validate() rejects dates more than 2 days in the future',
+        () {
+      final farFuture = DateTime.now().add(const Duration(days: 3));
+      final record = WeeklyRecord(
+        churchId: 1,
+        weekStartDate: farFuture,
+        men: 50,
+        women: 60,
+        youth: 30,
+        children: 20,
+        sundayHomeChurch: 10,
+        tithe: 1000.0,
+        offerings: 500.0,
+        emergencyCollection: 0,
+        plannedCollection: 0,
+        createdAt: now,
+        updatedAt: now,
+      );
+      expect(record.validate(), isNotNull);
+    });
   });
 }

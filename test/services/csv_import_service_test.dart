@@ -351,5 +351,135 @@ void main() {
         expect(result.errors!.any((e) => e.contains('date format')), true);
       });
     });
+
+    // ── Change 1k: baptisms / holyCommunion import tests ─────────────────
+
+    group('baptisms and holyCommunion optional fields', () {
+      test('parses baptisms and holyCommunion when present', () {
+        final row = [
+          '2026-01-05',
+          '50',
+          '60',
+          '30',
+          '20',
+          '10',
+          '1000',
+          '500',
+          '200',
+          '300',
+          '8',   // baptisms
+          '120', // holyCommunion
+        ];
+
+        final mapping = {
+          'weekStartDate': 0,
+          'men': 1,
+          'women': 2,
+          'youth': 3,
+          'children': 4,
+          'sundayHomeChurch': 5,
+          'tithe': 6,
+          'offerings': 7,
+          'emergencyCollection': 8,
+          'plannedCollection': 9,
+          'baptisms': 10,
+          'holyCommunion': 11,
+        };
+
+        final result = service.validateAndConvertRow(row, mapping, 1, 2, null, {
+          'emergencyCollection',
+          'plannedCollection',
+          'baptisms',
+          'holyCommunion',
+        });
+
+        expect(result.success, true);
+        expect(result.record!.baptisms, 8);
+        expect(result.record!.holyCommunion, 120);
+      });
+
+      test('returns null for baptisms and holyCommunion when columns absent', () {
+        final row = [
+          '2026-01-05',
+          '50',
+          '60',
+          '30',
+          '20',
+          '10',
+          '1000',
+          '500',
+          '200',
+          '300',
+        ];
+
+        final mapping = {
+          'weekStartDate': 0,
+          'men': 1,
+          'women': 2,
+          'youth': 3,
+          'children': 4,
+          'sundayHomeChurch': 5,
+          'tithe': 6,
+          'offerings': 7,
+          'emergencyCollection': 8,
+          'plannedCollection': 9,
+          // baptisms and holyCommunion intentionally absent
+        };
+
+        final result = service.validateAndConvertRow(row, mapping, 1, 2, null, {
+          'emergencyCollection',
+          'plannedCollection',
+          'baptisms',
+          'holyCommunion',
+        });
+
+        expect(result.success, true);
+        expect(result.record!.baptisms, isNull);
+        expect(result.record!.holyCommunion, isNull);
+      });
+
+      test('returns null for baptisms when column is blank', () {
+        final row = [
+          '2026-01-05',
+          '50',
+          '60',
+          '30',
+          '20',
+          '10',
+          '1000',
+          '500',
+          '200',
+          '300',
+          '', // baptisms blank
+          '', // holyCommunion blank
+        ];
+
+        final mapping = {
+          'weekStartDate': 0,
+          'men': 1,
+          'women': 2,
+          'youth': 3,
+          'children': 4,
+          'sundayHomeChurch': 5,
+          'tithe': 6,
+          'offerings': 7,
+          'emergencyCollection': 8,
+          'plannedCollection': 9,
+          'baptisms': 10,
+          'holyCommunion': 11,
+        };
+
+        final result = service.validateAndConvertRow(row, mapping, 1, 2, null, {
+          'emergencyCollection',
+          'plannedCollection',
+          'baptisms',
+          'holyCommunion',
+        });
+
+        expect(result.success, true);
+        expect(result.record!.baptisms, isNull);
+        expect(result.record!.holyCommunion, isNull);
+      });
+    });
   });
 }

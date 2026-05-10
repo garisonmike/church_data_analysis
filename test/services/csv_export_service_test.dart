@@ -454,5 +454,73 @@ void main() {
         expect(records, isEmpty);
       });
     });
+
+    // ── Change 1k: baptisms / holyCommunion export tests ─────────────────
+
+    group('baptisms and holyCommunion in export', () {
+      test('default headers include baptisms and holy_communion', () {
+        final headers = service.defaultWeeklyRecordHeaders;
+        expect(headers, contains('baptisms'));
+        expect(headers, contains('holy_communion'));
+      });
+
+      test('null baptisms exports as empty string', () {
+        final now = DateTime.now();
+        final record = WeeklyRecord(
+          id: 1,
+          churchId: 1,
+          weekStartDate: DateTime(2026, 1, 5),
+          men: 50,
+          women: 60,
+          youth: 30,
+          children: 20,
+          sundayHomeChurch: 10,
+          baptisms: null,
+          holyCommunion: null,
+          tithe: 1000.0,
+          offerings: 500.0,
+          emergencyCollection: 0,
+          plannedCollection: 0,
+          createdAt: now,
+          updatedAt: now,
+        );
+        final row = service.weeklyRecordToRow(record);
+        final baptismsIndex =
+            service.defaultWeeklyRecordHeaders.indexOf('baptisms');
+        final communionIndex =
+            service.defaultWeeklyRecordHeaders.indexOf('holy_communion');
+        expect(row[baptismsIndex].toString(), equals(''));
+        expect(row[communionIndex].toString(), equals(''));
+      });
+
+      test('non-null baptisms exports as integer string', () {
+        final now = DateTime.now();
+        final record = WeeklyRecord(
+          id: 1,
+          churchId: 1,
+          weekStartDate: DateTime(2026, 1, 5),
+          men: 50,
+          women: 60,
+          youth: 30,
+          children: 20,
+          sundayHomeChurch: 10,
+          baptisms: 7,
+          holyCommunion: 95,
+          tithe: 1000.0,
+          offerings: 500.0,
+          emergencyCollection: 0,
+          plannedCollection: 0,
+          createdAt: now,
+          updatedAt: now,
+        );
+        final row = service.weeklyRecordToRow(record);
+        final baptismsIndex =
+            service.defaultWeeklyRecordHeaders.indexOf('baptisms');
+        final communionIndex =
+            service.defaultWeeklyRecordHeaders.indexOf('holy_communion');
+        expect(row[baptismsIndex], equals(7));
+        expect(row[communionIndex], equals(95));
+      });
+    });
   });
 }
