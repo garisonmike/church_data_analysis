@@ -45,5 +45,13 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Enable file sharing so exports are accessible in Files app -->
+	<key>UIFileSharingEnabled</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<!-- Document picker usage for file_picker imports -->
+	<key>NSDocumentsFolderUsageDescription</key>
+	<string>church_analytics needs access to your Documents to import and export data files.</string>
 </dict>
 </plist>

@@ -48,4 +48,6 @@ app.*.map.json
 /android/app/release
 
 /tasks.md
-/plan.md
+/plan.mdflutterTest.txt
+failedTests.txt
+flutterAnalyze.txt
