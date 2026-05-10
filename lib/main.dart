@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
@@ -13,6 +12,9 @@ import 'ui/screens/advanced_charts_screen.dart';
 import 'ui/screens/analytics_dashboard.dart';
 import 'ui/screens/app_settings_screen.dart';
 import 'ui/screens/attendance_charts_screen.dart';
+import 'ui/screens/board_meeting_analytics_screen.dart';
+import 'ui/screens/board_meeting_entry_screen.dart';
+import 'ui/screens/business_meeting_entry_screen.dart';
 import 'ui/screens/church_selection_screen.dart';
 import 'ui/screens/church_settings_screen.dart';
 import 'ui/screens/correlation_charts_screen.dart';
@@ -23,23 +25,20 @@ import 'ui/screens/dashboard_screen.dart';
 import 'ui/screens/detailed_metrics_screen.dart';
 import 'ui/screens/distribution_screen.dart';
 import 'ui/screens/financial_charts_screen.dart';
+import 'ui/screens/financial_glossary_screen.dart';
 import 'ui/screens/first_launch_backup_import_screen.dart';
 import 'ui/screens/graph_center_screen.dart';
+import 'ui/screens/holy_communion_entry_screen.dart';
+import 'ui/screens/home_church_analytics_screen.dart';
+import 'ui/screens/home_church_screen.dart';
 import 'ui/screens/import_screen.dart';
 import 'ui/screens/not_found_screen.dart';
 import 'ui/screens/profile_selection_screen.dart';
 import 'ui/screens/reports_screen.dart';
+import 'ui/screens/special_events_screen.dart';
 import 'ui/screens/startup_gate_screen.dart';
 import 'ui/screens/target_analysis_screen.dart';
 import 'ui/screens/weekly_entry_screen.dart';
-import 'ui/screens/board_meeting_analytics_screen.dart';
-import 'ui/screens/board_meeting_entry_screen.dart';
-import 'ui/screens/business_meeting_entry_screen.dart';
-import 'ui/screens/financial_glossary_screen.dart';
-import 'ui/screens/home_church_analytics_screen.dart';
-import 'ui/screens/home_church_screen.dart';
-import 'ui/screens/holy_communion_entry_screen.dart';
-import 'ui/screens/special_events_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -59,7 +58,13 @@ void main() async {
   };
 
   // ── Syncfusion License ───────────────────────────────────────────────────
-  const String kSyncfusionLicenseKey = '';
+  // License key is injected at build time via --dart-define.
+  // In CI: flutter build apk --dart-define=SYNCFUSION_LICENSE_KEY=<secret>
+  // Local builds without the key will show the community watermark, which is
+  // acceptable for development. Never put a real key in this file.
+  const kSyncfusionLicenseKey = String.fromEnvironment(
+    'SYNCFUSION_LICENSE_KEY',
+  );
   if (kSyncfusionLicenseKey.isNotEmpty) {
     // SfLicenseKey.registerLicense(kSyncfusionLicenseKey);
   }
@@ -91,7 +96,12 @@ void main() async {
     },
     (Object error, StackTrace stack) {
       // This fires for unhandled errors from any async context.
-      LogService.crash('Zone', 'Unhandled error', error: error, stackTrace: stack);
+      LogService.crash(
+        'Zone',
+        'Unhandled error',
+        error: error,
+        stackTrace: stack,
+      );
     },
   );
 }
@@ -239,40 +249,49 @@ class ChurchAnalyticsApp extends ConsumerWidget {
             );
           case '/restore-backup':
             return MaterialPageRoute(
-              builder: (context) =>
-                  const FirstLaunchBackupImportScreen(),
+              builder: (context) => const FirstLaunchBackupImportScreen(),
             );
           case '/charts/detail':
             if (churchId == null) {
-              return MaterialPageRoute(builder: (context) => const StartupGateScreen());
+              return MaterialPageRoute(
+                builder: (context) => const StartupGateScreen(),
+              );
             }
             return MaterialPageRoute(
               builder: (context) => DetailedMetricsScreen(churchId: churchId),
             );
           case '/charts/distribution':
             if (churchId == null) {
-              return MaterialPageRoute(builder: (context) => const StartupGateScreen());
+              return MaterialPageRoute(
+                builder: (context) => const StartupGateScreen(),
+              );
             }
             return MaterialPageRoute(
               builder: (context) => DistributionScreen(churchId: churchId),
             );
           case '/charts/targets':
             if (churchId == null) {
-              return MaterialPageRoute(builder: (context) => const StartupGateScreen());
+              return MaterialPageRoute(
+                builder: (context) => const StartupGateScreen(),
+              );
             }
             return MaterialPageRoute(
               builder: (context) => TargetAnalysisScreen(churchId: churchId),
             );
           case '/charts/cross':
             if (churchId == null) {
-              return MaterialPageRoute(builder: (context) => const StartupGateScreen());
+              return MaterialPageRoute(
+                builder: (context) => const StartupGateScreen(),
+              );
             }
             return MaterialPageRoute(
               builder: (context) => CrossDatasetScreen(churchId: churchId),
             );
           case '/reports':
             if (churchId == null) {
-              return MaterialPageRoute(builder: (context) => const StartupGateScreen());
+              return MaterialPageRoute(
+                builder: (context) => const StartupGateScreen(),
+              );
             }
             return MaterialPageRoute(
               builder: (context) => ReportsScreen(churchId: churchId),
