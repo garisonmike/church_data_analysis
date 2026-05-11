@@ -6,6 +6,9 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:printing/printing.dart';
 
+import 'pdf_graph_catalogue.dart'; // 2.5-A
+import 'pdf_chart_builder.dart'; // 2.5-A
+
 class PdfReportService {
   /// Creates a PDF document with standardized layout template
   ///
@@ -138,6 +141,54 @@ class PdfReportService {
     );
   }
 
+  // 2.5-B — dispatch method ─────────────────────────────────────────────────
+
+  /// Dispatches a [PdfGraphId] to the correct [PdfChartBuilder] method.
+  /// Always returns a valid [pw.Widget] — never null, never throws.
+  /// If the records list is too short for a given chart, the chart builder
+  /// returns its own empty-state placeholder widget.
+  static pw.Widget buildGraph({
+    required PdfGraphId id,
+    required List<models.WeeklyRecord> records,
+    String currencySymbol = r'$',
+  }) {
+    switch (id) {
+      case PdfGraphId.attendanceTrend:
+        return PdfChartBuilder.attendanceTrend(records);
+      case PdfGraphId.demographicBreakdown:
+        return PdfChartBuilder.demographicBreakdown(records);
+      case PdfGraphId.attendanceGrowthRate:
+        return PdfChartBuilder.attendanceGrowthRate(records);
+      case PdfGraphId.homeChurchTrend:
+        return PdfChartBuilder.homeChurchTrend(records);
+      case PdfGraphId.adultVsYoungDistribution:
+        return PdfChartBuilder.adultVsYoungDistribution(records);
+      case PdfGraphId.incomeTrend:
+        return PdfChartBuilder.incomeTrend(
+            records, currencySymbol: currencySymbol);
+      case PdfGraphId.incomeComposition:
+        return PdfChartBuilder.incomeComposition(
+            records, currencySymbol: currencySymbol);
+      case PdfGraphId.titheVsOfferingsTrend:
+        return PdfChartBuilder.titheVsOfferingsTrend(
+            records, currencySymbol: currencySymbol);
+      case PdfGraphId.incomePerAttendeeTrend:
+        return PdfChartBuilder.incomePerAttendeeTrend(
+            records, currencySymbol: currencySymbol);
+      case PdfGraphId.regularVsSpecialIncome:
+        return PdfChartBuilder.regularVsSpecialIncome(records);
+      case PdfGraphId.perCapitaGivingTrend:
+        return PdfChartBuilder.perCapitaGivingTrend(
+            records, currencySymbol: currencySymbol);
+      case PdfGraphId.menWomenRatioTrend:
+        return PdfChartBuilder.menWomenRatioTrend(records);
+      case PdfGraphId.adultYoungRatioTrend:
+        return PdfChartBuilder.adultYoungRatioTrend(records);
+    }
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+
   /// Builds a KPI statistics section with key metrics
   static pw.Widget buildKpiSection({
     required String title,
@@ -210,10 +261,11 @@ class PdfReportService {
   }
 
   /// Creates a comprehensive multi-chart report
+  // 2.5-C: replaced Map<String, Uint8List> chartImages with List<PdfGraphId> selectedGraphs
   static Future<pw.Document> buildMultiChartReport({
     required String churchName,
     required List<models.WeeklyRecord> records,
-    required Map<String, Uint8List> chartImages,
+    List<PdfGraphId> selectedGraphs = const [], // 2.5-C
     DateTime? reportDate,
     bool includeGraphs = true,
     bool includeKpi = true,
@@ -255,7 +307,8 @@ class PdfReportService {
             buildKpiSection(title: 'Key Performance Indicators', metrics: kpis),
             pw.SizedBox(height: 20),
           ],
-          if (includeGraphs && chartImages.isNotEmpty) ...[
+          // 2.5-D: replaced old chartImages block with selectedGraphs block
+          if (includeGraphs && selectedGraphs.isNotEmpty) ...[
             pw.Text(
               'Visual Analytics',
               style: pw.TextStyle(
@@ -265,12 +318,11 @@ class PdfReportService {
               ),
             ),
             pw.SizedBox(height: 16),
-            ...chartImages.entries.map((entry) {
-              return buildChartSection(
-                chartTitle: entry.key,
-                chartImageBytes: entry.value,
-              );
-            }),
+            ...selectedGraphs.map((id) => buildGraph(
+                  id: id,
+                  records: records,
+                  currencySymbol: currencySymbol ?? r'$',
+                )),
             pw.SizedBox(height: 20),
           ],
           if (includeTable) ...[
@@ -283,12 +335,19 @@ class PdfReportService {
             ),
             pw.SizedBox(height: 20),
           ],
-          if (includeTrends)
+          // 2.5-E: analytics summary wired in before existing summary section
+          if (includeTrends) ...[
+            _buildAnalyticsSummary(
+              records,
+              numberFormat: numberFormat,
+              currencySymbol: currencySymbol,
+            ),
             _buildSummarySection(
               records,
               locale: locale,
               numberFormat: numberFormat,
             ),
+          ],
         ],
       ),
     );
@@ -377,6 +436,86 @@ class PdfReportService {
     ];
   }
 
+  // 2.5-E — Analytics highlights table ─────────────────────────────────────
+
+  static pw.Widget _buildAnalyticsSummary(
+    List<models.WeeklyRecord> records, {
+    required NumberFormat numberFormat,
+    String? currencySymbol,
+  }) {
+    if (records.length < 2) return pw.Container();
+
+    final symbol = currencySymbol ?? r'$';
+    final sorted = List<models.WeeklyRecord>.from(records)
+      ..sort((a, b) => a.weekStartDate.compareTo(b.weekStartDate));
+
+    final firstAtt = sorted.first.totalAttendance.toDouble();
+    final lastAtt = sorted.last.totalAttendance.toDouble();
+    final growthPct =
+        firstAtt == 0 ? 0.0 : ((lastAtt - firstAtt) / firstAtt) * 100;
+
+    final peakAtt = sorted.reduce(
+        (a, b) => a.totalAttendance > b.totalAttendance ? a : b);
+    final peakInc =
+        sorted.reduce((a, b) => a.totalIncome > b.totalIncome ? a : b);
+
+    final totalInc = records.fold<double>(0, (s, r) => s + r.totalIncome);
+    final totalAtt = records.fold<int>(0, (s, r) => s + r.totalAttendance);
+    final perCapita = totalAtt == 0 ? 0.0 : totalInc / totalAtt;
+
+    final totalBaptisms = records.fold<int>(0, (s, r) => s + (r.baptisms ?? 0));
+    final totalCommunion =
+        records.fold<int>(0, (s, r) => s + (r.holyCommunion ?? 0));
+    final totalVisitors =
+        records.fold<int>(0, (s, r) => s + (r.visitorsCount ?? 0));
+
+    final df = DateFormat('MMM d, yyyy');
+
+    final rows = [
+      ['Attendance growth (period)', '${growthPct.toStringAsFixed(1)}%'],
+      ['Peak attendance week', df.format(peakAtt.weekStartDate)],
+      ['Peak attendance', numberFormat.format(peakAtt.totalAttendance)],
+      ['Peak income week', df.format(peakInc.weekStartDate)],
+      [
+        'Peak income',
+        '$symbol ${peakInc.totalIncome.toStringAsFixed(2)}'
+      ],
+      ['Avg per-capita giving', '$symbol ${perCapita.toStringAsFixed(2)}'],
+      if (totalBaptisms > 0) ['Total baptisms', totalBaptisms.toString()],
+      if (totalCommunion > 0)
+        ['Holy communion events', totalCommunion.toString()],
+      if (totalVisitors > 0)
+        ['Total visitors recorded', numberFormat.format(totalVisitors)],
+    ];
+
+    return pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          'Analytics Highlights',
+          style: pw.TextStyle(
+            fontSize: 18,
+            fontWeight: pw.FontWeight.bold,
+            color: PdfColors.blue800,
+          ),
+        ),
+        pw.SizedBox(height: 8),
+        pw.TableHelper.fromTextArray(
+          headerStyle: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold, color: PdfColors.blue900),
+          headerDecoration: const pw.BoxDecoration(color: PdfColors.blue50),
+          cellAlignment: pw.Alignment.centerLeft,
+          cellStyle: const pw.TextStyle(fontSize: 10),
+          headers: ['Metric', 'Value'],
+          data: rows,
+        ),
+        pw.SizedBox(height: 20),
+      ],
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+
   /// Builds a summary section with insights
   static pw.Widget _buildSummarySection(
     List<models.WeeklyRecord> records, {
@@ -428,6 +567,8 @@ class PdfReportService {
     );
   }
 
+  // 2.5-F — Expanded records table (two tables: attendance + financial) ─────
+
   static pw.Widget _buildRecordsTable(
     List<models.WeeklyRecord> records, {
     required NumberFormat numberFormat,
@@ -435,29 +576,107 @@ class PdfReportService {
     String? currencySymbol,
     String Function(double)? formatCurrencyPrecise,
   }) {
-    if (records.isEmpty) {
-      return pw.Container();
-    }
+    if (records.isEmpty) return pw.Container();
 
     final dateFormat = locale == null
         ? DateFormat('MMM d, yyyy')
         : DateFormat('MMM d, yyyy', locale);
-    final symbol = currencySymbol ?? r'\$';
+    final symbol = currencySymbol ?? r'$';
 
-    String formatCurrencyValue(double value) {
-      if (formatCurrencyPrecise != null) {
-        return formatCurrencyPrecise(value);
-      }
-      return '$symbol ${value.toStringAsFixed(2)}';
-    }
+    String fc(double value) => formatCurrencyPrecise != null
+        ? formatCurrencyPrecise(value)
+        : '$symbol ${value.toStringAsFixed(2)}';
 
-    final rows = records.map((record) {
-      return [
-        dateFormat.format(record.weekStartDate),
-        numberFormat.format(record.totalAttendance),
-        formatCurrencyValue(record.totalIncome),
-      ];
-    }).toList();
+    // ── Table 1: Attendance detail ─────────────────────────────────────────
+    final attendanceTable = pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.Text(
+          'Weekly Attendance Detail',
+          style: pw.TextStyle(
+              fontSize: 15,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.blue800),
+        ),
+        pw.SizedBox(height: 6),
+        pw.TableHelper.fromTextArray(
+          headerStyle: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.blue900,
+              fontSize: 8),
+          headerDecoration: const pw.BoxDecoration(color: PdfColors.blue50),
+          cellStyle: const pw.TextStyle(fontSize: 8),
+          cellAlignment: pw.Alignment.centerLeft,
+          headers: [
+            'Week',
+            'Total',
+            'Men',
+            'Women',
+            'Youth',
+            'Children',
+            'Home Ch.',
+            'Sabbath',
+            'Visitors',
+          ],
+          data: records.map((r) => [
+                dateFormat.format(r.weekStartDate),
+                numberFormat.format(r.totalAttendance),
+                r.men.toString(),
+                r.women.toString(),
+                r.youth.toString(),
+                r.children.toString(),
+                r.sundayHomeChurch.toString(),
+                r.sabbathSchoolAttendance?.toString() ?? '-',
+                r.visitorsCount?.toString() ?? '-',
+              ]).toList(),
+        ),
+      ],
+    );
+
+    // ── Table 2: Financial detail ──────────────────────────────────────────
+    final financialTable = pw.Column(
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
+      children: [
+        pw.SizedBox(height: 16),
+        pw.Text(
+          'Weekly Financial Detail ($symbol)',
+          style: pw.TextStyle(
+              fontSize: 15,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.blue800),
+        ),
+        pw.SizedBox(height: 6),
+        pw.TableHelper.fromTextArray(
+          headerStyle: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.blue900,
+              fontSize: 8),
+          headerDecoration: const pw.BoxDecoration(color: PdfColors.blue50),
+          cellStyle: const pw.TextStyle(fontSize: 8),
+          cellAlignment: pw.Alignment.centerLeft,
+          headers: [
+            'Week',
+            'Tithe',
+            'Offerings',
+            'Emergency',
+            'Planned',
+            'Mission',
+            'Local Budget',
+            'Total',
+          ],
+          data: records.map((r) => [
+                dateFormat.format(r.weekStartDate),
+                fc(r.tithe),
+                fc(r.offerings),
+                fc(r.emergencyCollection),
+                fc(r.plannedCollection),
+                fc(r.missionOffering ?? 0.0),
+                fc(r.localChurchBudget ?? 0.0),
+                fc(r.totalIncome),
+              ]).toList(),
+        ),
+      ],
+    );
 
     return pw.Column(
       crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -465,26 +684,18 @@ class PdfReportService {
         pw.Text(
           'Weekly Records',
           style: pw.TextStyle(
-            fontSize: 18,
-            fontWeight: pw.FontWeight.bold,
-            color: PdfColors.blue800,
-          ),
+              fontSize: 18,
+              fontWeight: pw.FontWeight.bold,
+              color: PdfColors.blue800),
         ),
         pw.SizedBox(height: 8),
-        pw.TableHelper.fromTextArray(
-          headerStyle: pw.TextStyle(
-            fontWeight: pw.FontWeight.bold,
-            color: PdfColors.blue900,
-          ),
-          headerDecoration: const pw.BoxDecoration(color: PdfColors.blue50),
-          cellAlignment: pw.Alignment.centerLeft,
-          cellStyle: const pw.TextStyle(fontSize: 10),
-          headers: ['Week Start', 'Attendance', 'Total Income ($symbol)'],
-          data: rows,
-        ),
+        attendanceTable,
+        financialTable,
       ],
     );
   }
+
+  // ─────────────────────────────────────────────────────────────────────────
 
   /// Saves PDF document to device storage
   static Future<String?> savePdf({
@@ -497,14 +708,13 @@ class PdfReportService {
       final service = fileService ?? FileService();
 
       // Ensure filename has .pdf extension
-      final fullFileName = fileName.endsWith('.pdf')
-          ? fileName
-          : '$fileName.pdf';
+      final fullFileName =
+          fileName.endsWith('.pdf') ? fileName : '$fileName.pdf';
       final fullPath = customPath == null
           ? null
           : customPath.endsWith('.pdf')
-          ? customPath
-          : '$customPath.pdf';
+              ? customPath
+              : '$customPath.pdf';
 
       if (kDebugMode) {
         debugPrint('PDF save requested. Custom path: $customPath');

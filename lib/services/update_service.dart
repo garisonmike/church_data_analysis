@@ -20,15 +20,14 @@ const _kProductionManifestUrl =
 // GitHub Releases on every hot-restart.  To run a local mock:
 //   1. Create an update.json file at the project root with the expected schema.
 //   2. Run: npx json-server --watch update.json --port 3000
-//   3. Change the constant below to _kDebugManifestUrl.
+//   3. Swap the constant on the right-hand side of _kDefaultManifestUrl below.
 // Leave it pointing at _kProductionManifestUrl for now so existing behaviour
 // is preserved; swap only when actively testing the update flow locally.
-const _kDebugManifestUrl = 'http://localhost:3000/update';
 
 // ignore: do_not_use_environment
 const _kDefaultManifestUrl = bool.fromEnvironment('dart.vm.product')
     ? _kProductionManifestUrl
-    : _kProductionManifestUrl; // Switch to _kDebugManifestUrl for local mock testing
+    : _kProductionManifestUrl; // For local mock testing swap this with: 'http://localhost:3000/update'
 
 /// Default network timeout for fetching the update manifest.
 const _kDefaultNetworkTimeout = Duration(seconds: 10);

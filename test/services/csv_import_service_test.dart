@@ -482,4 +482,73 @@ void main() {
       });
     });
   });
+
+// ── Section 1.3: ImportService.validateAndConvertRow ─────────────────────────
+
+  group('ImportService.validateAndConvertRow', () {
+  final service = ImportService(fileStorage: _FakeBytesFileStorage());
+
+  final Map<String, int> fullMapping = {
+    'weekStartDate': 0, 'men': 1, 'women': 2, 'youth': 3,
+    'children': 4, 'sundayHomeChurch': 5, 'tithe': 6,
+    'offerings': 7, 'emergencyCollection': 8, 'plannedCollection': 9,
+  };
+
+  test('converts a valid row to WeeklyRecord', () {
+    final row = ['2026-01-03', '100', '120', '80', '60',
+                 '40', '5000.0', '3000.0', '500.0', '200.0'];
+    final result = service.validateAndConvertRow(
+      row, fullMapping, 1, 2, null, const {},
+    );
+    expect(result.success, isTrue);
+    expect(result.record, isNotNull);
+    expect(result.record!.men, 100);
+    expect(result.record!.tithe, 5000.0);
+  });
+
+  test('returns error for invalid date format', () {
+    final row = ['not-a-date', '100', '120', '80', '60',
+                 '40', '5000.0', '3000.0', '500.0', '200.0'];
+    final result = service.validateAndConvertRow(
+      row, fullMapping, 1, 2, null, const {},
+    );
+    expect(result.success, isFalse);
+    expect(result.errors, isNotEmpty);
+    expect(result.errors!.any((e) => e.toLowerCase().contains('date')), isTrue);
+  });
+
+  test('returns error for negative attendance value', () {
+    final row = ['2026-01-03', '-5', '120', '80', '60',
+                 '40', '5000.0', '3000.0', '500.0', '200.0'];
+    final result = service.validateAndConvertRow(
+      row, fullMapping, 1, 2, null, const {},
+    );
+    expect(result.success, isFalse);
+    expect(result.errors!.any((e) => e.toLowerCase().contains('positive')), isTrue);
+  });
+
+  test('returns error for non-numeric field', () {
+    final row = ['2026-01-03', 'abc', '120', '80', '60',
+                 '40', '5000.0', '3000.0', '500.0', '200.0'];
+    final result = service.validateAndConvertRow(
+      row, fullMapping, 1, 2, null, const {},
+    );
+    expect(result.success, isFalse);
+    expect(result.errors!.any((e) => e.toLowerCase().contains('integer')), isTrue);
+  });
+
+  test('optional fields default to 0 when absent', () {
+    final row = ['2026-01-03', '100', '120', '80', '60', '40', '5000.0', '3000.0'];
+    final partialMapping = Map<String, int>.from(fullMapping)
+      ..remove('emergencyCollection')
+      ..remove('plannedCollection');
+    final result = service.validateAndConvertRow(
+      row, partialMapping, 1, 2, null,
+      const {'emergencyCollection', 'plannedCollection'},
+    );
+    expect(result.success, isTrue);
+    expect(result.record!.emergencyCollection, 0.0);
+    expect(result.record!.plannedCollection, 0.0);
+  });
+  });
 }

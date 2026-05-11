@@ -25,6 +25,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
   List<String> _ignoredColumns = [];
   List<WeeklyRecordImportResult>? _validationResults;
   bool _isLoading = false;
+  String? _loadingMessage; // Fix 1: overlay message for _importData phases
   String? _errorMessage;
   String _duplicateStrategy = 'skip';
 
@@ -174,46 +175,49 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       return;
     }
 
-    // Confirm before starting
+    // ── Step 1: Confirmation dialog (Fix 2: PopScope prevents Escape dismiss) ──
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirm Import'),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        content: LayoutBuilder(
-          builder: (context, constraints) => ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: constraints.maxHeight * 0.8,
-              maxWidth: 560,
-            ),
-            child: SingleChildScrollView(
-              child: Text(
-                'Import ${validRecords.length} record(s)?\n\n'
-                '${_validationResults!.where((r) => !r.success).length} record(s) will be skipped due to errors.',
+      barrierDismissible: false,
+      builder: (context) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: const Text('Confirm Import'),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          content: LayoutBuilder(
+            builder: (context, constraints) => ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: constraints.maxHeight * 0.8,
+                maxWidth: 560,
+              ),
+              child: SingleChildScrollView(
+                child: Text(
+                  'Import ${validRecords.length} record(s)?\n\n'
+                  '${_validationResults!.where((r) => !r.success).length} '
+                  'record(s) will be skipped due to errors.',
+                ),
               ),
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Import'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(false),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.of(context).pop(true),
-            child: const Text('Import'),
-          ),
-        ],
       ),
     );
 
     if (confirmed != true) return;
     if (!mounted) return;
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    // ── Step 2: Check for duplicates (Fix 2: overlay, NOT full-screen spinner) ─
+    _setOverlay('Checking for duplicates\u2026');
 
     final database = ref.read(databaseProvider);
     final repository = WeeklyRecordRepository(database);
@@ -227,20 +231,22 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       if (exists) conflictDates.add(record.weekStartDate);
     }
 
-    setState(() => _isLoading = false);
+    _setOverlay(null); // clear overlay BEFORE opening next dialog
 
+    // ── Step 3: Duplicate strategy dialog (Fix 2: PopScope prevents Escape) ──
     if (conflictDates.isNotEmpty && mounted) {
       final strategy = await _showDuplicateStrategyDialog(conflictDates);
-      if (strategy == null) return;
+      if (strategy == null) {
+        // User cancelled — overlay already cleared, nothing else to do
+        return;
+      }
       _duplicateStrategy = strategy;
     }
 
     if (!mounted) return;
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-    });
+    // ── Step 4: Perform the import ────────────────────────────────────────────
+    _setOverlay('Importing records\u2026');
 
     int successCount = 0;
     int skipCount = 0;
@@ -264,13 +270,15 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
               } else {
                 skipCount++;
                 errors.add(
-                  'Skipped duplicate: week of ${record.weekStartDate.toString().split('T')[0]}',
+                  'Could not update: week of '
+                  '${record.weekStartDate.toString().split('T')[0]}',
                 );
               }
             } else {
               skipCount++;
               errors.add(
-                'Skipped duplicate: week of ${record.weekStartDate.toString().split('T')[0]}',
+                'Skipped duplicate: week of '
+                '${record.weekStartDate.toString().split('T')[0]}',
               );
             }
           } else {
@@ -283,86 +291,86 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
         }
       }
     } catch (e) {
+      _setOverlay(null);
       if (mounted) {
-        setState(() {
-          _errorMessage = 'Import failed: ${e.toString()}';
-          _isLoading = false;
-        });
+        setState(() { _errorMessage = 'Import failed: ${e.toString()}'; });
       }
       return;
     }
 
+    _setOverlay(null); // clear before opening result dialog
+
     if (!mounted) return;
 
-    // Stop spinner BEFORE opening result dialog to avoid semantics assertion
-    setState(() { _isLoading = false; });
-
+    // ── Step 5: Result dialog (Fix 2: PopScope prevents Escape dismiss) ───────
     await showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        title: Text(successCount > 0 ? 'Import Complete' : 'Nothing Imported'),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        content: LayoutBuilder(
-          builder: (context, constraints) => ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: constraints.maxHeight * 0.8,
-              maxWidth: 560,
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  if (successCount > 0)
-                    Text('Successfully imported: $successCount'),
-                  if (skipCount > 0)
-                    Text(
-                      'Skipped (already exist): $skipCount',
-                      style: const TextStyle(color: Colors.orange),
-                    ),
-                  if (successCount == 0 && skipCount > 0)
-                    const Padding(
-                      padding: EdgeInsets.only(top: 8),
-                      child: Text(
-                        'All records already exist in the database.',
-                        style: TextStyle(color: Colors.grey),
+      builder: (context) => PopScope(
+        canPop: false,
+        child: AlertDialog(
+          title: Text(successCount > 0 ? 'Import Complete' : 'Nothing Imported'),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          content: LayoutBuilder(
+            builder: (context, constraints) => ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: constraints.maxHeight * 0.8,
+                maxWidth: 560,
+              ),
+              child: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (successCount > 0)
+                      Text('Successfully imported: $successCount'),
+                    if (skipCount > 0)
+                      Text(
+                        'Skipped (already exist): $skipCount',
+                        style: const TextStyle(color: Colors.orange),
                       ),
-                    ),
-                  if (errors.isNotEmpty) ...[
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Details:',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 4),
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: errors.length,
-                      itemBuilder: (context, index) => Text(
-                        '• ${errors[index]}',
-                        style: const TextStyle(fontSize: 12),
+                    if (successCount == 0 && skipCount > 0)
+                      const Padding(
+                        padding: EdgeInsets.only(top: 8),
+                        child: Text(
+                          'All records already exist in the database.',
+                          style: TextStyle(color: Colors.grey),
+                        ),
                       ),
-                    ),
+                    if (errors.isNotEmpty) ...[
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Details:',
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      const SizedBox(height: 4),
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: errors.length,
+                        itemBuilder: (context, index) => Text(
+                          '\u2022 ${errors[index]}',
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
+          actions: [
+            ElevatedButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                if (successCount > 0) {
+                  Navigator.of(context).pop(true);
+                }
+              },
+              child: const Text('Done'),
+            ),
+          ],
         ),
-        actions: [
-          ElevatedButton(
-            onPressed: () {
-              Navigator.of(context).pop();
-              // Only navigate back if records were actually imported
-              if (successCount > 0) {
-                Navigator.of(context).pop(true);
-              }
-            },
-            child: const Text('Done'),
-          ),
-        ],
       ),
     );
   }
@@ -378,7 +386,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
     return showDialog<String>(
       context: context,
       barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
+      builder: (ctx) => PopScope(
+        canPop: false,
+        child: AlertDialog(
         title: const Text('Duplicate Records Found'),
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         content: LayoutBuilder(
@@ -429,7 +439,13 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
           ),
         ],
       ),
+      ), // Fix 3: closes PopScope
     );
+  }
+
+  void _setOverlay(String? message) {
+    if (!mounted) return;
+    setState(() => _loadingMessage = message);
   }
 
   // ── Reset ───────────────────────────────────────────────────────────────────
@@ -443,6 +459,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       _ignoredColumns = [];
       _validationResults = null;
       _isLoading = false;
+      _loadingMessage = null;
       _errorMessage = null;
     });
   }
@@ -463,9 +480,43 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
           ),
         ],
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _buildContent(),
+      body: Stack(
+        children: [
+          // Scaffold content is ALWAYS mounted — never replaced by spinner
+          _buildContent(),
+
+          // _isLoading overlay (used by _pickFile and _validateData)
+          if (_isLoading)
+            Container(
+              color: Colors.black.withValues(alpha: 0.15),
+              child: const Center(child: CircularProgressIndicator()),
+            ),
+
+          // _loadingMessage overlay (used by _importData)
+          if (_loadingMessage != null)
+            Container(
+              color: Colors.black.withValues(alpha: 0.4),
+              child: Center(
+                child: Card(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 32,
+                      vertical: 24,
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const CircularProgressIndicator(),
+                        const SizedBox(height: 16),
+                        Text(_loadingMessage!),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
     );
   }
 

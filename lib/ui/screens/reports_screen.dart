@@ -5,12 +5,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../database/app_database.dart' as db;
 import '../../models/models.dart';
 import '../../platform/path_safety_guard.dart';
-import '../../repositories/repositories.dart';
+// 2.6-A: removed repositories.dart (caused unused-import warning)
+// 2.6-A: added individual repository imports needed by _getRecords / _getChurches
+import '../../repositories/weekly_record_repository.dart';
+import '../../repositories/church_repository.dart';
 import '../../services/services.dart';
-import '../screens/advanced_charts_screen.dart';
-import '../screens/attendance_charts_screen.dart';
-import '../screens/correlation_charts_screen.dart';
-import '../screens/financial_charts_screen.dart';
+// 2.6-A: removed four dead chart-screen imports (advanced, attendance, correlation, financial)
+import '../../services/pdf_graph_catalogue.dart'; // 2.6-B
 import '../widgets/export_result_snack_bar.dart';
 
 /// Normalizes a raw export file-system path by trimming whitespace.
@@ -74,6 +75,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   final _backupService = BackupService();
 
   bool _isProcessing = false;
+  String _processingMessage = ''; // 2.6-C
+  Set<PdfGraphId> _selectedGraphs = Set.of(PdfGraphId.values); // 2.6-C: all selected by default
   bool _promptForLocation = true;
   String? _lastExportPath;
   _ReportOptions _reportOptions = const _ReportOptions();
@@ -112,34 +115,20 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         backgroundColor: isSuccess
             ? Colors.green
             : isError
-            ? Colors.red
-            : null,
+                ? Colors.red
+                : null,
       ),
     );
   }
 
-  Future<Map<String, Uint8List>> _collectChartImages() async {
-    final images = <String, Uint8List>{};
+  // 2.6-D: _collectChartImages deleted entirely — replaced by native PDF vector charts
 
-    final captureTargets = {
-      'Attendance': AttendanceChartsScreenState.captureKey,
-      'Financial': FinancialChartsScreenState.captureKey,
-      'Advanced Analytics': AdvancedChartsScreenState.captureKey,
-      'Correlations': CorrelationChartsScreenState.captureKey,
-    };
-
-    for (final entry in captureTargets.entries) {
-      final bytes = await ChartExportService.captureWidget(entry.value);
-      if (bytes != null) {
-        images[entry.key] = bytes;
-      }
-    }
-
-    return images;
-  }
-
+  // 2.6-E: replaced _exportPdf — no more _collectChartImages, passes selectedGraphs instead
   Future<void> _exportPdf() async {
-    setState(() => _isProcessing = true);
+    setState(() {
+      _isProcessing = true;
+      _processingMessage = 'Loading records\u2026';
+    });
     try {
       final records = await _getRecords();
       final churches = await _getChurches();
@@ -148,19 +137,12 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       final formatCurrency = ref.read(currencyFormatterProvider);
       final formatCurrencyPrecise = ref.read(currencyFormatterPreciseProvider);
 
-      final chartImages = _reportOptions.includeGraphs
-          ? await _collectChartImages()
-          : const <String, Uint8List>{};
-      if (_reportOptions.includeGraphs && chartImages.isEmpty) {
-        _showStatus(
-          'Tip: Visit the chart screens first so graphs can be captured for the PDF.',
-        );
-      }
+      setState(() => _processingMessage = 'Building PDF\u2026');
 
       final pdf = await PdfReportService.buildMultiChartReport(
         churchName: churchName,
         records: records,
-        chartImages: chartImages,
+        selectedGraphs: _selectedGraphs.toList(),
         includeGraphs: _reportOptions.includeGraphs,
         includeKpi: _reportOptions.includeKpi,
         includeTable: _reportOptions.includeTable,
@@ -170,6 +152,8 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         formatCurrency: formatCurrency,
         formatCurrencyPrecise: formatCurrencyPrecise,
       );
+
+      setState(() => _processingMessage = 'Saving file\u2026');
 
       final suggestedName = PdfReportService.generatePdfFileName(
         churchName: churchName,
@@ -216,7 +200,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         );
       }
     } finally {
-      setState(() => _isProcessing = false);
+      setState(() {
+        _isProcessing = false;
+        _processingMessage = '';
+      });
     }
   }
 
@@ -434,64 +421,149 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     );
   }
 
+  // 2.6-G: replaced _buildReportBuilderCard with full graph-selection UI
   Widget _buildReportBuilderCard() {
+    // Group the catalogue by category for sectioned display
+    final byCategory = <PdfGraphCategory, List<PdfGraphOption>>{};
+    for (final opt in kPdfGraphCatalogue) {
+      byCategory.putIfAbsent(opt.category, () => []).add(opt);
+    }
+
+    final allSelected = _selectedGraphs.length == PdfGraphId.values.length;
+    final noneSelected = _selectedGraphs.isEmpty;
+
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'PDF Report Builder',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
+            Text('PDF Report Builder',
+                style: Theme.of(context).textTheme.titleMedium),
             const SizedBox(height: 8),
             Text(
-              'Choose what to include in the PDF export.',
+              'Choose what to include in the exported PDF.',
               style: Theme.of(context).textTheme.bodySmall,
             ),
             const SizedBox(height: 12),
+
+            // ── Section toggles (KPI, Table, Trends) ──────────────────────
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
                 FilterChip(
-                  label: const Text('Graphs'),
-                  selected: _reportOptions.includeGraphs,
-                  onSelected: (v) => setState(
-                    () => _reportOptions = _reportOptions.copyWith(
-                      includeGraphs: v,
-                    ),
-                  ),
-                ),
-                FilterChip(
-                  label: const Text('KPI'),
+                  label: const Text('KPI Summary'),
                   selected: _reportOptions.includeKpi,
                   onSelected: (v) => setState(
-                    () =>
-                        _reportOptions = _reportOptions.copyWith(includeKpi: v),
-                  ),
+                      () => _reportOptions =
+                          _reportOptions.copyWith(includeKpi: v)),
                 ),
                 FilterChip(
-                  label: const Text('Table'),
+                  label: const Text('Data Table'),
                   selected: _reportOptions.includeTable,
                   onSelected: (v) => setState(
-                    () => _reportOptions = _reportOptions.copyWith(
-                      includeTable: v,
-                    ),
-                  ),
+                      () => _reportOptions =
+                          _reportOptions.copyWith(includeTable: v)),
                 ),
                 FilterChip(
-                  label: const Text('Trends'),
+                  label: const Text('Trends Summary'),
                   selected: _reportOptions.includeTrends,
                   onSelected: (v) => setState(
-                    () => _reportOptions = _reportOptions.copyWith(
-                      includeTrends: v,
-                    ),
-                  ),
+                      () => _reportOptions =
+                          _reportOptions.copyWith(includeTrends: v)),
                 ),
               ],
             ),
+
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 4),
+
+            // ── Graphs header + Select All / Deselect All ──────────────────
+            Row(
+              children: [
+                Text('Graphs',
+                    style: Theme.of(context).textTheme.titleSmall),
+                const Spacer(),
+                TextButton(
+                  onPressed: () => setState(() {
+                    if (allSelected) {
+                      _selectedGraphs = {};
+                    } else {
+                      _selectedGraphs = Set.of(PdfGraphId.values);
+                    }
+                    _reportOptions = _reportOptions.copyWith(
+                      includeGraphs: _selectedGraphs.isNotEmpty,
+                    );
+                  }),
+                  child: Text(allSelected ? 'Deselect All' : 'Select All'),
+                ),
+              ],
+            ),
+
+            // Warning when no graphs are selected
+            if (noneSelected)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  'No graphs selected \u2014 the graphs section will be omitted from the PDF.',
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: Colors.orange.shade800),
+                ),
+              ),
+
+            // ── Graph chips grouped by category ────────────────────────────
+            ...PdfGraphCategory.values.map((category) {
+              final options = byCategory[category] ?? [];
+              if (options.isEmpty) return const SizedBox.shrink();
+
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 10),
+                  Text(
+                    kPdfGraphCategoryLabels[category]!,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: Theme.of(context).colorScheme.primary,
+                          fontWeight: FontWeight.bold,
+                        ),
+                  ),
+                  const SizedBox(height: 6),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: options.map((opt) {
+                      final selected = _selectedGraphs.contains(opt.id);
+                      return FilterChip(
+                        label: Text(
+                          opt.label,
+                          style: const TextStyle(fontSize: 12),
+                        ),
+                        selected: selected,
+                        tooltip: opt.description,
+                        onSelected: (v) => setState(() {
+                          if (v) {
+                            _selectedGraphs = {..._selectedGraphs, opt.id};
+                          } else {
+                            _selectedGraphs = _selectedGraphs
+                                .where((id) => id != opt.id)
+                                .toSet();
+                          }
+                          _reportOptions = _reportOptions.copyWith(
+                            includeGraphs: _selectedGraphs.isNotEmpty,
+                          );
+                        }),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              );
+            }),
+
+            const SizedBox(height: 8),
           ],
         ),
       ),
@@ -652,7 +724,17 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   mainAxisAlignment: MainAxisAlignment.start,
                   children: [
-                    if (_isProcessing) const CircularProgressIndicator(),
+                    // 2.6-F: replaced bare CircularProgressIndicator with
+                    // LinearProgressIndicator + message label
+                    if (_isProcessing) ...[
+                      const LinearProgressIndicator(),
+                      const SizedBox(height: 8),
+                      Text(
+                        _processingMessage,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                      const SizedBox(height: 4),
+                    ],
                     SizedBox(height: spacing),
                     if (width >= 840) ...[
                       Wrap(

@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
 import '../../models/models.dart';
-import '../../repositories/repositories.dart';
 import '../../services/log_service.dart';
 import '../../services/settings_service.dart';
 import '../../services/weekly_records_provider.dart';

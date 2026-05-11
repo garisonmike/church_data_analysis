@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:church_analytics/models/models.dart';
+import 'package:church_analytics/services/pdf_graph_catalogue.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pdf/pdf.dart';
@@ -185,9 +187,8 @@ void main() {
         const fileName = 'test_report';
         expect(fileName.endsWith('.pdf'), false);
 
-        final withExtension = fileName.endsWith('.pdf')
-            ? fileName
-            : '$fileName.pdf';
+        final withExtension =
+            fileName.endsWith('.pdf') ? fileName : '$fileName.pdf';
         expect(withExtension, 'test_report.pdf');
       });
 
@@ -195,11 +196,75 @@ void main() {
         const fileName = 'test_report.pdf';
         expect(fileName.endsWith('.pdf'), true);
 
-        final withExtension = fileName.endsWith('.pdf')
-            ? fileName
-            : '$fileName.pdf';
+        final withExtension =
+            fileName.endsWith('.pdf') ? fileName : '$fileName.pdf';
         expect(withExtension, 'test_report.pdf');
       });
     });
+  });
+
+  // 2.7 — New tests for buildGraph and PdfChartBuilder ──────────────────────
+
+  group('PdfReportService.buildGraph', () {
+    final records = [
+      WeeklyRecord(
+        id: 1,
+        churchId: 1,
+        createdByAdminId: null,
+        weekStartDate: DateTime(2026, 1, 3),
+        men: 100,
+        women: 120,
+        youth: 80,
+        children: 60,
+        sundayHomeChurch: 40,
+        tithe: 5000,
+        offerings: 3000,
+        emergencyCollection: 500,
+        plannedCollection: 200,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+      WeeklyRecord(
+        id: 2,
+        churchId: 1,
+        createdByAdminId: null,
+        weekStartDate: DateTime(2026, 1, 10),
+        men: 110,
+        women: 130,
+        youth: 85,
+        children: 65,
+        sundayHomeChurch: 45,
+        tithe: 5500,
+        offerings: 3200,
+        emergencyCollection: 600,
+        plannedCollection: 250,
+        createdAt: DateTime.now(),
+        updatedAt: DateTime.now(),
+      ),
+    ];
+
+    for (final id in PdfGraphId.values) {
+      test('buildGraph does not throw for id=$id with valid records', () {
+        expect(
+          () => PdfReportService.buildGraph(
+            id: id,
+            records: records,
+            currencySymbol: 'Ksh',
+          ),
+          returnsNormally,
+        );
+      });
+
+      test('buildGraph does not throw for id=$id with empty records', () {
+        expect(
+          () => PdfReportService.buildGraph(
+            id: id,
+            records: const [],
+            currencySymbol: r'$',
+          ),
+          returnsNormally,
+        );
+      });
+    }
   });
 }
