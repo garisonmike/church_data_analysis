@@ -36,7 +36,7 @@ jobs:
           echo "storePassword=${{ secrets.KEYSTORE_STORE_PASSWORD }}" > android/key.properties
           echo "keyPassword=${{ secrets.KEYSTORE_KEY_PASSWORD }}" >> android/key.properties
           echo "keyAlias=${{ secrets.KEYSTORE_KEY_ALIAS }}" >> android/key.properties
-          echo "storeFile=../android/keystore.jks" >> android/key.properties
+          echo "storeFile=../keystore.jks" >> android/key.properties
 
       - run: flutter --version
       - run: flutter pub get
