@@ -47,7 +47,6 @@ jobs:
       - name: Build APK
         run: >
           flutter build apk --release
-          --dart-define=SYNCFUSION_LICENSE_KEY="${{ secrets.SYNCFUSION_LICENSE_KEY }}"
           --dart-define=CRASH_REPORT_EMAIL="${{ secrets.CRASH_REPORT_EMAIL }}"
 
       - name: Upload APK Artifact
