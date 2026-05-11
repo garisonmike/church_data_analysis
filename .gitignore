@@ -49,6 +49,8 @@ app.*.map.json
 
 /tasks.md
 /plan.md
+/PLAN.md
+runError.txt
 flutterTest.txt
 failedTests.txt
 flutterAnalyze.txt
