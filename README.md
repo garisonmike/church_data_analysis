@@ -190,7 +190,6 @@ If you are deploying this app for a different church or organisation, see
 including:
 
 - Android keystore generation and GitHub Secrets setup
-- Syncfusion license key injection
 - Crash report email configuration
 - In-app update manifest URL change
 - App icon replacement
