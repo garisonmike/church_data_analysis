@@ -3,6 +3,7 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 
 import 'package:church_analytics/models/weekly_record.dart';
+import 'package:church_analytics/models/holy_communion_event.dart';
 import 'package:church_analytics/services/analytics_service.dart';
 
 /// Builds native PDF vector charts from [WeeklyRecord] data.
@@ -210,9 +211,110 @@ class PdfChartBuilder {
     );
   }
 
-  // ── Private rendering helpers ───────────────────────────────────────────────
+  // ── Baptisms ────────────────────────────────────────────────────────────────
 
-  /// Sort records chronologically. Does not mutate the original list.
+  /// Baptisms: weekly baptism counts line chart.
+  static pw.Widget baptismsTrend(List<WeeklyRecord> records) {
+    final sorted = _sortedByDate(records);
+    final values = sorted.map((r) => (r.baptisms ?? 0).toDouble()).toList();
+    if (values.isEmpty || values.every((v) => v == 0)) return _emptyChart('Baptisms Trend');
+    return _lineChart(
+      title: 'Baptisms Trend',
+      series: {'Baptisms': (values, _blue)},
+      yLabel: 'People',
+    );
+  }
+
+  /// Baptisms: monthly aggregated bar chart.
+  static pw.Widget baptismsMonthly(List<WeeklyRecord> records) {
+    final sorted = _sortedByDate(records);
+    // Aggregate by year-month key
+    final monthly = <String, double>{};
+    for (final r in sorted) {
+      final key =
+          '${r.weekStartDate.year}-${r.weekStartDate.month.toString().padLeft(2, '0')}';
+      monthly[key] = (monthly[key] ?? 0) + (r.baptisms ?? 0);
+    }
+    if (monthly.isEmpty) return _emptyChart('Monthly Baptisms');
+    final values = monthly.values.toList();
+    return _groupedBarChart(
+      title: 'Monthly Baptisms',
+      groups: {'Baptisms': (values, _teal)},
+    );
+  }
+
+  /// Baptisms: cumulative running total line chart.
+  static pw.Widget baptismsCumulative(List<WeeklyRecord> records) {
+    final sorted = _sortedByDate(records);
+    double running = 0;
+    final values = sorted.map((r) {
+      running += (r.baptisms ?? 0);
+      return running;
+    }).toList();
+    if (values.isEmpty || running == 0) return _emptyChart('Cumulative Baptisms');
+    return _lineChart(
+      title: 'Cumulative Baptisms',
+      series: {'Total': (values, _green)},
+      yLabel: 'People',
+    );
+  }
+
+  // ── Holy Communion ──────────────────────────────────────────────────────────
+
+  /// Communion: overall attendance rate (%) trend line chart.
+  static pw.Widget communionAttendanceRateTrend(List<HolyCommunionEvent> events) {
+    if (events.isEmpty) return _emptyChart('Communion Rate Trend');
+    final points = AnalyticsService().holyCommunionRateTrend(events);
+    return _lineChart(
+      title: 'Communion Attendance Rate (%)',
+      series: {'Rate %': (points.map((p) => p.y).toList(), _blue)},
+      yLabel: '%',
+    );
+  }
+
+  /// Communion: actual vs expected grouped bar chart per event.
+  static pw.Widget communionActualVsExpected(List<HolyCommunionEvent> events) {
+    if (events.isEmpty) return _emptyChart('Communion Actual vs Expected');
+    final data = AnalyticsService().holyCommunionActualVsExpected(events);
+    return _groupedBarChart(
+      title: 'Communion Actual vs Expected',
+      groups: {
+        'Actual':   (data['Actual']!.map((p) => p.value).toList(),   _blue),
+        'Expected': (data['Expected']!.map((p) => p.value).toList(), _orange),
+      },
+    );
+  }
+
+  /// Communion: per-home-church actual vs expected for the most recent event.
+  static pw.Widget communionByHomeChurch(List<HolyCommunionEvent> events) {
+    if (events.isEmpty) return _emptyChart('Communion by Home Church');
+    final sorted = List<HolyCommunionEvent>.from(events)
+      ..sort((a, b) => b.eventDate.compareTo(a.eventDate));
+    final latest = sorted.first;
+    if (latest.attendance.isEmpty) return _emptyChart('Communion by Home Church');
+    final data = AnalyticsService().holyCommunionByHomeChurch(latest);
+    return _groupedBarChart(
+      title: 'Communion by Home Church (${latest.quarterLabel})',
+      groups: {
+        'Actual':   (data['Actual']!.map((p) => p.value).toList(),   _teal),
+        'Expected': (data['Expected']!.map((p) => p.value).toList(), _orange),
+      },
+    );
+  }
+
+  /// Communion: total actual attendance per quarter label bar chart.
+  static pw.Widget communionQuarterlyComparison(List<HolyCommunionEvent> events) {
+    if (events.isEmpty) return _emptyChart('Quarterly Communion Comparison');
+    final sorted = List<HolyCommunionEvent>.from(events)
+      ..sort((a, b) => a.eventDate.compareTo(b.eventDate));
+    final values = sorted.map((e) => e.totalActual.toDouble()).toList();
+    return _groupedBarChart(
+      title: 'Quarterly Communion Comparison',
+      groups: {'Actual': (values, _purple)},
+    );
+  }
+
+  // ── Private rendering helpers ───────────────────────────────────────────────
   static List<WeeklyRecord> _sortedByDate(List<WeeklyRecord> records) =>
       List<WeeklyRecord>.from(records)
         ..sort((a, b) => a.weekStartDate.compareTo(b.weekStartDate));

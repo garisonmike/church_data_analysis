@@ -63,3 +63,4 @@ flutterAnalyze.txt
 android/keystore.jks
 android/key.properties
 linux/flutter/generated_plugins.cmake
+linux/flutter/

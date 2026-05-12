@@ -1,101 +1,141 @@
-import 'package:church_analytics/database/app_database.dart' as db;
-import 'package:church_analytics/models/models.dart';
 import 'package:drift/drift.dart';
 
+import 'package:church_analytics/database/app_database.dart';
+import 'package:church_analytics/models/models.dart';
+
+// ignore_for_file: prefer_expression_function_bodies
+
+/// Repository for [HolyCommunionEvent] and its child [HolyCommunionAttendance]
+/// rows.
+///
+/// Delete operations manually delete child attendance rows first to remain
+/// safe whether or not ON DELETE CASCADE is set on the foreign key.
 class HolyCommunionRepository {
-  final db.AppDatabase _db;
+  final AppDatabase _db;
+
   HolyCommunionRepository(this._db);
 
-  Future<List<HolyCommunionEvent>> getByChurch(int churchId) async {
-    final events = await (_db.select(_db.holyCommunionEvents)
+  // ── queries ───────────────────────────────────────────────────────────────
+
+  /// Returns all Holy Communion events for [churchId], most recent first.
+  Future<List<HolyCommunionEvent>> getEventsByChurch(int churchId) async {
+    final rows = await (_db.select(_db.holyCommunionEvents)
           ..where((t) => t.churchId.equals(churchId))
-          ..orderBy([(t) => OrderingTerm.desc(t.year), (t) => OrderingTerm.desc(t.quarter)]))
+          ..orderBy([
+            (t) => OrderingTerm.desc(t.year),
+            (t) => OrderingTerm.desc(t.quarter),
+          ]))
         .get();
-    final result = <HolyCommunionEvent>[];
-    for (final e in events) {
-      final rows = await _getAttendanceRows(e.id);
-      result.add(_toModel(e, rows));
-    }
-    return result;
+    return rows.map(_toModel).toList();
   }
 
-  Future<HolyCommunionEvent?> getByQuarter(int churchId, int year, int quarter) async {
-    final q = _db.select(_db.holyCommunionEvents)
-      ..where((t) => t.churchId.equals(churchId) & t.year.equals(year) & t.quarter.equals(quarter));
-    final e = await q.getSingleOrNull();
-    if (e == null) return null;
-    final rows = await _getAttendanceRows(e.id);
-    return _toModel(e, rows);
+  /// Returns a single event by primary key, or `null`.
+  Future<HolyCommunionEvent?> getEventById(int id) async {
+    final row = await (_db.select(_db.holyCommunionEvents)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    return row == null ? null : _toModel(row);
   }
 
-  Future<int> createEvent(HolyCommunionEvent event) async {
-    final now = DateTime.now();
-    return _db.into(_db.holyCommunionEvents).insert(
-      db.HolyCommunionEventsCompanion.insert(
-        churchId: event.churchId,
-        createdByAdminId: Value(event.createdByAdminId),
-        eventDate: event.eventDate,
-        year: event.year, quarter: event.quarter,
-        totalExpectedAtKcc: Value(event.totalExpectedAtKcc),
-        notes: Value(event.notes),
-        createdAt: now, updatedAt: now,
-      ),
-    );
+  /// Returns the event for a given church, year, and quarter, or `null`.
+  Future<HolyCommunionEvent?> getEventByChurchYearQuarter(
+      int churchId, int year, int quarter) async {
+    final row = await (_db.select(_db.holyCommunionEvents)
+          ..where((t) =>
+              t.churchId.equals(churchId) &
+              t.year.equals(year) &
+              t.quarter.equals(quarter)))
+        .getSingleOrNull();
+    return row == null ? null : _toModel(row);
   }
 
-  Future<void> upsertAttendanceRows(
-      int eventId, List<HolyCommunionAttendanceRow> rows) async {
-    await (_db.delete(_db.holyCommunionAttendance)
-          ..where((t) => t.eventId.equals(eventId)))
-        .go();
-    for (final row in rows) {
-      await _db.into(_db.holyCommunionAttendance).insert(
-        db.HolyCommunionAttendanceCompanion.insert(
-          eventId: eventId,
-          homeChurchId: row.homeChurchId,
-          actualAttendance: Value(row.actualAttendance),
-          expectedAtHc: Value(row.expectedAtHc),
-        ),
-      );
-    }
+  // ── mutations ─────────────────────────────────────────────────────────────
+
+  /// Inserts a new Holy Communion event header.
+  Future<HolyCommunionEvent> createEvent(HolyCommunionEvent event) async {
+    final id = await _db.into(_db.holyCommunionEvents).insert(
+          HolyCommunionEventsCompanion.insert(
+            churchId: event.churchId,
+            createdByAdminId: Value(event.createdByAdminId),
+            eventDate: event.eventDate,
+            year: event.year,
+            quarter: event.quarter,
+            totalExpectedAtKcc: event.totalExpectedAtKcc,
+            notes: Value(event.notes),
+            createdAt: event.createdAt,
+            updatedAt: event.updatedAt,
+          ),
+        );
+    return event.copyWith(id: id);
   }
 
-  Future<bool> updateEvent(HolyCommunionEvent event) async {
-    if (event.id == null) return false;
-    return _db.update(_db.holyCommunionEvents).replace(
-      db.HolyCommunionEventsCompanion(
-        id: Value(event.id!), churchId: Value(event.churchId),
+  /// Updates an existing event header. [event.id] must be non-null.
+  Future<void> updateEvent(HolyCommunionEvent event) async {
+    assert(event.id != null, 'updateEvent requires a non-null id');
+    await (_db.update(_db.holyCommunionEvents)
+          ..where((t) => t.id.equals(event.id!)))
+        .write(
+      HolyCommunionEventsCompanion(
+        churchId: Value(event.churchId),
         createdByAdminId: Value(event.createdByAdminId),
         eventDate: Value(event.eventDate),
-        year: Value(event.year), quarter: Value(event.quarter),
+        year: Value(event.year),
+        quarter: Value(event.quarter),
         totalExpectedAtKcc: Value(event.totalExpectedAtKcc),
         notes: Value(event.notes),
-        createdAt: Value(event.createdAt), updatedAt: Value(DateTime.now()),
+        updatedAt: Value(DateTime.now()),
       ),
     );
   }
 
-  Future<int> deleteEvent(int id) async {
-    await (_db.delete(_db.holyCommunionAttendance)..where((t) => t.eventId.equals(id))).go();
-    return (_db.delete(_db.holyCommunionEvents)..where((t) => t.id.equals(id))).go();
+  // ── FEAT-015 — delete ─────────────────────────────────────────────────────
+
+  /// Permanently deletes a Holy Communion event and all of its child
+  /// attendance rows, wrapped in a transaction.
+  ///
+  /// Attendance rows are deleted first to avoid any FK constraint violation
+  /// regardless of whether ON DELETE CASCADE is set on the schema.
+  Future<void> deleteEvent(int id) async {
+    await _db.transaction(() async {
+      // 1. Delete child attendance rows
+      await (_db.delete(_db.holyCommunionAttendance)
+            ..where((t) => t.eventId.equals(id)))
+          .go();
+
+      // 2. Delete the event header
+      await (_db.delete(_db.holyCommunionEvents)
+            ..where((t) => t.id.equals(id)))
+          .go();
+    });
   }
 
-  Future<List<db.HolyCommunionAttendanceData>> _getAttendanceRows(int eventId) =>
-      (_db.select(_db.holyCommunionAttendance)
-            ..where((t) => t.eventId.equals(eventId)))
-          .get();
+  /// Permanently deletes multiple events and their attendance rows.
+  Future<void> deleteEvents(List<int> ids) async {
+    if (ids.isEmpty) return;
+    await _db.transaction(() async {
+      for (final id in ids) {
+        await (_db.delete(_db.holyCommunionAttendance)
+              ..where((t) => t.eventId.equals(id)))
+            .go();
+        await (_db.delete(_db.holyCommunionEvents)
+              ..where((t) => t.id.equals(id)))
+            .go();
+      }
+    });
+  }
 
-  HolyCommunionEvent _toModel(
-      db.HolyCommunionEvent e, List<db.HolyCommunionAttendanceData> rows) =>
-    HolyCommunionEvent(
-      id: e.id, churchId: e.churchId, createdByAdminId: e.createdByAdminId,
-      eventDate: e.eventDate, year: e.year, quarter: e.quarter,
-      totalExpectedAtKcc: e.totalExpectedAtKcc, notes: e.notes,
-      attendance: rows.map((r) => HolyCommunionAttendanceRow(
-        id: r.id, eventId: r.eventId, homeChurchId: r.homeChurchId,
-        homeChurchName: '', // populated by service layer
-        actualAttendance: r.actualAttendance, expectedAtHc: r.expectedAtHc,
-      )).toList(),
-      createdAt: e.createdAt, updatedAt: e.updatedAt,
-    );
+  // ── mapping ───────────────────────────────────────────────────────────────
+
+  HolyCommunionEvent _toModel(db.HolyCommunionEvent row) => HolyCommunionEvent(
+        id: row.id,
+        churchId: row.churchId,
+        createdByAdminId: row.createdByAdminId,
+        eventDate: row.eventDate,
+        year: row.year,
+        quarter: row.quarter,
+        totalExpectedAtKcc: row.totalExpectedAtKcc,
+        notes: row.notes,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+      );
 }

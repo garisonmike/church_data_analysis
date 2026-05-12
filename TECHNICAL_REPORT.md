@@ -1,0 +1,1183 @@
+# Technical Report — Church Analytics: Feature Work & Bug Fixes
+
+**Date:** May 2026  
+**Scope:** Navigation bug, log export bug, update system improvements, tutorial opt-in, data management (view full imported data list, delete data), analytics graphs, PDF export, app icon & name documentation  
+**Codebase Version:** As at commit `HEAD` on 2026-05-12  
+**Author:** garisonmike  
+**Report Version:** 2.0 (supersedes v1.0)
+
+---
+
+## How to Use This Report
+
+Each item is self-contained. It documents: what the current code does, what specific files are involved, what the proposed change is, whether there are risks, and what needs to be tested. No item here deletes an existing file or restructures an existing feature. Everything is additive or a surgical single-point fix.
+
+Items are classified as **BUG** (something broken) or **FEAT** (new behaviour requested). They are ordered from lowest to highest implementation complexity within each class.
+
+---
+
+## Table of Contents
+
+- [BUG-001 — Back button from Dashboard leads to stuck loading screen](#bug-001)
+- [BUG-002 — Log export fails on Android ("Could not determine save location")](#bug-002)
+- [FEAT-001 — Tutorial: ask user before showing onboarding](#feat-001)
+- [FEAT-002 — Update: request install-unknown-apps permission proactively](#feat-002)
+- [FEAT-003 — Update: prompt user to back up before updating](#feat-003)
+- [FEAT-004 — Update: auto-delete installer file after successful update](#feat-004)
+- [FEAT-005 — Update: handle already-downloaded package on retry](#feat-005)
+- [FEAT-006 — Update: pause and resume download](#feat-006)
+- [FEAT-007 — Update: resume download after unexpected app closure](#feat-007)
+- [FEAT-008 — Update: continue downloading while app is in background (Android)](#feat-008)
+- [FEAT-009 — Platform feature parity audit](#feat-009)
+- [FEAT-010 — Baptism & Holy Communion graphs](#feat-010)
+- [FEAT-011 — PDF export completeness](#feat-011)
+- [FEAT-012 — App icon customisation documentation](#feat-012)
+- [FEAT-013 — App name documentation for forks](#feat-013)
+- [FEAT-014 — Home screen: view full list of imported data](#feat-014)
+- [FEAT-015 — Data management: delete imported records](#feat-015)
+- [Testing Checklist](#testing-checklist)
+- [Risk Summary](#risk-summary)
+
+---
+
+<a name="bug-001"></a>
+## BUG-001 — Back button from Dashboard leads to stuck loading screen
+
+**Status:** Complete (2026-05-12)
+
+### Severity
+Medium. Reproducible when specific timing conditions are met. Confusing but non-destructive.
+
+### Observed Behaviour
+From the `DashboardScreen`, pressing the AppBar back arrow navigates to a screen showing only a spinning progress indicator that never resolves. The user is stuck and must kill and reopen the app.
+
+### Root Cause Analysis
+
+**Two independent problems compound to produce this bug.**
+
+**Problem A — Race condition in `StartupGateScreen.initState()`.**
+
+`lib/ui/screens/startup_gate_screen.dart`, `initState()` schedules two concurrent async operations at startup:
+
+```dart
+@override
+void initState() {
+  super.initState();
+  _routeFromState();                              // (1) async, starts immediately
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    if (!mounted) return;
+    await showCrashRecoveryDialogIfNeeded(context); // (2) async, fires after first frame
+    if (!mounted) return;
+    final done = await isOnboardingComplete();
+    if (!done && mounted) {
+      await Navigator.of(context).push(           // (3) pushes OnboardingOverlay
+        MaterialPageRoute(builder: (_) => const OnboardingOverlay()),
+      );
+    }
+  });
+}
+```
+
+`_routeFromState()` awaits `SharedPreferences.getInstance()` and multiple database calls before it calls `pushReplacementNamed('/dashboard')`. `addPostFrameCallback` fires after the first frame — which is drawn immediately, while `_routeFromState()` is still awaiting. Both are running "at the same time" from Dart's cooperative scheduler perspective.
+
+In the normal path (onboarding already done), `isOnboardingComplete()` returns true quickly and the callback finishes without pushing anything. `_routeFromState()` then does its `pushReplacementNamed('/dashboard')` and the stack is clean: `[DashboardScreen]`. No back button is shown because `Navigator.canPop()` is false.
+
+**The problem path**: On slow devices or cold starts, the postFrameCallback reaches `showCrashRecoveryDialogIfNeeded()` and `isOnboardingComplete()` and finds that a crash occurred last session OR onboarding is not complete. It `await`s a dialog or pushes the `OnboardingOverlay`. During this await, `_routeFromState()` finishes and calls `pushReplacementNamed('/dashboard')` from the `StartupGateScreen` context. 
+
+`pushReplacementNamed` replaces `StartupGateScreen` in the stack. If `OnboardingOverlay` was already pushed above it, the stack becomes `[DashboardScreen, OnboardingOverlay]` — the overlay sits *on top* of the dashboard. When the user dismisses the overlay, they see the dashboard with `canPop() == true` because... wait, actually in this case there's nothing below Dashboard, so `canPop()` would still be false.
+
+The more dangerous race is: `_routeFromState()` calls `pushReplacementNamed` *while the `mounted` guard in the postFrameCallback has already passed but before the overlay push completes*. Flutter's navigation is not synchronised between these two code paths, so the navigator can end up in an inconsistent intermediate state that, in some builds/devices, leaves a ghost `StartupGateScreen` entry below `DashboardScreen` in the internal route history. When the dashboard's implied back button triggers a pop, this ghost route is revealed — and because it was "replaced" its `_routeFromState()` never runs again, leaving the user staring at the spinner.
+
+**Problem B — DashboardScreen does not protect against back-navigation.**
+
+`lib/ui/screens/dashboard_screen.dart`, the `Scaffold`'s `AppBar` has no `automaticallyImplyLeading: false` and there is no `PopScope` wrapping the `Scaffold`. This means Flutter will automatically render a back arrow any time `Navigator.canPop()` returns true on the dashboard's route, whether that is expected or not. On a phone with Android's gesture navigation, a swipe-from-left also triggers a pop.
+
+### Affected Files
+
+| File | What the problem is |
+|---|---|
+| `lib/ui/screens/startup_gate_screen.dart` | Two async tasks in `initState()` with no coordination guard, can both attempt navigation |
+| `lib/ui/screens/dashboard_screen.dart` | No `PopScope` guard; shows a back arrow whenever `canPop()` is true |
+
+### Proposed Fix
+
+**Step 1 — Coordinate the two async tasks in `StartupGateScreen`.**
+
+Add a `bool _navigationInProgress = false` flag. `_routeFromState()` sets it to `true` before its first `await`. The `addPostFrameCallback` checks this flag before calling `showCrashRecoveryDialogIfNeeded` or pushing the overlay. If the flag is true the callback returns early. This ensures only one of the two paths pushes a navigation event.
+
+```dart
+// lib/ui/screens/startup_gate_screen.dart
+
+bool _navigationInProgress = false;   // ADD THIS
+
+@override
+void initState() {
+  super.initState();
+  _routeFromState();
+  WidgetsBinding.instance.addPostFrameCallback((_) async {
+    if (!mounted || _navigationInProgress) return;  // GUARD ADDED
+    await showCrashRecoveryDialogIfNeeded(context);
+    if (!mounted || _navigationInProgress) return;  // GUARD ADDED
+    final done = await isOnboardingComplete();
+    if (!done && mounted && !_navigationInProgress) { // GUARD ADDED
+      await Navigator.of(context).push(...);
+    }
+  });
+}
+
+Future<void> _routeFromState() async {
+  _navigationInProgress = true;  // SET FLAG AT ENTRY
+  try {
+    // ... existing logic unchanged ...
+  } catch (e) {
+    _navigationInProgress = false;  // Release on error so the callback can run
+    if (!mounted) return;
+    setState(() => _error = e);
+  }
+}
+```
+
+**Why this is safe:** `_routeFromState()` sets the flag synchronously at entry, before any `await`. Dart's event loop runs synchronously until the first `await`, so by the time the postFrameCallback can run (it's scheduled for the next microtask after the first frame), the flag is already set. No real concurrency — just Dart cooperative scheduling — so this guard is sufficient.
+
+**Step 2 — Protect `DashboardScreen` with `PopScope`.**
+
+Wrap the `DashboardScreen` `Scaffold` in a `PopScope` with `canPop: false` and an `onPopInvokedWithResult` that uses `SystemNavigator.pop()` to exit the app cleanly when the user presses back from the root dashboard:
+
+```dart
+// lib/ui/screens/dashboard_screen.dart
+import 'package:flutter/services.dart'; // already imported elsewhere in the project
+
+@override
+Widget build(BuildContext context) {
+  return PopScope(
+    canPop: false,
+    onPopInvokedWithResult: (didPop, _) {
+      if (!didPop) SystemNavigator.pop(); // clean app exit on back
+    },
+    child: Scaffold(
+      appBar: AppBar( ... ), // unchanged
+      ...
+    ),
+  );
+}
+```
+
+**Why `PopScope` and not `WillPopScope`?** `WillPopScope` is deprecated as of Flutter 3.22 and will be removed. The codebase targets a version that has `PopScope`; `SystemNavigator` is already imported elsewhere (see `platform_installer_launch_service.dart`). Using `PopScope(canPop: false)` means the back arrow also disappears from the AppBar automatically, which is the correct UX for a root screen.
+
+**Compatibility:** `PopScope` with `onPopInvokedWithResult` (two parameters) requires Flutter 3.22+. Check `flutter --version` before merging. If the project is on an older Flutter, use `onPopInvoked` (one parameter, deprecated signature) instead. Do NOT use `WillPopScope`.
+
+### What Does NOT Change
+The navigation logic inside `_routeFromState()` is untouched. All routes (`/select-church`, `/select-profile`, `/dashboard`) remain identical. The rest of the `DashboardScreen` build is untouched.
+
+### Risk
+Low. The flag guard is purely additive. `PopScope` is a standard Flutter widget replacing a deprecated one. The only meaningful change is that pressing the system back button from the dashboard now exits the app instead of navigating backward — which is the expected behaviour for any root screen.
+
+---
+
+<a name="bug-002"></a>
+## BUG-002 — Log export fails on Android ("Could not determine save location")
+
+**Status:** Complete (2026-05-12)
+
+### Severity
+Low-medium. App logs export is a diagnostic feature; the failure is not data-threatening, but the error message is confusing.
+
+### Observed Behaviour
+As seen in the screenshot (Image 2): after tapping the Export button in the App Logs screen, the red snackbar "Could not determine save location." appears at the bottom. The log file is never written.
+
+### Root Cause
+
+`lib/ui/screens/log_viewer_screen.dart`, the `_exportLogs()` method:
+
+```dart
+String? destPath;
+if (!kIsWeb && (Platform.isLinux || Platform.isMacOS || Platform.isWindows)) {
+  final dir = await _getExportsDir();
+  destPath = '${dir.path}/$suggestedName';
+}
+
+if (destPath == null) {
+  _showSnack('Could not determine save location.');
+  return;
+}
+```
+
+Android is not handled. `destPath` is never assigned on Android, so the null check fires and the error is shown. The `_getExportsDir()` helper itself also only handles Linux/macOS (using the `HOME` env variable for Documents folder) and falls back to `Directory.systemTemp` on other platforms — but this whole helper is not even called on Android because of the `Platform.isLinux || Platform.isMacOS || Platform.isWindows` guard.
+
+### Affected Files
+
+| File | Line range | What to change |
+|---|---|---|
+| `lib/ui/screens/log_viewer_screen.dart` | ~78–97 (`_exportLogs`) | Add Android branch |
+| `lib/ui/screens/log_viewer_screen.dart` | ~116–127 (`_getExportsDir`) | Add Android path resolution |
+
+### Proposed Fix
+
+The project already uses `path_provider: ^2.1.5` (confirmed in `pubspec.yaml`). `path_provider` exposes `getExternalStorageDirectory()` on Android, which returns the app's external files directory (e.g. `/sdcard/Android/data/com.church.church_analytics/files`). This does not require any storage permission on Android 10+.
+
+**Change `_exportLogs()`:**
+
+```dart
+String? destPath;
+if (!kIsWeb) {
+  if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
+    final dir = await _getExportsDir();
+    destPath = '${dir.path}/$suggestedName';
+  } else if (Platform.isAndroid) {             // ADD THIS BRANCH
+    final dir = await _getAndroidExportsDir(); // ADD THIS CALL
+    if (dir != null) destPath = '${dir.path}/$suggestedName';
+  }
+}
+```
+
+**Add `_getAndroidExportsDir()`:**
+
+```dart
+Future<Directory?> _getAndroidExportsDir() async {
+  try {
+    final external = await getExternalStorageDirectory();
+    if (external != null) {
+      final dir = Directory('${external.path}/church_analytics_exports');
+      if (!await dir.exists()) await dir.create(recursive: true);
+      return dir;
+    }
+  } catch (e) {
+    LogService.warning('LogViewer', 'External storage unavailable: $e');
+  }
+  // Fallback: app-internal documents directory (always accessible, no permission needed)
+  final docs = await getApplicationDocumentsDirectory();
+  final dir = Directory('${docs.path}/church_analytics_exports');
+  if (!await dir.exists()) await dir.create(recursive: true);
+  return dir;
+}
+```
+
+**Why this is safe:**
+- `getExternalStorageDirectory()` is app-scoped on Android 10+ (no manifest permission needed).
+- The `getApplicationDocumentsDirectory()` fallback is always available on all Android versions.
+- No new dependencies required.
+- The existing desktop path is completely untouched.
+
+**One additional improvement:** After a successful export on Android, show the destination path in the snackbar so the user knows where to find the file. This is already done for desktop by the success snackbar: `'Exported $lines lines → $destPath'`.
+
+### Risk
+None. The Android branch is new code that did not exist before. The existing Linux/macOS/Windows branch is untouched. The fallback chain ensures a valid path is always produced on Android.
+
+---
+
+<a name="feat-001"></a>
+## FEAT-001 — Tutorial: ask user before showing onboarding on first launch
+
+### Current State
+`lib/ui/widgets/onboarding_overlay.dart` already contains a complete 5-slide onboarding flow. `lib/ui/screens/startup_gate_screen.dart` checks `isOnboardingComplete()` on startup and, if the flag is not set, immediately pushes the overlay without asking the user.
+
+`lib/ui/screens/app_settings_screen.dart` already exposes a "Help & Tutorial" tile that reopens the overlay at any time (with `fromSettings: true` to avoid re-setting the completion flag).
+
+### What Is Requested
+On first launch, instead of pushing the overlay immediately, show a dialog asking: "Would you like a quick tour of Church Analytics?" with two options: **Show me around** and **Skip for now**. If the user taps Skip, mark onboarding complete anyway (so it never auto-shows again) and proceed. If the user taps Show me around, push the overlay as before.
+
+The user should always be able to access the tutorial from Settings (already working).
+
+### Proposed Change
+
+**No structural changes.** Only `startup_gate_screen.dart` is modified, and only the 3-line onboarding block inside `addPostFrameCallback`.
+
+Replace:
+```dart
+if (!done && mounted) {
+  await Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      fullscreenDialog: true,
+      builder: (_) => const OnboardingOverlay(),
+    ),
+  );
+}
+```
+
+With:
+```dart
+if (!done && mounted && !_navigationInProgress) {
+  final wantsTour = await _askIfUserWantsTour(context);
+  if (wantsTour == true && mounted) {
+    await Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        fullscreenDialog: true,
+        builder: (_) => const OnboardingOverlay(),
+      ),
+    );
+  } else {
+    // User skipped — still mark complete so this dialog never re-appears.
+    await markOnboardingComplete();
+  }
+}
+```
+
+**Add `_askIfUserWantsTour()` as a private helper in `startup_gate_screen.dart`:**
+
+```dart
+Future<bool?> _askIfUserWantsTour(BuildContext context) {
+  return showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Welcome to Church Analytics'),
+      content: const Text(
+        'Would you like a quick tour of the app? '
+        'You can always revisit it from Settings → Help & Tutorial.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Skip for now'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text('Show me around'),
+        ),
+      ],
+    ),
+  );
+}
+```
+
+**Note:** The `_navigationInProgress` guard from BUG-001 is applied here too. This dialog must not be shown if `_routeFromState()` has already started (flag is true) since the screen is about to transition away.
+
+### Files Changed
+
+| File | Change |
+|---|---|
+| `lib/ui/screens/startup_gate_screen.dart` | Replace 3-line push with dialog + conditional push |
+
+**No changes to:** `onboarding_overlay.dart`, `app_settings_screen.dart`, `markOnboardingComplete()`.
+
+### Risk
+None. The OnboardingOverlay widget is completely unchanged. The only difference is a dialog gate before pushing it. The Settings entry is unaffected.
+
+---
+
+<a name="feat-002"></a>
+## FEAT-002 — Update: request install-unknown-apps permission proactively on Android
+
+### Current State
+`lib/platform/platform_installer_launch_service.dart`, `_launchAndroid()` calls `OpenFile.open(installerPath)`. If the `REQUEST_INSTALL_PACKAGES` permission has not been granted, `OpenFile` returns `ResultType.permissionDenied` and the service returns a failure with a multi-step manual instructions string. The user sees the `UpdateInstallFailureDialog` with those instructions.
+
+This is reactive. The user has already waited for the download to finish before discovering the permission is missing.
+
+### What Is Requested
+Before the download begins, check whether the install-unknown-apps permission is granted on Android. If not, inform the user and direct them to grant it in Settings. The download should not start until permission is confirmed.
+
+### Proposed Change
+
+**New dependency required:** `permission_handler: ^11.3.1` (latest stable as of May 2026). This adds ~200KB to the Android APK. It is the standard Flutter package for runtime permission management.
+
+Add to `pubspec.yaml` under `dependencies`:
+```yaml
+permission_handler: ^11.3.1
+```
+
+Add to `android/app/src/main/AndroidManifest.xml` (already required but confirm it's present):
+```xml
+<uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+```
+
+**New helper in `lib/platform/platform_installer_launch_service.dart`** (or a new `lib/platform/install_permission_service.dart` if separation is preferred):
+
+```dart
+/// Checks whether the app has permission to install unknown APKs on Android 8+.
+/// Returns true if permission is already granted or if the platform is not Android.
+/// Returns false and optionally opens the settings screen if permission is denied.
+Future<bool> ensureInstallPermissionGranted(BuildContext context) async {
+  if (!Platform.isAndroid) return true;
+  
+  final status = await Permission.requestInstallPackages.status;
+  if (status.isGranted) return true;
+
+  // Show a dialog before redirecting to system settings.
+  final agreed = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: const Text('Permission Required'),
+      content: const Text(
+        'To install updates directly, Church Analytics needs permission to '
+        'install apps. You will be taken to the system settings to enable this.',
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(ctx).pop(false),
+          child: const Text('Cancel'),
+        ),
+        FilledButton(
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: const Text('Open Settings'),
+        ),
+      ],
+    ),
+  );
+
+  if (agreed != true) return false;
+
+  await openAppSettings(); // from permission_handler
+  // After returning from settings, re-check.
+  return (await Permission.requestInstallPackages.status).isGranted;
+}
+```
+
+**Call site in `lib/ui/widgets/about_updates_card.dart`**, in the `_onDownloadUpdate()` or `_doInstall()` method, before the download call:
+
+```dart
+// At the point where user confirms download (before UpdateDownloadService.download() is called)
+if (Platform.isAndroid) {
+  final hasPermission = await ensureInstallPermissionGranted(context);
+  if (!hasPermission) return; // User cancelled or still denied — do not proceed
+}
+// ... existing download logic continues ...
+```
+
+**Compatibility consideration:** `Permission.requestInstallPackages` is Android-only. The `if (!Platform.isAndroid)` guard means this code path is never reached on Windows or Linux. The import must be guarded: `import 'dart:io' show Platform;` is already present in this file.
+
+**Risk assessment:** Adding `permission_handler` is a well-maintained package used across thousands of Flutter apps. The AndroidManifest permission `REQUEST_INSTALL_PACKAGES` is already documented in the codebase (see `platform_installer_launch_service.dart` line 50) as required — this item just makes the runtime check explicit instead of leaving it to `open_file` to discover at install time. The change does not affect Windows or Linux paths.
+
+---
+
+<a name="feat-003"></a>
+## FEAT-003 — Update: prompt user to back up before updating
+
+### Current State
+`lib/ui/widgets/installer_confirmation_dialog.dart` shows a confirmation dialog before the download begins. It tells the user the app will close and install the update. It does not mention backup.
+
+`lib/services/backup_service.dart` has a full `BackupService` with `createBackup(churchId, db)` returning a `BackupResult`. The reports screen and settings already use this service.
+
+### What Is Requested
+Before the update download starts (or at the confirmation step), show a prompt advising the user to back up their data. Offer a shortcut to back up immediately, a "skip and continue" option, and a cancel option.
+
+### Proposed Change
+
+**Option 1 (preferred, lowest risk):** Add a new dialog shown *before* `InstallerConfirmationDialog`. This keeps the existing confirmation dialog untouched.
+
+**New file: `lib/ui/widgets/pre_update_backup_dialog.dart`**
+
+```dart
+/// Dialog shown before an update download starts.
+/// Returns true if the user wants to proceed (with or without backup).
+/// Returns false if the user cancelled.
+class PreUpdateBackupDialog extends StatefulWidget {
+  final int churchId;
+  final AppDatabase db;
+
+  const PreUpdateBackupDialog({required this.churchId, required this.db, super.key});
+
+  static Future<bool?> show(BuildContext context, {
+    required int churchId,
+    required AppDatabase db,
+  }) => showDialog<bool>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => PreUpdateBackupDialog(churchId: churchId, db: db),
+  );
+  
+  // ... build: shows "Back Up Now" / "Skip & Update" / "Cancel"
+  // "Back Up Now" calls BackupService.createBackup(), shows a progress indicator,
+  // then on success shows a checkmark + file path, then returns true.
+  // "Skip & Update" returns true immediately.
+  // "Cancel" returns false.
+}
+```
+
+**Call site in `lib/ui/widgets/about_updates_card.dart`:**
+
+Replace the existing `confirmInstall` call site:
+```dart
+// BEFORE (existing):
+final confirmed = await (widget.confirmInstall ?? InstallerConfirmationDialog.show)(context);
+if (confirmed != true) return;
+
+// AFTER:
+// Step 1: backup prompt
+final proceedAfterBackup = await PreUpdateBackupDialog.show(
+  context, churchId: currentChurchId, db: ref.read(databaseProvider),
+);
+if (proceedAfterBackup != true) return;
+
+// Step 2: existing install confirmation (unchanged)
+final confirmed = await (widget.confirmInstall ?? InstallerConfirmationDialog.show)(context);
+if (confirmed != true) return;
+```
+
+**About getting `churchId` in `about_updates_card.dart`:** The card is shown in `app_settings_screen.dart`. `AppSettingsScreen` receives `churchId` as a constructor argument. Pass `churchId` down as a constructor parameter to `AboutUpdatesCard`. This is a one-line change in `AboutUpdatesCard`'s constructor and the call site.
+
+**Risk assessment:** The new dialog is a new file and a new flow step. It does not touch the download logic, the installer, or the manifest system. The `BackupService` is already production-tested. The only risk is that `BackupService.createBackup()` fails inside the dialog — which is handled by showing an error message while still allowing the user to skip and continue the update. The existing `confirmInstall` injection point for tests is preserved (the backup step can be separately skipped in tests by overriding `PreUpdateBackupDialog.show`).
+
+---
+
+<a name="feat-004"></a>
+## FEAT-004 — Update: auto-delete installer file after successful update (Android)
+
+### Current State
+`lib/platform/platform_installer_launch_service.dart`, `_launchAndroid()`:
+
+```dart
+case ResultType.done:
+  _popFn(); // exits the app (SystemNavigator.pop)
+  return const InstallerLaunchResult.success();
+```
+
+After `_popFn()` is called, the app exits. The downloaded APK file (in `getTemporaryDirectory()`) remains on disk until Android's OS temp-cleanup runs. This can be anywhere from minutes to days.
+
+### What Is Requested
+After a successful install handoff, the installer file should be removed automatically.
+
+### Proposed Change
+
+The challenge: `_popFn()` exits the app immediately. There is no "after exit" hook in Flutter. The APK deletion must happen *before* `_popFn()`.
+
+**Modify `_launchAndroid()` in `platform_installer_launch_service.dart`:**
+
+```dart
+case ResultType.done:
+  // Delete the APK before exiting — once the app exits,
+  // we lose the opportunity to clean up.
+  await _deleteInstaller(installerPath);
+  _popFn();
+  return const InstallerLaunchResult.success();
+```
+
+**Add `_deleteInstaller()` private method:**
+
+```dart
+Future<void> _deleteInstaller(String path) async {
+  try {
+    final file = File(path);
+    if (await file.exists()) await file.delete();
+  } catch (_) {
+    // Deletion is best-effort — never block the install flow.
+  }
+}
+```
+
+**On next launch, clean up any leftover files (belt-and-suspenders):**
+
+In `startup_gate_screen.dart`, after routing is resolved (in `_routeFromState()`, after the successful route is identified), add a one-liner fire-and-forget cleanup:
+
+```dart
+unawaited(_cleanUpStaleApks());
+
+Future<void> _cleanUpStaleApks() async {
+  try {
+    final tempDir = await getTemporaryDirectory();
+    final files = tempDir.listSync();
+    for (final f in files) {
+      if (f is File && f.path.endsWith('.apk')) {
+        await f.delete();
+      }
+    }
+  } catch (_) { /* best-effort */ }
+}
+```
+
+This cleanup is lightweight, async, and does not block startup. It catches any APK that survived a previous install due to crashes or interrupted flows.
+
+**For Windows/Linux:** The ZIP/tar.gz installer is extracted to a staging folder. The staging folder is also not cleaned up today. A similar cleanup approach applies — but the staging folder path is known only to `PlatformInstallerLaunchService`. Add a `hint` in the `InstallerLaunchResult.success()` for Windows/Linux that includes the staging folder path, and add a cleanup pass in `startup_gate_screen.dart` if a "last staging path" key exists in SharedPreferences. This is lower priority than Android.
+
+### Risk
+None for Android delete-before-exit (best-effort, never throws, never blocks). Very low for startup cleanup (idempotent, best-effort, limited to files matching `*.apk` in the system temp directory only).
+
+---
+
+<a name="feat-005"></a>
+## FEAT-005 — Update: handle already-downloaded package on retry
+
+### Current State
+`lib/services/update_download_service.dart`, `download()` builds the destination file path as `'${destDir.path}/$filename'` and starts a fresh download every time. If a previous download completed successfully but installation failed (e.g. permission denied), and the user taps Download Update again, the app re-downloads the full file from scratch.
+
+`UpdateDownloadService._deletePartial()` is called on error, but it is NOT called after a successful download + failed install. So the complete APK file may still be sitting in the temp directory.
+
+### What Is Requested
+If the APK was already fully downloaded and its SHA-256 matches the manifest, skip the network download entirely and proceed directly to installation.
+
+### Proposed Change
+
+**Modify the `download()` method in `update_download_service.dart`** — add a pre-download file check at the very top, before any network call:
+
+```dart
+Future<UpdateDownloadResult> download({
+  required UpdateManifest manifest,
+  required Directory destDir,
+  void Function(double progress)? onProgress,
+  CancelToken? cancelToken,
+}) async {
+  final asset = _resolvePlatformAsset(manifest);
+  if (asset == null) { /* existing */ }
+
+  final filename = asset.downloadUrl.split('/').last;
+  final file = File('${destDir.path}/$filename');
+
+  // --- NEW: check if a valid complete download already exists ---
+  if (await file.exists()) {
+    try {
+      final existingBytes = await file.readAsBytes();
+      final existingHash = _sha256Hex(existingBytes);
+      if (existingHash == asset.sha256.toLowerCase()) {
+        // File is already downloaded and verified. Skip network.
+        debugPrint('[UpdateDownloadService] Using cached file: ${file.path}');
+        onProgress?.call(1.0); // signal 100% immediately
+        return UpdateDownloadResult.success(file.path);
+      } else {
+        // File exists but is corrupt or partial — delete and re-download.
+        debugPrint('[UpdateDownloadService] Stale/corrupt file found, deleting.');
+        await _deletePartial(file);
+      }
+    } catch (_) {
+      await _deletePartial(file); // unreadable — start fresh
+    }
+  }
+  // --- END NEW ---
+
+  // ... existing download logic continues unchanged ...
+```
+
+**Risk assessment:** The hash check reads the file from disk synchronously inside a try/catch. On a large APK (e.g. 30–50 MB), this may take 100–300ms on a slow device. This is acceptable — it happens only once on the retry attempt, not on every launch. The existing 13 download error paths are untouched. This is purely additive code before the existing network call.
+
+**Note:** This check is best-effort on top of the existing SHA-256 verification. It does not introduce a new security surface because the verified hash comes from the same remote manifest that was already cryptographically validated.
+
+---
+
+<a name="feat-006"></a>
+## FEAT-006 — Update: pause and resume download
+
+### Current State
+`lib/services/update_download_service.dart` downloads the installer as an HTTP stream and accumulates all bytes in a `BytesBuilder` in memory. Cancellation is supported via `CancelToken` (cooperative, checked at each chunk). There is no pause concept.
+
+### What Is Requested
+User should be able to pause the download (stop network transfer), resume it later without restarting from zero, and continue if the app is brought back to the foreground.
+
+### Technical Analysis Before Proposing
+
+**Can the server support this?** HTTP range requests (`Range: bytes=X-`) allow resuming a download from a specific byte offset. GitHub Releases CDN (objects.githubusercontent.com) supports range requests. Verify before implementing by issuing a `HEAD` request to the APK URL and checking for `Accept-Ranges: bytes` in the response headers. If this header is absent, resumable download cannot be implemented reliably.
+
+**In-memory vs on-disk accumulation:** The current `BytesBuilder` keeps the entire file in RAM during download. For a 30–50 MB APK this is acceptable but not ideal. Pause/resume requires writing chunks to disk incrementally (so the partial file survives across pause/resume cycles and app restarts). This changes the fundamental download strategy.
+
+**Proposed Change (requires the Accept-Ranges header to be confirmed)**
+
+1. **New download strategy — stream to file, not to `BytesBuilder`:**
+   
+   Change `update_download_service.dart` so that each chunk is appended to the destination file immediately:
+   ```dart
+   final sink = file.openWrite(mode: FileMode.append); // append, not overwrite
+   int received = 0;
+   await for (final chunk in streamedResponse.stream) {
+     if (cancelToken?.isCancelled == true) { ... }
+     if (pauseToken?.isPaused == true) {
+       await sink.flush();
+       await sink.close();
+       return UpdateDownloadResult.paused(file.path, bytesReceived: received);
+     }
+     await sink.addStream(Stream.value(chunk));
+     received += chunk.length;
+     onProgress?.call(received / responseContentLength!);
+   }
+   await sink.flush();
+   await sink.close();
+   ```
+
+2. **New `PauseToken` class (sibling of `CancelToken`):**
+   ```dart
+   class PauseToken {
+     bool _isPaused = false;
+     void pause() => _isPaused = true;
+     void resume() => _isPaused = false;
+     bool get isPaused => _isPaused;
+   }
+   ```
+
+3. **Resume method on `UpdateDownloadService`:** Accepts the existing partial file path and the manifest, issues a `Range: bytes=<file_size>-` HTTP request, and appends the response to the existing file.
+
+4. **New result type `UpdateDownloadResult.paused(String filePath, {required int bytesReceived})`** so the caller can present a "Paused — Resume" button.
+
+5. **`UpdateDownloadProgressDialog`:** Add a Pause/Resume button alongside the existing Cancel button.
+
+**Risk assessment:** This is the most invasive item in the update section. The switch from `BytesBuilder` to on-disk streaming touches the core of `update_download_service.dart`. All existing error paths (checksum mismatch, HTTP error, cancellation) must be re-verified after the change. The SHA-256 computation also needs to change — instead of computing over the in-memory bytes, read the completed file from disk after all chunks are received.
+
+**Recommendation:** Implement this after all other simpler update items are merged and tested. Write a unit test covering: normal full download, pause mid-stream, resume, final checksum pass. Before implementing, add an integration test that issues a HEAD to the production APK URL and asserts `Accept-Ranges: bytes`.
+
+---
+
+<a name="feat-007"></a>
+## FEAT-007 — Update: resume download after unexpected app closure
+
+### Current State
+If the app closes unexpectedly during a download (killed by Android, crash, phone restart), `_deletePartial()` is never called (it only runs on gracefully caught exceptions). The partial file remains in `getTemporaryDirectory()`. On next launch, nothing checks for it. The user must re-download from scratch.
+
+### What Is Requested
+If the download was interrupted by a crash or unexpected closure, the app should detect the partial file on next launch and either offer to resume or clean it up.
+
+### Technical Dependencies
+This item depends on FEAT-006 (on-disk streaming). If chunks are accumulated in `BytesBuilder` in memory, a crashed download leaves nothing useful on disk. Once FEAT-006 switches to on-disk streaming, there IS a partial file to resume from.
+
+### Proposed Change (after FEAT-006 is implemented)
+
+**Persist download state before streaming begins.** In `update_download_service.dart`, write a small JSON record to `SharedPreferences` at the moment a download starts:
+
+```json
+{
+  "url": "https://github.com/.../app-release.apk",
+  "dest_path": "/data/user/0/.../app-release.apk",
+  "sha256": "abc123...",
+  "started_at": "2026-05-12T13:00:00Z"
+}
+```
+
+Clear this record when the download completes (success or clean failure/cancel).
+
+**On startup, in `StartupGateScreen._routeFromState()`**, after routing is determined, check `SharedPreferences` for this key. If found:
+
+- Verify the partial file still exists on disk.
+- If it does: show a `SnackBar` or dialog: "An update download was interrupted. Resume or discard?" with Resume and Discard buttons.
+- If the file does not exist (was cleaned up by the OS): silently clear the key.
+- "Discard" deletes the file and clears the key.
+- "Resume" hands off to the `UpdateDownloadService.resume()` method from FEAT-006.
+
+**Risk assessment:** The SharedPreferences write/clear is trivial. The partial file detection is non-destructive (it never auto-deletes without user confirmation). The resume path is gated on FEAT-006. Implementing FEAT-007 before FEAT-006 would not crash anything, but the "Resume" path would have no functional effect — so implement FEAT-006 first.
+
+---
+
+<a name="feat-008"></a>
+## FEAT-008 — Update: continue downloading while app is in background (Android)
+
+### Current State
+The download runs in the Flutter main isolate. On Android, when the user sends the app to the background, Android may throttle or kill the process after several minutes (depending on device OEM, battery optimisation settings, Android version). The download would be interrupted.
+
+### What Is Requested
+The download should continue even if the user minimises the app.
+
+### Technical Analysis
+
+**Android Foreground Service is required.** Android's battery optimisation policies restrict background work. The only reliable way to do sustained network I/O in the background on Android 8+ is a Foreground Service — a long-running service that shows a persistent notification to the user (required by Android OS). This is not optional: without a Foreground Service, background downloads will be silently throttled or killed.
+
+**Implementation approach:** Use the `flutter_foreground_task` package (stable, actively maintained as of May 2026) to spawn a Foreground Service for the duration of the download. The download itself continues in an isolate managed by the service.
+
+**Steps:**
+1. Add `flutter_foreground_task` to `pubspec.yaml`.
+2. Add the required Android manifest entries: `<service>` declaration, `FOREGROUND_SERVICE` permission, `FOREGROUND_SERVICE_DATA_SYNC` type (required on Android 14+).
+3. Create a `UpdateDownloadTask` that implements `TaskHandler` (the interface from `flutter_foreground_task`). It runs `UpdateDownloadService.download()` inside the service isolate and communicates progress back to the UI via `FlutterForegroundTask.sendDataToMain`.
+4. The notification must show "Downloading Church Analytics update (XX%)" while in progress. This is a mandatory UX change — the user will see a notification during download.
+5. Wrap the existing download trigger in `about_updates_card.dart` to start the foreground task instead of calling the service directly.
+
+**Desktop platforms (Windows, Linux):** Foreground services do not exist on desktop. The download already continues naturally in the background on desktop (the OS does not throttle Flutter desktop apps the same way). No change required for desktop.
+
+**Risk assessment:** This is the highest-complexity item in the report. It introduces a new Flutter package, requires Android manifest changes, and changes the threading model of the download from the main isolate to a Foreground Service isolate. The communication channel (Dart isolate ↔ UI) has its own complexity. It also adds a mandatory notification, which changes the UX. This item should be the last update-system item implemented, after all others are tested. Estimated implementation effort: 2–3 days with tests.
+
+**Alternative (lower risk):** Use `wakelock_plus` to prevent the screen from sleeping during download, combined with a clear "don't leave the app until download completes" message in the progress dialog. This does not solve backgrounding but reduces accidental interruption. Implement this as a temporary stopgap while FEAT-008 is in development.
+
+---
+
+<a name="feat-009"></a>
+## FEAT-009 — Platform feature parity audit
+
+### Current State
+The app targets Android and Windows (primary), with Linux support in the build config. Several features have platform-specific branches. A formal parity audit has not been documented.
+
+### Findings from Code Review
+
+| Feature | Android | Windows | Linux |
+|---|---|---|---|
+| Update download | ✅ Full | ✅ Full (ZIP extract) | ✅ Full (tar extract) |
+| Update install | ✅ APK open intent | ⚠️ Manual copy required | ⚠️ Manual copy required |
+| Log export | ❌ Broken (BUG-002) | ✅ Works | ✅ Works |
+| Backup / restore | ✅ | ✅ | ✅ |
+| PDF export | ✅ | ✅ | ✅ |
+| CSV export | ✅ | ✅ | ✅ |
+| CSV import | ✅ | ✅ | ✅ |
+| Onboarding tutorial | ✅ | ✅ | ✅ |
+| Crash recovery dialog | ✅ | ✅ | ✅ |
+| Permission request (install) | ⚠️ Reactive only (FEAT-002) | N/A | N/A |
+| Background download | ❌ Backgrounding kills it | ✅ OS allows it | ✅ OS allows it |
+| File picker (save location) | ✅ via `file_picker` | ✅ via `file_picker` | ✅ via `file_picker` |
+
+**Key gaps:**
+- Android log export is broken (BUG-002 above).
+- Windows/Linux update install requires the user to manually copy files. This is a known limitation documented in the code (`PlatformInstallerLaunchService._launchWindows()`). Future work could automate the swap via a small helper launcher, but this is out of scope for the current report.
+- Android background download requires a Foreground Service (FEAT-008 above).
+
+### Proposed Change
+
+No code changes in this item beyond what is described in BUG-002 and FEAT-008. This item exists to document the current parity state so any developer picking up this project has a clear baseline and does not accidentally introduce a feature that exists only on one platform.
+
+**Action:** Add a `docs/PLATFORM_PARITY.md` file summarising the table above and noting which items are known limitations vs. bugs. Update it whenever a platform-specific code path is added.
+
+---
+
+<a name="feat-010"></a>
+## FEAT-010 — Baptism & Holy Communion graphs
+
+**Status:** Complete (2026-05-12)
+
+*This section is carried forward from v1.0 of this report with minor additions.*
+
+### Current State (Confirmed by Code Review)
+
+**Baptisms:** Stored on `WeeklyRecord.baptisms` (nullable int). `AnalyticsService.baptismsTrend()` exists but is connected to nothing — no graph, no PDF widget, no UI card renders it anywhere.
+
+**Holy Communion:** Two data sources:
+- `WeeklyRecord.holyCommunion` (nullable int, simple weekly flag)
+- `HolyCommunionEvent` — rich model with quarterly event data, per-home-church actual vs expected attendance, `overallRate`, `quarterLabel`
+
+Three methods in `AnalyticsService` operate on `HolyCommunionEvent`:
+- `holyCommunionRateTrend(events)`
+- `holyCommunionActualVsExpected(events)`
+- `holyCommunionByHomeChurch(event)`
+
+**Zero of these three are connected to any graph, screen, or PDF export.** `holyCommunionEventsProvider` exists in `lib/services/weekly_records_provider.dart` and is ready to consume.
+
+### Proposed Graph Set
+
+#### Baptisms → `PdfGraphCategory.attendance`
+
+| Graph ID | Chart Type | Analytics Method |
+|---|---|---|
+| `baptismsTrend` | Line | `baptismsTrend(records)` |
+| `baptismsMonthly` | Bar | aggregate by month from `baptismsTrend` |
+| `baptismsCumulative` | Line | running sum from `baptismsTrend` |
+
+Monthly aggregation matters because individual weekly baptism counts are often 0 or 1 — a monthly bar gives better visual signal for leadership. Cumulative is the number pastoral leadership cares about at year-end.
+
+#### Holy Communion → new `PdfGraphCategory.holyCommunion`
+
+| Graph ID | Chart Type | Analytics Method |
+|---|---|---|
+| `communionAttendanceRateTrend` | Line | `holyCommunionRateTrend(events)` |
+| `communionActualVsExpected` | Grouped bar | `holyCommunionActualVsExpected(events)` |
+| `communionByHomeChurch` | Grouped bar | `holyCommunionByHomeChurch(event)` |
+| `communionQuarterlyComparison` | Bar | `totalActual` per `quarterLabel` |
+
+### File-by-File Changes (All Additive)
+
+**`lib/services/pdf_graph_catalogue.dart`**
+- Add 3 enum values to `PdfGraphId`: `baptismsTrend`, `baptismsMonthly`, `baptismsCumulative`
+- Add 4 enum values to `PdfGraphId`: `communionAttendanceRateTrend`, `communionActualVsExpected`, `communionByHomeChurch`, `communionQuarterlyComparison`
+- Add `PdfGraphCategory.holyCommunion`
+- Add `'Holy Communion'` entry to `kPdfGraphCategoryLabels`
+- Add 7 new `PdfGraphOption` entries to `kPdfGraphCatalogue`
+
+**`lib/services/pdf_chart_builder.dart`**
+- Add 3 static methods for baptism charts (all take `List<WeeklyRecord>`)
+- Add 4 static methods for communion charts (all take `List<HolyCommunionEvent>`)
+
+**`lib/services/pdf_report_service.dart`**
+- `buildGraph()` receives a new optional parameter: `List<HolyCommunionEvent> communionEvents = const []`
+- Add 7 new `case` branches in `buildGraph()` switch
+- Pass the same optional parameter through `buildMultiChartReport()`
+
+**`lib/ui/screens/reports_screen.dart`**
+- `_exportPdf()` watches `holyCommunionEventsProvider` (provider already exists)
+- Passes the resolved list to `buildMultiChartReport(communionEvents: events)`
+- No UI changes needed — `_buildReportBuilderCard` already iterates `kPdfGraphCatalogue` dynamically
+
+**Risk:** None. Adding enum values is backwards-compatible. The 13 existing graphs and their IDs are entirely untouched. Dart enforces exhaustive switch at compile time — any unhandled new case will be a compile-time warning, not a silent runtime failure.
+
+---
+
+<a name="feat-011"></a>
+## FEAT-011 — PDF export completeness
+
+After FEAT-010 is implemented, the PDF export will cover 20 graphs across 4 categories:
+
+- **Attendance (8):** Total Attendance Trend, Demographic Breakdown, Attendance Growth Rate, Home Church Trend, Adult vs Young Distribution, Baptisms Trend, Baptisms Monthly, Baptisms Cumulative
+- **Financial (5):** Total Income Trend, Income Composition, Tithe vs Offerings Trend, Income Per Attendee, Regular vs Special Income
+- **Ratios & Correlations (3):** Per-Capita Giving Trend, Men:Women Ratio Trend, Adult:Young Ratio Trend
+- **Holy Communion (4):** Attendance Rate Trend, Actual vs Expected, By Home Church, Quarterly Comparison
+
+That covers every meaningful metric the app currently tracks. No gap will remain after FEAT-010.
+
+The catalogue-driven architecture (`kPdfGraphCatalogue` → `buildGraph()` switch) means adding another graph in the future requires only: one new enum value, one new `PdfGraphOption`, and one new `case`. The UI, pipeline, and layout update automatically. No changes to this section beyond what FEAT-010 specifies.
+
+---
+
+<a name="feat-012"></a>
+## FEAT-012 — App icon customisation documentation
+
+### Current State
+`flutter_launcher_icons: ^0.14.1` is in `pubspec.yaml` (confirmed). The icon source is `assets/images/app_icon.png`. The tooling is already fully configured for all platforms.
+
+### What Is Missing
+Clear documentation for church developers who fork the project.
+
+### Proposed Change
+
+Create `docs/CUSTOMISATION.md`:
+
+```markdown
+# Customising Church Analytics
+
+## App Icon
+
+Replace `assets/images/app_icon.png` with your own 1024×1024 PNG.
+
+Rules:
+- Square dimensions required (1024×1024 recommended)
+- Transparent background is supported (Android adaptive icon will apply a background colour)
+- Do not rename the file — the pubspec.yaml config references it by path
+
+Then run:
+```
+dart run flutter_launcher_icons
+```
+
+Then rebuild:
+```
+flutter build apk --release         # Android
+flutter build windows --release     # Windows
+```
+
+The config in pubspec.yaml already handles Android adaptive icons, Windows .ico, web favicon, and Linux icons from this single source file. No further configuration is needed.
+
+**Tip:** Add an `assets/images/app_icon_template.png` — a 1024×1024 blank white square with a centred placeholder cross or church icon — as a starting point for forking churches.
+```
+
+No code changes. Documentation only.
+
+---
+
+<a name="feat-013"></a>
+## FEAT-013 — App name documentation for forks
+
+### Current State — Where the App Name Lives
+
+| File | Value | Controls |
+|---|---|---|
+| `android/app/src/main/AndroidManifest.xml` | `android:label="church_analytics"` | Android launcher name |
+| `android/app/build.gradle.kts` | `applicationId = "com.church.church_analytics"` | Android package ID |
+| `pubspec.yaml` | `name: church_analytics` | Dart package name (internal only, not user-visible) |
+| `lib/` (multiple screens) | Hardcoded string `"Church Analytics"` | App bar titles, About screen |
+| `windows/runner/Runner.rc` | `ProductName`, `FileDescription` | Windows taskbar/title |
+
+### Proposed Change
+
+Create `docs/FORKING.md`:
+
+```markdown
+# Forking Church Analytics for Your Church
+
+## Step 1 — Android launcher name (what users see on their home screen)
+Edit `android/app/src/main/AndroidManifest.xml`:
+Change `android:label="church_analytics"` to your church name.
+Example: `android:label="Nairobi Central SDA"`
+
+## Step 2 — Android application ID (required if publishing to Play Store)
+Edit `android/app/build.gradle.kts`:
+Change both `namespace` and `applicationId` from `com.church.church_analytics`
+to a unique reverse-domain ID for your church.
+Example: `com.nairobicentralsda.analytics`
+
+Two apps on the Play Store cannot share the same applicationId.
+
+## Step 3 — Windows app name
+Edit `windows/runner/Runner.rc`:
+Change the `VALUE "ProductName"` and `VALUE "FileDescription"` strings.
+
+## Step 4 — In-app display name
+Search the `lib/` directory for the string `"Church Analytics"` and replace
+with your church name. These appear in app bar titles and the About screen.
+(Approximately 8–12 occurrences across screens.)
+
+## Step 5 — App icon
+Follow the instructions in `docs/CUSTOMISATION.md`.
+
+## Step 6 — Signing (critical for Play Store)
+Generate a new signing keystore for your fork.
+Do not reuse the original church's keystore.
+Follow the Android keytool documentation or Android Studio's signing wizard.
+
+## Step 7 — `pubspec.yaml` name field
+The `name: church_analytics` field is the Dart package name.
+It is referenced internally by imports (`package:church_analytics/...`).
+If you change it, you must run a find-and-replace across all `lib/` imports.
+This step is optional if you are not publishing to pub.dev.
+```
+
+No code changes. Documentation only.
+
+---
+
+<a name="feat-014"></a>
+## FEAT-014 — Home screen: view full list of imported data
+
+### Current State
+The home screen surfaces summary cards and charts, but there is no way to open a complete list of the data that has already been imported. Users must navigate into individual modules (or cannot find the records at all) to confirm what was imported.
+
+### What Is Requested
+From the home screen, provide a "View all imported data" entry that opens a full list of imported records for the current church, with basic filters (type and date) and a read-only view of each record.
+
+### Proposed Change
+
+**Add a simple entry point on the home screen.**
+In `lib/ui/screens/dashboard_screen.dart`, add a "View all data" button or list tile in the data summary area.
+
+**Create a new list screen.**
+Add `lib/ui/screens/imported_data_screen.dart` that:
+- loads imported records via existing repositories/providers
+- groups by data type (tabs or filter chips)
+- provides date range filtering and search
+- navigates to existing detail/edit screens when an item is tapped
+
+**Keep it read-only.** Deletion or editing remains in the existing screens; this screen only exposes the full list.
+
+### Risk
+Low. This is a new, read-only screen plus a single navigation entry on the home screen.
+
+---
+
+<a name="feat-015"></a>
+## FEAT-015 — Data management: delete imported records
+
+### Current State
+Imported records can be edited/updated, but there is no delete action in the UI. Mistakes in imported data cannot be removed without manual database edits.
+
+### What Is Requested
+Allow users to delete imported records from the app UI, with a confirmation step to prevent accidental loss.
+
+### Proposed Change
+
+**Add delete actions to record views.**
+- Add a "Delete" button or menu action in existing record detail/edit screens.
+- Confirm with a destructive dialog ("Delete" / "Cancel").
+
+**Wire delete through repositories/DAOs.**
+- Add `delete` methods where missing in `lib/repositories/` and `lib/database/` so the UI can remove records safely.
+- After deletion, refresh providers so dashboards and charts update.
+
+**Guard against accidental loss.**
+- Show a success snackbar and remove the item from lists immediately.
+- If a record is referenced elsewhere, block deletion with a clear message (or cascade-delete if appropriate).
+
+### Risk
+Medium. This introduces destructive operations and requires careful confirmation and state refresh to avoid orphaned references.
+
+---
+
+<a name="testing-checklist"></a>
+## Testing Checklist
+
+### BUG-001 — Back button fix
+
+- [ ] `flutter analyze` passes with zero warnings on changed files
+- [ ] On Android: launch app fresh → navigate to Dashboard → press system back button → app exits cleanly (does not show loading screen)
+- [ ] On Android: launch app fresh → navigate to Dashboard → press AppBar back arrow → no arrow is visible (since `PopScope(canPop: false)` removes it)
+- [ ] On Android: first launch, onboarding not complete → crash dialog (simulate a crash) → confirm startup proceeds normally without double navigation
+- [ ] On Android: first launch, race condition simulation → add 500ms artificial delay to `_routeFromState()` → confirm onboarding is shown, completing it resolves to dashboard correctly
+
+### BUG-002 — Log export
+
+- [ ] On Android: App Logs screen → Export → file is written to external storage directory → snackbar shows file path
+- [ ] On Android: External storage unavailable (rooted device, secondary storage absent) → fallback to internal documents directory → export succeeds
+- [ ] On Linux/macOS/Windows: existing log export paths still work unchanged
+
+### FEAT-001 — Tutorial opt-in
+
+- [ ] First launch (onboarding flag not set): dialog appears asking about tour
+- [ ] User taps "Skip for now": dialog dismissed, onboarding flag is set to true, no overlay shown, app proceeds normally
+- [ ] User taps "Show me around": OnboardingOverlay is pushed and works through all 5 slides as before
+- [ ] Second launch: dialog does NOT appear (flag is set)
+- [ ] Settings → Help & Tutorial: overlay opens as before, flag NOT changed (fromSettings: true)
+
+### FEAT-002 — Permission request
+
+- [ ] Android 8+ with `REQUEST_INSTALL_PACKAGES` denied: tapping Download Update shows permission dialog
+- [ ] User taps Cancel: download does not start
+- [ ] User taps Open Settings: system settings screen opens; after returning, if permission still denied, download does not start
+- [ ] Android 7 and below: permission check skipped (API not available), existing flow unchanged
+- [ ] Windows: permission check skipped entirely, download proceeds as before
+
+### FEAT-003 — Backup before update
+
+- [ ] Pre-update backup dialog appears before install confirmation dialog
+- [ ] "Cancel" in backup dialog: entire update flow aborted
+- [ ] "Skip & Update": backup dialog dismissed, install confirmation appears as before
+- [ ] "Back Up Now": `BackupService.createBackup()` is called, progress shown, on success a checkmark + file path shown, then install confirmation appears
+- [ ] "Back Up Now" with backup failure: error message shown in dialog, user can still skip and proceed
+
+### FEAT-004 — Auto-delete installer
+
+- [ ] Android: after successful APK open intent, the APK file no longer exists in temp directory
+- [ ] Next cold start: `_cleanUpStaleApks()` runs silently, any leftover `.apk` files in system temp are deleted, no error surfaced to user
+
+### FEAT-005 — Already-downloaded package
+
+- [ ] Download APK fully → simulate install failure (deny permission) → tap Download Update again → download is skipped (100% progress shown immediately) → install proceeds
+- [ ] Download APK fully → corrupt the file (modify a byte) → tap Download Update again → corrupt file is deleted, fresh download starts
+
+### FEAT-006 — Pause/resume (requires FEAT-006 to be implemented first)
+
+- [ ] Verify production APK URL returns `Accept-Ranges: bytes` in HEAD response before implementing
+- [ ] Start download → pause → bytes on disk match progress percentage
+- [ ] Resume → download continues from byte offset, not from zero
+- [ ] Cancel after pause → partial file deleted
+- [ ] Full checksum verification passes after a pause-resume cycle
+
+### FEAT-007 — Resume after closure
+
+- [ ] Start download → kill app mid-download → relaunch → "Resume interrupted download?" dialog appears
+- [ ] Choose Discard → partial file deleted, SharedPreferences key cleared
+- [ ] Choose Resume → download continues from saved offset (requires FEAT-006)
+- [ ] Partial file missing on disk → dialog does NOT appear, SharedPreferences key is silently cleared
+
+### FEAT-010 — Baptism & Holy Communion graphs
+
+- [ ] `flutter analyze` → zero warnings
+- [ ] `kPdfGraphCatalogue.length == 20`
+- [ ] Every `PdfGraphId` appears exactly once in `kPdfGraphCatalogue`
+- [ ] All 3 baptism chart builder methods handle empty dataset without throwing
+- [ ] All 4 communion chart builder methods handle empty dataset without throwing
+- [ ] Reports screen: all 20 graphs appear, grouped by category, "Holy Communion" section header visible
+- [ ] Select all 20 → export PDF → PDF opens without crash
+- [ ] Select only communion graphs with zero events in DB → PDF renders empty-chart placeholders, no crash
+- [ ] All 13 original graphs render identically to pre-change baseline
+- [ ] Existing `flutter test` suite passes
+
+### FEAT-014 — Home screen full data list
+
+- [ ] Home screen shows a "View all data" entry when a church is selected
+- [ ] Tapping opens the Imported Data screen with the full list for the current church
+- [ ] Type/date filters update the list correctly
+- [ ] Empty state is shown when no data has been imported
+
+### FEAT-015 — Delete imported records
+
+- [ ] Delete action is visible in record detail/edit screens
+- [ ] Cancel leaves the record unchanged
+- [ ] Confirm delete removes the record and it stays deleted after app restart
+- [ ] Dashboards and charts refresh to reflect the deletion
+
+---
+
+<a name="risk-summary"></a>
+## Risk Summary
+
+| Item | Risk | Reason |
+|---|---|---|
+| BUG-001 flag guard in `StartupGateScreen` | Low | Additive guard, does not change routing logic |
+| BUG-001 `PopScope` on `DashboardScreen` | Low | Standard Flutter API replacing deprecated pattern; changes back-press to app-exit |
+| BUG-002 Android log export path | None | New branch only; existing desktop branches untouched |
+| FEAT-001 Tutorial opt-in dialog | None | 3-line change in callback; `OnboardingOverlay` untouched |
+| FEAT-002 Permission request (Android) | Low | New package (`permission_handler`); guarded by `Platform.isAndroid` |
+| FEAT-003 Backup before update | Low | New dialog + new file; existing install flow unchanged |
+| FEAT-004 Auto-delete installer | None | Best-effort, never throws, never blocks app exit |
+| FEAT-005 Already-downloaded package check | None | Additive file-exists check before network call |
+| FEAT-006 Pause/resume download | Medium | Core change to download streaming strategy; requires thorough testing |
+| FEAT-007 Resume after closure | Low | Depends on FEAT-006; persistence is SharedPreferences only |
+| FEAT-008 Background download (Android) | High | New package, foreground service, isolate communication, manifest changes |
+| FEAT-009 Platform parity doc | None | Documentation only |
+| FEAT-010 Baptism & Communion graphs | None | Entirely additive; 13 existing graphs untouched |
+| FEAT-011 PDF completeness | None | Consequence of FEAT-010 |
+| FEAT-012 Icon doc | None | Documentation only |
+| FEAT-013 Fork name doc | None | Documentation only |
+| FEAT-014 Home screen full data list | Low | New read-only screen plus navigation entry |
+| FEAT-015 Delete imported records | Medium | Destructive actions; data integrity and refresh required |
+
+**Recommended implementation order:**
+1. BUG-001, BUG-002 (fixes first)
+2. FEAT-001, FEAT-004, FEAT-005 (low-risk features)
+3. FEAT-014, FEAT-015 (data management)
+4. FEAT-010, FEAT-011, FEAT-012, FEAT-013 (analytics and docs)
+5. FEAT-002, FEAT-003, FEAT-009 (update system, lower complexity)
+6. FEAT-006, FEAT-007 (update system, medium complexity — implement together)
+7. FEAT-008 (implement last, highest complexity)

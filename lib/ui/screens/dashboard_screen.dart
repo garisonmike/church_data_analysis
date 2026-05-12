@@ -6,6 +6,7 @@ import 'package:church_analytics/services/services.dart';
 import 'package:church_analytics/ui/screens/screens.dart';
 import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // BUG-001: SystemNavigator.pop()
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -126,93 +127,105 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final isMedium = width >= 600 && width < 840;
     final isWide = width >= 840;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Church Analytics Dashboard',
-          overflow: TextOverflow.ellipsis,
-        ),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          if (isWide) ...[
-            IconButton(
-              icon: const Icon(Icons.dashboard_customize),
-              onPressed: _openLayoutEditor,
-              tooltip: 'Customize Dashboard',
-              style: IconButton.styleFrom(
-                minimumSize: const Size(48, 48),
-                visualDensity: VisualDensity.standard,
+    // BUG-001 fix (Problem B): PopScope prevents back-navigation from the root
+    // dashboard to a ghost StartupGateScreen entry.  canPop: false also hides
+    // the AppBar back arrow automatically.  onPopInvokedWithResult exits the
+    // app cleanly when the user presses the system back button.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) SystemNavigator.pop();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Church Analytics Dashboard',
+            overflow: TextOverflow.ellipsis,
+          ),
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          actions: [
+            if (isWide) ...[
+              IconButton(
+                icon: const Icon(Icons.dashboard_customize),
+                onPressed: _openLayoutEditor,
+                tooltip: 'Customize Dashboard',
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                  visualDensity: VisualDensity.standard,
+                ),
               ),
-            ),
-            ChurchSelectorWidget(onChurchChanged: _loadData),
-            if (_profileService != null)
-              ProfileSwitcherWidget(
-                churchId: widget.churchId,
-                profileService: _profileService!,
-                onProfileChanged: _loadData,
+              ChurchSelectorWidget(onChurchChanged: _loadData),
+              if (_profileService != null)
+                ProfileSwitcherWidget(
+                  churchId: widget.churchId,
+                  profileService: _profileService!,
+                  onProfileChanged: _loadData,
+                ),
+              IconButton(
+                icon: const Icon(Icons.analytics_outlined),
+                onPressed: _openReports,
+                tooltip: 'Reports & Backup',
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                  visualDensity: VisualDensity.standard,
+                ),
               ),
+            ],
+            _buildSettingsMenu(),
+            if (isNarrow || isMedium) _buildOverflowMenu(),
             IconButton(
-              icon: const Icon(Icons.analytics_outlined),
-              onPressed: _openReports,
-              tooltip: 'Reports & Backup',
+              icon: const Icon(Icons.refresh),
+              onPressed: _loadData,
+              tooltip: 'Refresh',
               style: IconButton.styleFrom(
                 minimumSize: const Size(48, 48),
                 visualDensity: VisualDensity.standard,
               ),
             ),
           ],
-          _buildSettingsMenu(),
-          if (isNarrow || isMedium) _buildOverflowMenu(),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: 'Refresh',
-            style: IconButton.styleFrom(
-              minimumSize: const Size(48, 48),
-              visualDensity: VisualDensity.standard,
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          if (_showUpdateBanner && _latestUpdateVersion != null)
-            UpdateAvailableBanner(
-              version: _latestUpdateVersion!,
-              onDismiss: () => setState(() => _showUpdateBanner = false),
-              onGoToSettings: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      ChurchSettingsScreen(churchId: widget.churchId),
+        ),
+        body: Column(
+          children: [
+            if (_showUpdateBanner && _latestUpdateVersion != null)
+              UpdateAvailableBanner(
+                version: _latestUpdateVersion!,
+                onDismiss: () => setState(() => _showUpdateBanner = false),
+                onGoToSettings: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        ChurchSettingsScreen(churchId: widget.churchId),
+                  ),
                 ),
               ),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                  ? _buildErrorView()
+                  : _recentRecords.isEmpty
+                  ? _buildEmptyView()
+                  : _buildDashboardContent(),
             ),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage != null
-                ? _buildErrorView()
-                : _recentRecords.isEmpty
-                ? _buildEmptyView()
-                : _buildDashboardContent(),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const WeeklyEntryScreen()),
-          );
-          if (result == true) {
-            _loadData();
-          }
-        },
-        tooltip: 'Add Weekly Entry',
-        child: const Icon(Icons.add),
-      ),
-    );
+          ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const WeeklyEntryScreen(),
+              ),
+            );
+            if (result == true) {
+              _loadData();
+            }
+          },
+          tooltip: 'Add Weekly Entry',
+          child: const Icon(Icons.add),
+        ),
+      ), // closes child: Scaffold(
+    ); // closes PopScope(
   }
 
   Widget _buildErrorView() {
