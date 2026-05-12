@@ -55,10 +55,11 @@ flutterTest.txt
 failedTests.txt
 flutterAnalyze.txt
 
-# Android signing keys
-android/keystore.jks
-android/key.properties
+# Local secrets and generated artifacts
+*.env
 *.jks
 *.keystore
-*.env
 /keystore_b64.txt
+android/keystore.jks
+android/key.properties
+linux/flutter/generated_plugins.cmake
