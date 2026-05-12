@@ -1,15 +1,15 @@
 {
-    "version": "1.2.3",
-    "release_date": "2026-03-07",
+    "version": "1.3.0",
+    "release_date": "2026-05-12",
     "min_supported_version": "1.0.0",
-    "release_notes": "## What's New\n\n- **Android**: Share button after export now works correctly\n- **Android**: Export path no longer falls back to inaccessible private storage\n- **Windows**: Update installer now correctly extracts the ZIP archive via PowerShell\n- **Linux**: Update installer hint now shows the extraction path and copy instructions\n\n## Bug Fixes\n\n- Fixed PDF export crash on Android (Save As dialog now uses folder picker)\n- Fixed share button silently failing on Android due to FileProvider scope\n- Fixed Windows in-app update trying to execute a ZIP file as an installer\n- Fixed Linux update hint falsely implying a restart completes the update",
+    "release_notes": "## What's New\n\n- Holy Communion weekly tracking added (nullable per week)\n\n## Bug Fixes\n\n- Syncfusion license key injection point prepared in app startup\n- Optional PIN authentication added to admin profiles\n- WeeklyEntryScreen now uses route arguments for church ID\n- Baptisms column added to weekly records\n- Dashboard now shows all church records by default\n- Update manifest URL can be switched for debug builds\n- Date validation allows up to 2 days in the future\n- Added named routes for analytics and reports screens\n- Chart widgets consolidated into lib/ui/widgets/charts\n- PerformanceMonitor caps stored measurements and exposes clearAll()\n- Pubspec description updated",
     "platforms": {
         "android": {
-            "download_url": "https://github.com/GarisonMike/church_data_analysis/releases/download/v1.2.3/app-release.apk",
+            "download_url": "https://github.com/GarisonMike/church_data_analysis/releases/download/v1.3.0/app-release.apk",
             "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
         },
         "windows": {
-            "download_url": "https://github.com/GarisonMike/church_data_analysis/releases/download/v1.2.3/ChurchAnalytics-Windows.zip",
+            "download_url": "https://github.com/GarisonMike/church_data_analysis/releases/download/v1.3.0/ChurchAnalytics-Windows.zip",
             "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
         }
     }
