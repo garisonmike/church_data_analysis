@@ -58,3 +58,7 @@ flutterAnalyze.txt
 # Android signing keys
 android/keystore.jks
 android/key.properties
+*.jks
+*.keystore
+*.env
+/keystore_b64.txt
