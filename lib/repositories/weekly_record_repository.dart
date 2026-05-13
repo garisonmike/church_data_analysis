@@ -1,14 +1,34 @@
 import 'package:drift/drift.dart';
 
 import 'package:church_analytics/database/app_database.dart';
-import 'package:church_analytics/models/models.dart';
+import 'package:church_analytics/models/models.dart' as domain;
 
 // ignore_for_file: prefer_expression_function_bodies
 
-/// Repository for [WeeklyRecord] — the core Sabbath attendance + finance table.
+/// Paginated result returned by [WeeklyRecordRepository.getRecordsPaginated]
+/// and [WeeklyRecordRepository.getRecordsPaginatedByAdmin].
+class PaginatedWeeklyRecords {
+  final List<domain.WeeklyRecord> records;
+  final int totalCount;
+
+  const PaginatedWeeklyRecords({
+    required this.records,
+    required this.totalCount,
+  });
+}
+
+/// Repository for [domain.WeeklyRecord] — the core Sabbath attendance +
+/// finance table.
 ///
-/// This is the only layer permitted to touch Drift directly for this table.
-/// All methods return domain [WeeklyRecord] models, never raw Drift rows.
+/// All public methods accept and return **domain** [domain.WeeklyRecord]
+/// objects, never raw Drift row objects.
+///
+/// ### Name-conflict resolution
+/// Drift auto-generates a row class also called `WeeklyRecord` (from the
+/// `WeeklyRecords` table definition).  To prevent the analyser from seeing
+/// an ambiguous reference, the domain models barrel is imported under the
+/// `domain` prefix, so unqualified `WeeklyRecord` inside this file always
+/// refers to the Drift-generated type.
 class WeeklyRecordRepository {
   final AppDatabase _db;
 
@@ -17,7 +37,7 @@ class WeeklyRecordRepository {
   // ── queries ───────────────────────────────────────────────────────────────
 
   /// Returns all records for [churchId], most recent first.
-  Future<List<WeeklyRecord>> getRecordsByChurch(int churchId) async {
+  Future<List<domain.WeeklyRecord>> getRecordsByChurch(int churchId) async {
     final rows = await (_db.select(_db.weeklyRecords)
           ..where((t) => t.churchId.equals(churchId))
           ..orderBy([(t) => OrderingTerm.desc(t.weekStartDate)]))
@@ -25,8 +45,53 @@ class WeeklyRecordRepository {
     return rows.map(_toModel).toList();
   }
 
-  /// Returns a single record by primary key, or `null` if not found.
-  Future<WeeklyRecord?> getRecordById(int id) async {
+  /// Alias for [getRecordsByChurch] used by [WeeklyRecordsNotifier] when
+  /// [ChartTimeRange.all] is selected with no admin filter.
+  Future<List<domain.WeeklyRecord>> getAllRecords(int churchId) =>
+      getRecordsByChurch(churchId);
+
+  /// All records for [churchId] created by [adminId], most recent first.
+  Future<List<domain.WeeklyRecord>> getAllRecordsByAdmin(
+      int churchId, int adminId) async {
+    final rows = await (_db.select(_db.weeklyRecords)
+          ..where((t) =>
+              t.churchId.equals(churchId) &
+              t.createdByAdminId.equals(adminId))
+          ..orderBy([(t) => OrderingTerm.desc(t.weekStartDate)]))
+        .get();
+    return rows.map(_toModel).toList();
+  }
+
+  /// Records for [churchId] whose [weekStartDate] falls within the last
+  /// [weeks] weeks, most recent first.
+  Future<List<domain.WeeklyRecord>> getRecentRecords(
+      int churchId, int weeks) async {
+    final cutoff = DateTime.now().subtract(Duration(days: weeks * 7));
+    final rows = await (_db.select(_db.weeklyRecords)
+          ..where((t) =>
+              t.churchId.equals(churchId) &
+              t.weekStartDate.isBiggerOrEqualValue(cutoff))
+          ..orderBy([(t) => OrderingTerm.desc(t.weekStartDate)]))
+        .get();
+    return rows.map(_toModel).toList();
+  }
+
+  /// Recent records filtered to a specific [adminId].
+  Future<List<domain.WeeklyRecord>> getRecentRecordsByAdmin(
+      int churchId, int adminId, int weeks) async {
+    final cutoff = DateTime.now().subtract(Duration(days: weeks * 7));
+    final rows = await (_db.select(_db.weeklyRecords)
+          ..where((t) =>
+              t.churchId.equals(churchId) &
+              t.createdByAdminId.equals(adminId) &
+              t.weekStartDate.isBiggerOrEqualValue(cutoff))
+          ..orderBy([(t) => OrderingTerm.desc(t.weekStartDate)]))
+        .get();
+    return rows.map(_toModel).toList();
+  }
+
+  /// Returns a single record by primary key, or `null`.
+  Future<domain.WeeklyRecord?> getRecordById(int id) async {
     final row = await (_db.select(_db.weeklyRecords)
           ..where((t) => t.id.equals(id)))
         .getSingleOrNull();
@@ -34,7 +99,7 @@ class WeeklyRecordRepository {
   }
 
   /// Returns the record for a specific church and week start date, or `null`.
-  Future<WeeklyRecord?> getRecordByChurchAndDate(
+  Future<domain.WeeklyRecord?> getRecordByChurchAndDate(
       int churchId, DateTime weekStartDate) async {
     final row = await (_db.select(_db.weeklyRecords)
           ..where((t) =>
@@ -44,11 +109,103 @@ class WeeklyRecordRepository {
     return row == null ? null : _toModel(row);
   }
 
+  /// Returns records for [churchId] whose [weekStartDate] falls within the
+  /// inclusive [from]–[to] range, ordered oldest-first.
+  ///
+  /// Used by [database_test.dart] and any UI that needs a bounded date window
+  /// without the rolling-weeks approximation of [getRecentRecords].
+  Future<List<domain.WeeklyRecord>> getRecordsByDateRange(
+      int churchId, DateTime from, DateTime to) async {
+    final rows = await (_db.select(_db.weeklyRecords)
+          ..where((t) =>
+              t.churchId.equals(churchId) &
+              t.weekStartDate.isBiggerOrEqualValue(from) &
+              t.weekStartDate.isSmallerOrEqualValue(to))
+          ..orderBy([(t) => OrderingTerm.asc(t.weekStartDate)]))
+        .get();
+    return rows.map(_toModel).toList();
+  }
+
+  /// Returns `true` when a record already exists for [churchId] and
+  /// [weekStartDate].
+  ///
+  /// Used by [WeeklyEntryScreen] and [ImportScreen] to detect duplicates
+  /// before attempting an insert.
+  Future<bool> weekExists(int churchId, DateTime weekStartDate) async {
+    final row = await (_db.select(_db.weeklyRecords)
+          ..where((t) =>
+              t.churchId.equals(churchId) &
+              t.weekStartDate.equals(weekStartDate))
+          ..limit(1))
+        .getSingleOrNull();
+    return row != null;
+  }
+
+  // ── pagination ────────────────────────────────────────────────────────────
+
+  /// Returns a [PaginatedWeeklyRecords] for [churchId].
+  ///
+  /// [page] is zero-based; [pageSize] defaults to 20. Records are ordered
+  /// most-recent first. [PaginatedWeeklyRecords.totalCount] reflects the
+  /// full unfiltered row count so callers can compute page indicators.
+  Future<PaginatedWeeklyRecords> getRecordsPaginated(
+    int churchId, {
+    int page = 0,
+    int pageSize = 20,
+  }) async {
+    final countExpr = _db.weeklyRecords.id.count();
+    final countQuery = _db.selectOnly(_db.weeklyRecords)
+      ..addColumns([countExpr])
+      ..where(_db.weeklyRecords.churchId.equals(churchId));
+    final totalCount =
+        await countQuery.map((r) => r.read(countExpr)!).getSingle();
+
+    final rows = await (_db.select(_db.weeklyRecords)
+          ..where((t) => t.churchId.equals(churchId))
+          ..orderBy([(t) => OrderingTerm.desc(t.weekStartDate)])
+          ..limit(pageSize, offset: page * pageSize))
+        .get();
+
+    return PaginatedWeeklyRecords(
+      records: rows.map(_toModel).toList(),
+      totalCount: totalCount,
+    );
+  }
+
+  /// Paginated records filtered to a specific [adminId].
+  Future<PaginatedWeeklyRecords> getRecordsPaginatedByAdmin(
+    int churchId,
+    int adminId, {
+    int page = 0,
+    int pageSize = 20,
+  }) async {
+    final countExpr = _db.weeklyRecords.id.count();
+    final countQuery = _db.selectOnly(_db.weeklyRecords)
+      ..addColumns([countExpr])
+      ..where(_db.weeklyRecords.churchId.equals(churchId) &
+          _db.weeklyRecords.createdByAdminId.equals(adminId));
+    final totalCount =
+        await countQuery.map((r) => r.read(countExpr)!).getSingle();
+
+    final rows = await (_db.select(_db.weeklyRecords)
+          ..where((t) =>
+              t.churchId.equals(churchId) &
+              t.createdByAdminId.equals(adminId))
+          ..orderBy([(t) => OrderingTerm.desc(t.weekStartDate)])
+          ..limit(pageSize, offset: page * pageSize))
+        .get();
+
+    return PaginatedWeeklyRecords(
+      records: rows.map(_toModel).toList(),
+      totalCount: totalCount,
+    );
+  }
+
   // ── mutations ─────────────────────────────────────────────────────────────
 
-  /// Inserts a new weekly record. Throws if the church+date combination
-  /// already exists (enforced by the unique constraint on the table).
-  Future<WeeklyRecord> createRecord(WeeklyRecord record) async {
+  /// Inserts a new weekly record. Throws if the church+date unique constraint
+  /// is violated.
+  Future<domain.WeeklyRecord> createRecord(domain.WeeklyRecord record) async {
     final id = await _db.into(_db.weeklyRecords).insert(
           WeeklyRecordsCompanion.insert(
             churchId: record.churchId,
@@ -77,7 +234,7 @@ class WeeklyRecordRepository {
   }
 
   /// Replaces an existing weekly record. [record.id] must be non-null.
-  Future<void> updateRecord(WeeklyRecord record) async {
+  Future<void> updateRecord(domain.WeeklyRecord record) async {
     assert(record.id != null, 'updateRecord requires a non-null id');
     await (_db.update(_db.weeklyRecords)
           ..where((t) => t.id.equals(record.id!)))
@@ -106,21 +263,31 @@ class WeeklyRecordRepository {
     );
   }
 
+  /// Finds the row matching [record.churchId] + [record.weekStartDate] and
+  /// overwrites its fields. Returns `true` on success, `false` when no
+  /// matching row exists.
+  ///
+  /// Used by [ImportScreen]'s "update duplicate" strategy, where the incoming
+  /// domain record has no [id] yet.
+  Future<bool> updateRecordByWeekStartDate(domain.WeeklyRecord record) async {
+    final existing =
+        await getRecordByChurchAndDate(record.churchId, record.weekStartDate);
+    if (existing == null) return false;
+    await updateRecord(record.copyWith(id: existing.id));
+    return true;
+  }
+
   // ── FEAT-015 — delete ─────────────────────────────────────────────────────
 
   /// Permanently deletes a single weekly record by [id].
-  ///
-  /// Weekly records have no child rows in other tables, so a plain delete is
-  /// sufficient. Throws if the database operation fails.
   Future<void> deleteRecord(int id) async {
     await (_db.delete(_db.weeklyRecords)
           ..where((t) => t.id.equals(id)))
         .go();
   }
 
-  /// Permanently deletes all records whose IDs are in [ids].
-  ///
-  /// Runs as a single batch operation inside a transaction for atomicity.
+  /// Permanently deletes all records whose IDs are in [ids], in a single
+  /// transaction.
   Future<void> deleteRecords(List<int> ids) async {
     if (ids.isEmpty) return;
     await _db.transaction(() async {
@@ -134,7 +301,9 @@ class WeeklyRecordRepository {
 
   // ── mapping ───────────────────────────────────────────────────────────────
 
-  WeeklyRecord _toModel(db.WeeklyRecord row) => WeeklyRecord(
+  // [row] is the Drift-generated WeeklyRecord (unqualified); the return type
+  // is the domain model (qualified with `domain.`).
+  domain.WeeklyRecord _toModel(WeeklyRecord row) => domain.WeeklyRecord(
         id: row.id,
         churchId: row.churchId,
         createdByAdminId: row.createdByAdminId,

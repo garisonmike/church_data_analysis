@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
-import 'package:church_analytics/models/models.dart';
 import 'package:church_analytics/services/weekly_records_provider.dart';
+import 'package:church_analytics/ui/screens/weekly_entry_screen.dart';
+import 'package:church_analytics/ui/screens/board_meeting_entry_screen.dart';
+import 'package:church_analytics/ui/screens/holy_communion_entry_screen.dart';
+import 'package:church_analytics/ui/screens/business_meeting_entry_screen.dart';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ImportedDataScreen
@@ -115,36 +118,55 @@ class _ImportedDataScreenState extends ConsumerState<ImportedDataScreen>
     try {
       switch (_tab) {
         case 0: // Weekly Records
-          final repo = ref.read(weeklyRecordRepositoryProvider);
-          for (final id in ids) {
-            await repo.deleteRecord(id);
+          {
+            final repo = ref.read(weeklyRecordRepositoryProvider);
+            for (final id in ids) {
+              await repo.deleteRecord(id);
+            }
+            // Invalidate both providers that show weekly records:
+            //   • weeklyRecordsForChurchProvider — used by dashboard/charts (time-capped)
+            //   • allWeeklyRecordsForChurchProvider — used by this screen's Weekly tab
+            // Without invalidating allWeeklyRecordsForChurchProvider the deleted row
+            // would remain visible in the list until a manual refresh.
+            ref.invalidate(weeklyRecordsForChurchProvider(widget.churchId));
+            ref.invalidate(allWeeklyRecordsForChurchProvider(widget.churchId));
           }
-          ref.invalidate(weeklyRecordsProvider(widget.churchId));
 
         case 1: // Board Meeting Records
-          final repo = ref.read(boardMeetingRepositoryProvider);
-          for (final id in ids) {
-            await repo.deleteRecord(id);
+          {
+            final repo = ref.read(boardMeetingRepositoryProvider);
+            for (final id in ids) {
+              await repo.deleteRecord(id);
+            }
+            ref.invalidate(boardMeetingRecordsProvider(widget.churchId));
           }
-          ref.invalidate(boardMeetingRecordsProvider(widget.churchId));
 
         case 2: // Holy Communion Events
-          final repo = ref.read(holyCommunionRepositoryProvider);
-          for (final id in ids) {
-            await repo.deleteEvent(id);
+          {
+            final repo = ref.read(holyCommunionRepositoryProvider);
+            for (final id in ids) {
+              await repo.deleteEvent(id);
+            }
+            ref.invalidate(holyCommunionEventsProvider(widget.churchId));
           }
-          ref.invalidate(holyCommunionEventsProvider(widget.churchId));
 
         case 3: // Business Meeting Events
-          final repo = ref.read(businessMeetingRepositoryProvider);
-          for (final id in ids) {
-            await repo.deleteEvent(id);
+          {
+            final repo = ref.read(businessMeetingRepositoryProvider);
+            for (final id in ids) {
+              await repo.deleteEvent(id);
+            }
+            ref.invalidate(businessMeetingEventsProvider(widget.churchId));
           }
-          ref.invalidate(businessMeetingEventsProvider(widget.churchId));
       }
 
       if (!mounted) return;
       _clearSelection();
+      // FEAT-015 fix: signal the dashboard to reload its imperative _loadData()
+      // because it reads WeeklyRecordRepository directly rather than watching a
+      // provider. Incrementing the counter causes DashboardScreen's listener to
+      // call _loadData(), refreshing KPI cards and the Recent Weeks list.
+      ref.read(dashboardRefreshProvider.notifier).update((n) => n + 1);
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Deleted $noun.')),
       );
@@ -184,6 +206,25 @@ class _ImportedDataScreenState extends ConsumerState<ImportedDataScreen>
       _dateFrom[_tab] = null;
       _dateTo[_tab]   = null;
     });
+  }
+
+  // ── date matching helper ──────────────────────────────────────────────────
+
+  /// Returns true if [date] falls within the inclusive [from]–[to] range.
+  ///
+  /// Comparisons strip the time component so that a record stored at midnight
+  /// on [to] is correctly included.
+  bool _inDateRange(DateTime date, DateTime? from, DateTime? to) {
+    final d = DateTime(date.year, date.month, date.day);
+    if (from != null) {
+      final f = DateTime(from.year, from.month, from.day);
+      if (d.isBefore(f)) return false;
+    }
+    if (to != null) {
+      final t = DateTime(to.year, to.month, to.day);
+      if (d.isAfter(t)) return false;
+    }
+    return true;
   }
 
   // ── AppBar ────────────────────────────────────────────────────────────────
@@ -299,6 +340,7 @@ class _ImportedDataScreenState extends ConsumerState<ImportedDataScreen>
                   dateFrom: _dateFrom[0],
                   dateTo: _dateTo[0],
                   selected: _selected[0],
+                  inDateRange: _inDateRange,
                   onTap: _handleWeeklyTap,
                   onLongPress: _toggleSelect,
                   onCheckboxToggle: _toggleSelect,
@@ -309,6 +351,7 @@ class _ImportedDataScreenState extends ConsumerState<ImportedDataScreen>
                   dateFrom: _dateFrom[1],
                   dateTo: _dateTo[1],
                   selected: _selected[1],
+                  inDateRange: _inDateRange,
                   onTap: _handleBoardTap,
                   onLongPress: _toggleSelect,
                   onCheckboxToggle: _toggleSelect,
@@ -319,6 +362,7 @@ class _ImportedDataScreenState extends ConsumerState<ImportedDataScreen>
                   dateFrom: _dateFrom[2],
                   dateTo: _dateTo[2],
                   selected: _selected[2],
+                  inDateRange: _inDateRange,
                   onTap: _handleCommunionTap,
                   onLongPress: _toggleSelect,
                   onCheckboxToggle: _toggleSelect,
@@ -329,6 +373,7 @@ class _ImportedDataScreenState extends ConsumerState<ImportedDataScreen>
                   dateFrom: _dateFrom[3],
                   dateTo: _dateTo[3],
                   selected: _selected[3],
+                  inDateRange: _inDateRange,
                   onTap: _handleBusinessTap,
                   onLongPress: _toggleSelect,
                   onCheckboxToggle: _toggleSelect,
@@ -343,36 +388,93 @@ class _ImportedDataScreenState extends ConsumerState<ImportedDataScreen>
 
   // ── navigation to existing detail screens ────────────────────────────────
 
+  // FEAT-014 fix: fetch the full record object and push entry screens with it,
+  // so tapping a list item opens the *existing* record for editing rather than
+  // constructing a blank new-entry screen.
+
   void _handleWeeklyTap(int id) {
     if (_isSelecting) {
       _toggleSelect(id);
-    } else {
-      Navigator.of(context).pushNamed('/entry', arguments: widget.churchId);
+      return;
     }
+    // Fetch the record from the already-loaded provider and push with it.
+    final asyncRecords =
+        ref.read(allWeeklyRecordsForChurchProvider(widget.churchId));
+    final record = asyncRecords.valueOrNull
+        ?.firstWhere((r) => r.id == id, orElse: () => throw StateError(''));
+    if (record == null) return;
+    Navigator.of(context)
+        .push(MaterialPageRoute(
+          builder: (_) => WeeklyEntryScreen(existingRecord: record),
+        ))
+        .then((changed) {
+      if (changed == true) {
+        ref.invalidate(allWeeklyRecordsForChurchProvider(widget.churchId));
+      }
+    });
   }
 
   void _handleBoardTap(int id) {
     if (_isSelecting) {
       _toggleSelect(id);
-    } else {
-      Navigator.of(context).pushNamed('/board-meeting/entry');
+      return;
     }
+    final asyncRecords =
+        ref.read(boardMeetingRecordsProvider(widget.churchId));
+    final record = asyncRecords.valueOrNull
+        ?.firstWhere((r) => r.id == id, orElse: () => throw StateError(''));
+    if (record == null) return;
+    Navigator.of(context)
+        .push(MaterialPageRoute(
+          builder: (_) => BoardMeetingEntryScreen(existing: record),
+        ))
+        .then((changed) {
+      if (changed == true) {
+        ref.invalidate(boardMeetingRecordsProvider(widget.churchId));
+      }
+    });
   }
 
   void _handleCommunionTap(int id) {
     if (_isSelecting) {
       _toggleSelect(id);
-    } else {
-      Navigator.of(context).pushNamed('/holy-communion/entry');
+      return;
     }
+    final asyncEvents =
+        ref.read(holyCommunionEventsProvider(widget.churchId));
+    final event = asyncEvents.valueOrNull
+        ?.firstWhere((e) => e.id == id, orElse: () => throw StateError(''));
+    if (event == null) return;
+    Navigator.of(context)
+        .push(MaterialPageRoute(
+          builder: (_) => HolyCommunionEntryScreen(existing: event),
+        ))
+        .then((changed) {
+      if (changed == true) {
+        ref.invalidate(holyCommunionEventsProvider(widget.churchId));
+      }
+    });
   }
 
   void _handleBusinessTap(int id) {
     if (_isSelecting) {
       _toggleSelect(id);
-    } else {
-      Navigator.of(context).pushNamed('/business-meeting/entry');
+      return;
     }
+    final asyncEvents =
+        ref.read(businessMeetingEventsProvider(widget.churchId));
+    final event = asyncEvents.valueOrNull
+        ?.firstWhere((e) => e.id == id, orElse: () => throw StateError(''));
+    if (event == null) return;
+    Navigator.of(context)
+        .push(MaterialPageRoute(
+          builder: (_) => BusinessMeetingEntryScreen(existing: event),
+        ))
+        .then((changed) {
+      if (changed == true) {
+        ref.invalidate(businessMeetingEventsProvider(widget.churchId));
+      }
+    });
   }
 
   String _dateRangeLabel() {
@@ -387,74 +489,6 @@ class _ImportedDataScreenState extends ConsumerState<ImportedDataScreen>
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// _RecordListScaffold — shared loading / error / empty scaffold for each tab
-// ─────────────────────────────────────────────────────────────────────────────
-
-class _RecordListScaffold<T> extends StatelessWidget {
-  final AsyncValue<List<T>> asyncValue;
-  final List<T> Function(List<T>) filter;
-  final Widget Function(T item, bool isSelected) itemBuilder;
-  final String emptyMessage;
-
-  const _RecordListScaffold({
-    super.key,
-    required this.asyncValue,
-    required this.filter,
-    required this.itemBuilder,
-    required this.emptyMessage,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return asyncValue.when(
-      loading: () => const Center(child: CircularProgressIndicator()),
-      error: (e, _) => Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text('Failed to load data: $e',
-              style: TextStyle(color: Theme.of(context).colorScheme.error)),
-        ),
-      ),
-      data: (all) {
-        final items = filter(all);
-        if (items.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(Icons.inbox_outlined,
-                      size: 56,
-                      color: Theme.of(context).colorScheme.outline),
-                  const SizedBox(height: 12),
-                  Text(
-                    emptyMessage,
-                    textAlign: TextAlign.center,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: Theme.of(context).colorScheme.outline,
-                        ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
-        return ListView.separated(
-          padding: const EdgeInsets.symmetric(vertical: 8),
-          itemCount: items.length,
-          separatorBuilder: (_, __) => const Divider(height: 1, indent: 16),
-          itemBuilder: (ctx, i) {
-            // isSelected is resolved by the parent tab widget
-            return itemBuilder(items[i], false);
-          },
-        );
-      },
-    );
-  }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
 // Tab 0 — Weekly Records
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -464,6 +498,7 @@ class _WeeklyRecordsTab extends ConsumerWidget {
   final DateTime? dateFrom;
   final DateTime? dateTo;
   final Set<int> selected;
+  final bool Function(DateTime, DateTime?, DateTime?) inDateRange;
   final void Function(int) onTap;
   final void Function(int) onLongPress;
   final void Function(int) onCheckboxToggle;
@@ -474,6 +509,7 @@ class _WeeklyRecordsTab extends ConsumerWidget {
     required this.dateFrom,
     required this.dateTo,
     required this.selected,
+    required this.inDateRange,
     required this.onTap,
     required this.onLongPress,
     required this.onCheckboxToggle,
@@ -481,7 +517,9 @@ class _WeeklyRecordsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final asyncRecords = ref.watch(weeklyRecordsProvider(churchId));
+    // FEAT-014 fix: use allWeeklyRecordsForChurchProvider (not capped by
+    // chartTimeRangeProvider) so the list shows every record ever imported.
+    final asyncRecords = ref.watch(allWeeklyRecordsForChurchProvider(churchId));
     final dateFmt = DateFormat('EEE, d MMM yyyy');
     final currencyFmt = NumberFormat.compact();
 
@@ -496,11 +534,8 @@ class _WeeklyRecordsTab extends ConsumerWidget {
         final items = all.where((r) {
           final dateMatch = q.isEmpty ||
               dateFmt.format(r.weekStartDate).toLowerCase().contains(q);
-          final fromMatch = dateFrom == null ||
-              r.weekStartDate.isAfter(dateFrom!.subtract(const Duration(days: 1)));
-          final toMatch = dateTo == null ||
-              r.weekStartDate.isBefore(dateTo!.add(const Duration(days: 1)));
-          return dateMatch && fromMatch && toMatch;
+          final rangeMatch = inDateRange(r.weekStartDate, dateFrom, dateTo);
+          return dateMatch && rangeMatch;
         }).toList();
 
         if (items.isEmpty) {
@@ -560,6 +595,7 @@ class _BoardMeetingTab extends ConsumerWidget {
   final DateTime? dateFrom;
   final DateTime? dateTo;
   final Set<int> selected;
+  final bool Function(DateTime, DateTime?, DateTime?) inDateRange;
   final void Function(int) onTap;
   final void Function(int) onLongPress;
   final void Function(int) onCheckboxToggle;
@@ -570,6 +606,7 @@ class _BoardMeetingTab extends ConsumerWidget {
     required this.dateFrom,
     required this.dateTo,
     required this.selected,
+    required this.inDateRange,
     required this.onTap,
     required this.onLongPress,
     required this.onCheckboxToggle,
@@ -578,7 +615,6 @@ class _BoardMeetingTab extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncRecords = ref.watch(boardMeetingRecordsProvider(churchId));
-    final dateFmt = DateFormat('MMMM yyyy');
     final monthNames = [
       '', 'January', 'February', 'March', 'April', 'May', 'June',
       'July', 'August', 'September', 'October', 'November', 'December',
@@ -596,11 +632,8 @@ class _BoardMeetingTab extends ConsumerWidget {
           final label =
               '${monthNames[r.month]} ${r.year}'.toLowerCase();
           final labelMatch = q.isEmpty || label.contains(q);
-          final fromMatch = dateFrom == null ||
-              r.meetingDate.isAfter(dateFrom!.subtract(const Duration(days: 1)));
-          final toMatch = dateTo == null ||
-              r.meetingDate.isBefore(dateTo!.add(const Duration(days: 1)));
-          return labelMatch && fromMatch && toMatch;
+          final rangeMatch = inDateRange(r.meetingDate, dateFrom, dateTo);
+          return labelMatch && rangeMatch;
         }).toList();
 
         if (items.isEmpty) {
@@ -658,6 +691,7 @@ class _HolyCommunionTab extends ConsumerWidget {
   final DateTime? dateFrom;
   final DateTime? dateTo;
   final Set<int> selected;
+  final bool Function(DateTime, DateTime?, DateTime?) inDateRange;
   final void Function(int) onTap;
   final void Function(int) onLongPress;
   final void Function(int) onCheckboxToggle;
@@ -668,6 +702,7 @@ class _HolyCommunionTab extends ConsumerWidget {
     required this.dateFrom,
     required this.dateTo,
     required this.selected,
+    required this.inDateRange,
     required this.onTap,
     required this.onLongPress,
     required this.onCheckboxToggle,
@@ -689,11 +724,8 @@ class _HolyCommunionTab extends ConsumerWidget {
         final items = all.where((e) {
           final label = 'Q${e.quarter} ${e.year}'.toLowerCase();
           final labelMatch = q.isEmpty || label.contains(q);
-          final fromMatch = dateFrom == null ||
-              e.eventDate.isAfter(dateFrom!.subtract(const Duration(days: 1)));
-          final toMatch = dateTo == null ||
-              e.eventDate.isBefore(dateTo!.add(const Duration(days: 1)));
-          return labelMatch && fromMatch && toMatch;
+          final rangeMatch = inDateRange(e.eventDate, dateFrom, dateTo);
+          return labelMatch && rangeMatch;
         }).toList();
 
         if (items.isEmpty) {
@@ -747,6 +779,7 @@ class _BusinessMeetingTab extends ConsumerWidget {
   final DateTime? dateFrom;
   final DateTime? dateTo;
   final Set<int> selected;
+  final bool Function(DateTime, DateTime?, DateTime?) inDateRange;
   final void Function(int) onTap;
   final void Function(int) onLongPress;
   final void Function(int) onCheckboxToggle;
@@ -757,6 +790,7 @@ class _BusinessMeetingTab extends ConsumerWidget {
     required this.dateFrom,
     required this.dateTo,
     required this.selected,
+    required this.inDateRange,
     required this.onTap,
     required this.onLongPress,
     required this.onCheckboxToggle,
@@ -779,11 +813,8 @@ class _BusinessMeetingTab extends ConsumerWidget {
           final label =
               'Q${e.quarter} ${e.year} Meeting ${e.meetingNumber}'.toLowerCase();
           final labelMatch = q.isEmpty || label.contains(q);
-          final fromMatch = dateFrom == null ||
-              e.eventDate.isAfter(dateFrom!.subtract(const Duration(days: 1)));
-          final toMatch = dateTo == null ||
-              e.eventDate.isBefore(dateTo!.add(const Duration(days: 1)));
-          return labelMatch && fromMatch && toMatch;
+          final rangeMatch = inDateRange(e.eventDate, dateFrom, dateTo);
+          return labelMatch && rangeMatch;
         }).toList();
 
         if (items.isEmpty) {

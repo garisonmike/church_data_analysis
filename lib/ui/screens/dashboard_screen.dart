@@ -3,6 +3,7 @@ import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/models/models.dart' as models;
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
+import 'package:church_analytics/services/weekly_records_provider.dart';
 import 'package:church_analytics/ui/screens/screens.dart';
 import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:flutter/material.dart';
@@ -37,6 +38,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     _initializeProfileService();
     _loadData();
     _triggerBackgroundUpdateCheck();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // FEAT-015 fix: react to deletions from ImportedDataScreen.
+    // dashboardRefreshProvider is incremented after any successful delete so
+    // that this screen reloads its imperatively-fetched data even though it
+    // does not watch any list provider directly.
+    ref.listenManual(dashboardRefreshProvider, (_, __) {
+      if (mounted) _loadData();
+    });
   }
 
   Future<void> _triggerBackgroundUpdateCheck() async {
@@ -317,6 +330,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               },
               icon: const Icon(Icons.analytics),
               label: const Text('Reports & Backup'),
+            ),
+            const SizedBox(height: 8),
+            // FEAT-014 fix: entry point available even when _recentRecords is empty
+            TextButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        ImportedDataScreen(churchId: widget.churchId),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.list_alt),
+              label: const Text('View All Imported Data'),
             ),
           ],
         ),
@@ -661,6 +688,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 8),
+                  // FEAT-014 fix: always-visible entry point independent of
+                  // whether the Recent Weeks section is shown or has data.
+                  _buildActionButton(
+                    'View All Data',
+                    Icons.list_alt,
+                    Colors.indigo,
+                    () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            ImportedDataScreen(churchId: widget.churchId),
+                      ),
+                    ),
+                  ),
                 ],
               );
             } else {
@@ -749,6 +790,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  // FEAT-014 fix: always-visible entry point independent of
+                  // whether the Recent Weeks section is shown or has data.
+                  _buildActionButton(
+                    'View All Data',
+                    Icons.list_alt,
+                    Colors.indigo,
+                    () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            ImportedDataScreen(churchId: widget.churchId),
+                      ),
+                    ),
+                  ),
                 ],
               );
             }
@@ -786,8 +841,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Text('Recent Weeks', style: Theme.of(context).textTheme.titleLarge),
             TextButton(
               onPressed: () {
-                // TODO: Navigate to full list view
-                _showComingSoon('Full List View');
+                // FEAT-014: navigate to the full imported-data list
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        ImportedDataScreen(churchId: widget.churchId),
+                  ),
+                );
               },
               child: const Text('View All'),
             ),
@@ -851,15 +911,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     // Use app settings currency formatter
     final notifier = ref.read(appSettingsProvider.notifier);
     return notifier.formatCurrency(amount);
-  }
-
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature coming soon!'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
   }
 
   void _openLayoutEditor() {

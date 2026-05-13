@@ -107,7 +107,11 @@ final weeklyRecordsProvider =
       return WeeklyRecordsNotifier(params, database);
     });
 
-/// Convenience provider that combines church ID and current time range
+/// Convenience provider that combines church ID and current time range.
+///
+/// Use this from the dashboard and chart screens — it returns an
+/// [AsyncValue] so callers don't need to deal with [WeeklyRecordsState]
+/// directly.
 final weeklyRecordsForChurchProvider =
     Provider.family<AsyncValue<List<models.WeeklyRecord>>, int>((
       ref,
@@ -207,6 +211,28 @@ class WeeklyRecordsNotifier extends StateNotifier<WeeklyRecordsState> {
   }
 }
 
+// ── WeeklyRecord repository provider ─────────────────────────────────────────
+
+/// Provides a [WeeklyRecordRepository] backed by the local Drift database.
+///
+/// Used by [ImportedDataScreen] for the FEAT-015 delete flow on the Weekly
+/// Records tab. The other tab repositories already have their own named
+/// providers below.
+final weeklyRecordRepositoryProvider = Provider<WeeklyRecordRepository>((ref) {
+  return WeeklyRecordRepository(ref.read(databaseProvider));
+});
+
+/// FEAT-014 fix: full list of weekly records, not capped by chartTimeRangeProvider.
+///
+/// [weeklyRecordsForChurchProvider] is tied to [chartTimeRangeProvider] (default
+/// 12 weeks) so it is not suitable for the ImportedDataScreen "full list" tab.
+/// This provider always fetches ALL records for the church regardless of the
+/// currently-selected chart time range.
+final allWeeklyRecordsForChurchProvider =
+    FutureProvider.family<List<models.WeeklyRecord>, int>((ref, churchId) async {
+  final repo = ref.read(weeklyRecordRepositoryProvider);
+  return repo.getAllRecords(churchId);
+});
 
 // ── Church provider ───────────────────────────────────────────────────────────
 
@@ -280,3 +306,11 @@ final businessMeetingEventsProvider =
   )).toList();
 });
 
+// ── Dashboard refresh signal ──────────────────────────────────────────────────
+
+/// FEAT-015 fix: a simple incrementing counter that the dashboard watches.
+///
+/// After any delete in [ImportedDataScreen], invalidating this provider
+/// signals [DashboardScreen] (which watches it) to call [_loadData()] again,
+/// refreshing KPI cards and the Recent Weeks list from the repository.
+final dashboardRefreshProvider = StateProvider<int>((ref) => 0);

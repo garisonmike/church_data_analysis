@@ -83,7 +83,8 @@ void main() {
         updatedAt: DateTime.now(),
       );
 
-      final recordId = await weeklyRecordRepo.createRecord(record);
+      final savedRecord = await weeklyRecordRepo.createRecord(record);
+      final recordId = savedRecord.id!;
       expect(recordId, greaterThan(0));
 
       // Read
@@ -96,15 +97,13 @@ void main() {
 
       // Update
       final updated = retrieved.copyWith(men: 100);
-      final updateSuccess = await weeklyRecordRepo.updateRecord(updated);
-      expect(updateSuccess, true);
+      await weeklyRecordRepo.updateRecord(updated);
 
       final afterUpdate = await weeklyRecordRepo.getRecordById(recordId);
       expect(afterUpdate!.men, 100);
 
       // Delete
-      final deleteCount = await weeklyRecordRepo.deleteRecord(recordId);
-      expect(deleteCount, 1);
+      await weeklyRecordRepo.deleteRecord(recordId);
     });
 
     test('Duplicate week prevention works', () async {

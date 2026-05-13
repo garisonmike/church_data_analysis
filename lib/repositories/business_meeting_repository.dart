@@ -1,15 +1,22 @@
 import 'package:drift/drift.dart';
 
 import 'package:church_analytics/database/app_database.dart';
-import 'package:church_analytics/models/models.dart';
+import 'package:church_analytics/models/models.dart' as domain;
 
 // ignore_for_file: prefer_expression_function_bodies
 
-/// Repository for [BusinessMeetingEvent] and its child
-/// [BusinessMeetingAttendance] rows.
+/// Repository for [domain.BusinessMeetingEvent] and its child
+/// [domain.BusinessMeetingAttendanceRow] rows.
 ///
 /// Delete operations manually delete child attendance rows first to remain
 /// safe whether or not ON DELETE CASCADE is set on the foreign key.
+///
+/// ### Name-conflict resolution
+/// Drift auto-generates a row class also called `BusinessMeetingEvent` (from
+/// the `BusinessMeetingEvents` table definition). To prevent the analyser from
+/// seeing an ambiguous reference, the domain models barrel is imported under
+/// the `domain` prefix, so unqualified `BusinessMeetingEvent` inside this file
+/// always refers to the Drift-generated type.
 class BusinessMeetingRepository {
   final AppDatabase _db;
 
@@ -18,7 +25,8 @@ class BusinessMeetingRepository {
   // ── queries ───────────────────────────────────────────────────────────────
 
   /// Returns all Business Meeting events for [churchId], most recent first.
-  Future<List<BusinessMeetingEvent>> getEventsByChurch(int churchId) async {
+  Future<List<domain.BusinessMeetingEvent>> getEventsByChurch(
+      int churchId) async {
     final rows = await (_db.select(_db.businessMeetingEvents)
           ..where((t) => t.churchId.equals(churchId))
           ..orderBy([
@@ -30,8 +38,12 @@ class BusinessMeetingRepository {
     return rows.map(_toModel).toList();
   }
 
+  /// Alias for [getEventsByChurch] — used by [businessMeetingEventsProvider].
+  Future<List<domain.BusinessMeetingEvent>> getByChurch(int churchId) =>
+      getEventsByChurch(churchId);
+
   /// Returns a single event by primary key, or `null`.
-  Future<BusinessMeetingEvent?> getEventById(int id) async {
+  Future<domain.BusinessMeetingEvent?> getEventById(int id) async {
     final row = await (_db.select(_db.businessMeetingEvents)
           ..where((t) => t.id.equals(id)))
         .getSingleOrNull();
@@ -40,7 +52,7 @@ class BusinessMeetingRepository {
 
   /// Returns the event for a given church, year, quarter, and meeting number,
   /// or `null`.
-  Future<BusinessMeetingEvent?> getEventByChurchYearQuarterNumber(
+  Future<domain.BusinessMeetingEvent?> getEventByChurchYearQuarterNumber(
       int churchId, int year, int quarter, int meetingNumber) async {
     final row = await (_db.select(_db.businessMeetingEvents)
           ..where((t) =>
@@ -54,8 +66,8 @@ class BusinessMeetingRepository {
 
   // ── mutations ─────────────────────────────────────────────────────────────
 
-  /// Inserts a new Business Meeting event header.
-  Future<BusinessMeetingEvent> createEvent(BusinessMeetingEvent event) async {
+  /// Inserts a new Business Meeting event header and returns the new row's id.
+  Future<int> createEvent(domain.BusinessMeetingEvent event) async {
     final id = await _db.into(_db.businessMeetingEvents).insert(
           BusinessMeetingEventsCompanion.insert(
             churchId: event.churchId,
@@ -63,18 +75,18 @@ class BusinessMeetingRepository {
             eventDate: event.eventDate,
             year: event.year,
             quarter: event.quarter,
-            meetingNumber: event.meetingNumber,
-            totalExpectedAtKcc: event.totalExpectedAtKcc,
+            meetingNumber: Value(event.meetingNumber),
+            totalExpectedAtKcc: Value(event.totalExpectedAtKcc),
             notes: Value(event.notes),
             createdAt: event.createdAt,
             updatedAt: event.updatedAt,
           ),
         );
-    return event.copyWith(id: id);
+    return id;
   }
 
   /// Updates an existing event header. [event.id] must be non-null.
-  Future<void> updateEvent(BusinessMeetingEvent event) async {
+  Future<void> updateEvent(domain.BusinessMeetingEvent event) async {
     assert(event.id != null, 'updateEvent requires a non-null id');
     await (_db.update(_db.businessMeetingEvents)
           ..where((t) => t.id.equals(event.id!)))
@@ -91,6 +103,40 @@ class BusinessMeetingRepository {
         updatedAt: Value(DateTime.now()),
       ),
     );
+  }
+
+  /// Upserts [rows] as the complete set of per-home-church attendance rows for
+  /// [eventId], replacing any previously stored rows for that event.
+  ///
+  /// Each element of [rows] must be a [domain.BusinessMeetingAttendanceRow].
+  /// The operation runs inside a single transaction:
+  ///   1. Delete all existing [BusinessMeetingAttendance] rows for [eventId].
+  ///   2. Insert the new [rows].
+  ///
+  /// Callers that have already created the event header (via [createEvent] or
+  /// [updateEvent]) should pass the resolved [eventId] returned by the DB.
+  Future<void> upsertAttendanceRows(
+    int eventId,
+    List<domain.BusinessMeetingAttendanceRow> rows,
+  ) async {
+    await _db.transaction(() async {
+      // 1. Remove stale rows
+      await (_db.delete(_db.businessMeetingAttendance)
+            ..where((t) => t.eventId.equals(eventId)))
+          .go();
+
+      // 2. Insert the new set
+      for (final row in rows) {
+        await _db.into(_db.businessMeetingAttendance).insert(
+              BusinessMeetingAttendanceCompanion.insert(
+                eventId: eventId,
+                homeChurchId: row.homeChurchId,
+                actualAttendance: Value(row.actualAttendance),
+                expectedAtHc: Value(row.expectedAtHc),
+              ),
+            );
+      }
+    });
   }
 
   // ── FEAT-015 — delete ─────────────────────────────────────────────────────
@@ -128,8 +174,10 @@ class BusinessMeetingRepository {
 
   // ── mapping ───────────────────────────────────────────────────────────────
 
-  BusinessMeetingEvent _toModel(db.BusinessMeetingEvent row) =>
-      BusinessMeetingEvent(
+  // [row] is the Drift-generated BusinessMeetingEvent (unqualified); the return
+  // type is the domain model (qualified with `domain.`).
+  domain.BusinessMeetingEvent _toModel(BusinessMeetingEvent row) =>
+      domain.BusinessMeetingEvent(
         id: row.id,
         churchId: row.churchId,
         createdByAdminId: row.createdByAdminId,
@@ -141,5 +189,7 @@ class BusinessMeetingRepository {
         notes: row.notes,
         createdAt: row.createdAt,
         updatedAt: row.updatedAt,
+        // attendance rows are not eagerly loaded here; callers that need them
+        // should issue a separate query or call upsertAttendanceRows.
       );
 }
