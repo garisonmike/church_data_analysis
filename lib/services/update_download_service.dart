@@ -186,6 +186,33 @@ class UpdateDownloadService {
     final filename = asset.downloadUrl.split('/').last;
     final file = File('${destDir.path}/$filename');
 
+    // FEAT-005: if the file already exists (e.g. a previous download completed
+    // but the install step failed), verify its SHA-256 against the manifest
+    // before issuing any network request.
+    //
+    // • Match     → skip the download entirely, call onProgress(1.0), return success.
+    // • Mismatch  → the file is stale or corrupt; delete it and fall through to
+    //               a fresh download.
+    // • Any I/O error during the check → delete what we have and fall through.
+    if (await file.exists()) {
+      try {
+        // Stream the file through SHA-256 rather than loading it all into
+        // memory with readAsBytes. For large APKs this avoids a full-buffer
+        // spike on top of whatever is already resident.
+        final existingHash = await _sha256HexOfFile(file);
+        if (existingHash == asset.sha256.toLowerCase()) {
+          // Valid cached file — skip network entirely.
+          onProgress?.call(1.0);
+          return UpdateDownloadResult.success(file.path);
+        }
+        // Hash mismatch — delete the stale/corrupt file before re-downloading.
+        await _deletePartial(file);
+      } catch (_) {
+        // Unreadable file — delete and start fresh.
+        await _deletePartial(file);
+      }
+    }
+
     try {
       // Security: validate HTTPS before issuing the request.
       UpdateUrlValidator.validateHttpsUrl(asset.downloadUrl);
@@ -346,6 +373,15 @@ class UpdateDownloadService {
       // Platform API unavailable (e.g. in certain test environments).
     }
     return null;
+  }
+
+  /// Computes the SHA-256 checksum of [file] by streaming its contents,
+  /// avoiding a full readAsBytes load into memory.
+  ///
+  /// Returns the lowercase 64-character hex digest.
+  static Future<String> _sha256HexOfFile(File file) async {
+    final digest = await sha256.bind(file.openRead()).first;
+    return digest.toString();
   }
 
   /// Computes the SHA-256 checksum of [bytes] and returns it as a lowercase

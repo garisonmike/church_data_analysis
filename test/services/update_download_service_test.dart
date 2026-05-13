@@ -731,6 +731,193 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
+  // UpdateDownloadService — cached-file reuse (FEAT-005)
+  // -------------------------------------------------------------------------
+
+  group('UpdateDownloadService — cached-file reuse (FEAT-005)', () {
+    test(
+      'returns success immediately when existing file matches manifest sha256',
+      () async {
+        const content = 'cached-installer-bytes';
+        final correctSha = sha256Of(content);
+
+        // Service with a client that MUST NOT be called on a GET request.
+        // If a GET is issued we fail the test loudly.
+        final service = UpdateDownloadService(
+          client: MockClient((request) async {
+            if (request.method == 'GET') {
+              throw StateError(
+                'GET must not be issued when a valid cached file exists',
+              );
+            }
+            // HEAD requests are allowed (they happen during disk-space check
+            // for fresh downloads — but the cache check short-circuits before
+            // that block is reached, so HEAD should also not be called here).
+            throw StateError('No HTTP request expected for a cache hit');
+          }),
+        );
+
+        final destDir = await Directory.systemTemp.createTemp('uds_cache_');
+        try {
+          // Pre-populate the destination file with the correct content.
+          final filename = 'app-1.0.0.tar.gz'; // derived from makeManifest URL
+          final cachedFile = File('${destDir.path}/$filename');
+          await cachedFile.writeAsString(content);
+
+          final result = await service.download(
+            manifest: makeManifest(sha256: correctSha),
+            destDir: destDir,
+          );
+
+          expect(result.isSuccess, isTrue);
+          expect(result.filePath, cachedFile.path);
+          // The original file must still be present (not deleted).
+          expect(await cachedFile.exists(), isTrue);
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'calls onProgress(1.0) immediately on a cache hit',
+      () async {
+        const content = 'cached-bytes-for-progress';
+        final correctSha = sha256Of(content);
+
+        final service = UpdateDownloadService(
+          client: MockClient((_) async {
+            throw StateError('No network call expected on a cache hit');
+          }),
+        );
+
+        final progressValues = <double>[];
+
+        final destDir = await Directory.systemTemp.createTemp('uds_cache_');
+        try {
+          final filename = 'app-1.0.0.tar.gz';
+          await File('${destDir.path}/$filename').writeAsString(content);
+
+          final result = await service.download(
+            manifest: makeManifest(sha256: correctSha),
+            destDir: destDir,
+            onProgress: progressValues.add,
+          );
+
+          expect(result.isSuccess, isTrue);
+          expect(progressValues, [1.0]);
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'deletes stale file and re-downloads when sha256 does not match',
+      () async {
+        const staleContent = 'old-corrupt-bytes';
+        const freshContent = 'fresh-installer-bytes';
+        final correctSha = sha256Of(freshContent);
+
+        int getCallCount = 0;
+        final service = UpdateDownloadService(
+          client: MockClient((request) async {
+            if (request.method == 'GET') {
+              getCallCount++;
+              return http.Response(freshContent, 200);
+            }
+            // HEAD for disk-space check: no content-length to keep it simple.
+            return http.Response('', 200);
+          }),
+        );
+
+        final destDir = await Directory.systemTemp.createTemp('uds_cache_');
+        try {
+          // Write a stale file whose hash does NOT match the manifest.
+          final filename = 'app-1.0.0.tar.gz';
+          final staleFile = File('${destDir.path}/$filename');
+          await staleFile.writeAsString(staleContent);
+
+          final result = await service.download(
+            manifest: makeManifest(sha256: correctSha),
+            destDir: destDir,
+          );
+
+          expect(result.isSuccess, isTrue);
+          expect(getCallCount, 1, reason: 'One fresh GET should have been issued');
+          // The file should contain the freshly downloaded content.
+          expect(await File(result.filePath!).readAsString(), freshContent);
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'proceeds with fresh download when no cached file exists',
+      () async {
+        const content = 'brand-new-download';
+        int getCallCount = 0;
+
+        final service = UpdateDownloadService(
+          client: MockClient((request) async {
+            if (request.method == 'GET') {
+              getCallCount++;
+              return http.Response(content, 200);
+            }
+            return http.Response('', 200);
+          }),
+        );
+
+        final destDir = await Directory.systemTemp.createTemp('uds_cache_');
+        try {
+          // destDir is empty — no cached file present.
+          final result = await service.download(
+            manifest: makeManifest(sha256: sha256Of(content)),
+            destDir: destDir,
+          );
+
+          expect(result.isSuccess, isTrue);
+          expect(getCallCount, 1);
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'cache hit is case-insensitive: uppercase manifest sha256 matches computed lowercase',
+      () async {
+        const content = 'case-sensitive-check';
+        final upperSha = sha256Of(content).toUpperCase();
+
+        final service = UpdateDownloadService(
+          client: MockClient((_) async {
+            throw StateError('No network call expected on a cache hit');
+          }),
+        );
+
+        final destDir = await Directory.systemTemp.createTemp('uds_cache_');
+        try {
+          final filename = 'app-1.0.0.tar.gz';
+          await File('${destDir.path}/$filename').writeAsString(content);
+
+          final result = await service.download(
+            manifest: makeManifest(sha256: upperSha),
+            destDir: destDir,
+          );
+
+          expect(result.isSuccess, isTrue,
+              reason: 'uppercase manifest sha256 should match computed lowercase');
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+  });
+
+
+  // -------------------------------------------------------------------------
   // UpdateDownloadService — progress callback (UPDATE-006)
   // -------------------------------------------------------------------------
 

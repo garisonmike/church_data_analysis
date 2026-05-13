@@ -282,78 +282,46 @@ The user should always be able to access the tutorial from Settings (already wor
 
 ### Proposed Change
 
-**No structural changes.** Only `startup_gate_screen.dart` is modified, and only the 3-line onboarding block inside `addPostFrameCallback`.
+**Move onboarding logic to `DashboardScreen`.** Remove the onboarding check and dialog from `StartupGateScreen` entirely. Keep `showCrashRecoveryDialogIfNeeded()` in `StartupGateScreen` since it is unrelated to onboarding.
 
-Replace:
-```dart
-if (!done && mounted) {
-  await Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      fullscreenDialog: true,
-      builder: (_) => const OnboardingOverlay(),
-    ),
-  );
-}
-```
+**In `StartupGateScreen`** keep only the crash recovery call in `addPostFrameCallback` and delete the onboarding block.
 
-With:
+**In `DashboardScreen.initState()`** add a post-frame onboarding gate:
+
 ```dart
-if (!done && mounted && !_navigationInProgress) {
-  final wantsTour = await _askIfUserWantsTour(context);
-  if (wantsTour == true && mounted) {
-    await Navigator.of(context).push(
-      MaterialPageRoute<void>(
-        fullscreenDialog: true,
-        builder: (_) => const OnboardingOverlay(),
-      ),
-    );
-  } else {
-    // User skipped — still mark complete so this dialog never re-appears.
-    await markOnboardingComplete();
+WidgetsBinding.instance.addPostFrameCallback((_) async {
+  if (!mounted) return;
+  final done = await isOnboardingComplete();
+  if (!done && mounted) {
+    final wantsTour = await _askIfUserWantsTour(context);
+    if (wantsTour == true && mounted) {
+      await Navigator.of(context).push(
+        MaterialPageRoute<void>(
+          fullscreenDialog: true,
+          builder: (_) => const OnboardingOverlay(),
+        ),
+      );
+    } else {
+      // User skipped -- still mark complete so this dialog never re-appears.
+      await markOnboardingComplete();
+    }
   }
-}
+});
 ```
 
-**Add `_askIfUserWantsTour()` as a private helper in `startup_gate_screen.dart`:**
-
-```dart
-Future<bool?> _askIfUserWantsTour(BuildContext context) {
-  return showDialog<bool>(
-    context: context,
-    barrierDismissible: false,
-    builder: (ctx) => AlertDialog(
-      title: const Text('Welcome to Church Analytics'),
-      content: const Text(
-        'Would you like a quick tour of the app? '
-        'You can always revisit it from Settings → Help & Tutorial.',
-      ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.of(ctx).pop(false),
-          child: const Text('Skip for now'),
-        ),
-        FilledButton(
-          onPressed: () => Navigator.of(ctx).pop(true),
-          child: const Text('Show me around'),
-        ),
-      ],
-    ),
-  );
-}
-```
-
-**Note:** The `_navigationInProgress` guard from BUG-001 is applied here too. This dialog must not be shown if `_routeFromState()` has already started (flag is true) since the screen is about to transition away.
+**Add `_askIfUserWantsTour()` as a private helper in `dashboard_screen.dart`** (same dialog copy as before).
 
 ### Files Changed
 
 | File | Change |
 |---|---|
-| `lib/ui/screens/startup_gate_screen.dart` | Replace 3-line push with dialog + conditional push |
+| `lib/ui/screens/startup_gate_screen.dart` | Remove onboarding block; keep crash recovery only |
+| `lib/ui/screens/dashboard_screen.dart` | Add onboarding gate + dialog helper |
 
 **No changes to:** `onboarding_overlay.dart`, `app_settings_screen.dart`, `markOnboardingComplete()`.
 
 ### Risk
-None. The OnboardingOverlay widget is completely unchanged. The only difference is a dialog gate before pushing it. The Settings entry is unaffected.
+Low. Onboarding is moved to the dashboard lifecycle to avoid the navigation guard in `StartupGateScreen`. The overlay itself is unchanged and Settings entry remains intact.
 
 ---
 
@@ -530,33 +498,9 @@ After a successful install handoff, the installer file should be removed automat
 
 ### Proposed Change
 
-The challenge: `_popFn()` exits the app immediately. There is no "after exit" hook in Flutter. The APK deletion must happen *before* `_popFn()`.
+Do **not** delete the APK immediately after `OpenFile.open()` returns `done`. This can race the Android installer if it has not opened the file yet.
 
-**Modify `_launchAndroid()` in `platform_installer_launch_service.dart`:**
-
-```dart
-case ResultType.done:
-  // Delete the APK before exiting — once the app exits,
-  // we lose the opportunity to clean up.
-  await _deleteInstaller(installerPath);
-  _popFn();
-  return const InstallerLaunchResult.success();
-```
-
-**Add `_deleteInstaller()` private method:**
-
-```dart
-Future<void> _deleteInstaller(String path) async {
-  try {
-    final file = File(path);
-    if (await file.exists()) await file.delete();
-  } catch (_) {
-    // Deletion is best-effort — never block the install flow.
-  }
-}
-```
-
-**On next launch, clean up any leftover files (belt-and-suspenders):**
+**Rely solely on next-startup cleanup (belt-and-suspenders):**
 
 In `startup_gate_screen.dart`, after routing is resolved (in `_routeFromState()`, after the successful route is identified), add a one-liner fire-and-forget cleanup:
 
@@ -581,7 +525,7 @@ This cleanup is lightweight, async, and does not block startup. It catches any A
 **For Windows/Linux:** The ZIP/tar.gz installer is extracted to a staging folder. The staging folder is also not cleaned up today. A similar cleanup approach applies — but the staging folder path is known only to `PlatformInstallerLaunchService`. Add a `hint` in the `InstallerLaunchResult.success()` for Windows/Linux that includes the staging folder path, and add a cleanup pass in `startup_gate_screen.dart` if a "last staging path" key exists in SharedPreferences. This is lower priority than Android.
 
 ### Risk
-None for Android delete-before-exit (best-effort, never throws, never blocks). Very low for startup cleanup (idempotent, best-effort, limited to files matching `*.apk` in the system temp directory only).
+Low. Startup cleanup is best-effort and restricted to `.apk` files in system temp; no install-time deletion avoids races with the Android installer.
 
 ---
 
@@ -1324,7 +1268,7 @@ Low. Template generation is entirely additive — a new service and a new button
 
 ### FEAT-001 — Tutorial opt-in
 
-- [ ] First launch (onboarding flag not set): dialog appears asking about tour
+- [ ] First launch (onboarding flag not set): after Dashboard loads, dialog appears asking about tour
 - [ ] User taps "Skip for now": dialog dismissed, onboarding flag is set to true, no overlay shown, app proceeds normally
 - [ ] User taps "Show me around": OnboardingOverlay is pushed and works through all 5 slides as before
 - [ ] Second launch: dialog does NOT appear (flag is set)
@@ -1348,7 +1292,7 @@ Low. Template generation is entirely additive — a new service and a new button
 
 ### FEAT-004 — Auto-delete installer
 
-- [ ] Android: after successful APK open intent, the APK file no longer exists in temp directory
+- [ ] Android: after successful APK open intent, APK may remain until the next app start
 - [ ] Next cold start: `_cleanUpStaleApks()` runs silently, any leftover `.apk` files in system temp are deleted, no error surfaced to user
 
 ### FEAT-005 — Already-downloaded package
@@ -1433,10 +1377,10 @@ Low. Template generation is entirely additive — a new service and a new button
 | BUG-001 flag guard in `StartupGateScreen` | Low | Additive guard, does not change routing logic |
 | BUG-001 `PopScope` on `DashboardScreen` | Low | Standard Flutter API replacing deprecated pattern; changes back-press to app-exit |
 | BUG-002 Android log export path | None | New branch only; existing desktop branches untouched |
-| FEAT-001 Tutorial opt-in dialog | None | 3-line change in callback; `OnboardingOverlay` untouched |
+| FEAT-001 Tutorial opt-in dialog | Low | Move onboarding gate to Dashboard; remove StartupGate guard issue |
 | FEAT-002 Permission request (Android) | Low | New package (`permission_handler`); guarded by `Platform.isAndroid` |
 | FEAT-003 Backup before update | Low | New dialog + new file; existing install flow unchanged |
-| FEAT-004 Auto-delete installer | None | Best-effort, never throws, never blocks app exit |
+| FEAT-004 Auto-delete installer | Low | Startup-only cleanup; avoids install-time race |
 | FEAT-005 Already-downloaded package check | None | Additive file-exists check before network call |
 | FEAT-006 Pause/resume download | Medium | Core change to download streaming strategy; requires thorough testing |
 | FEAT-007 Resume after closure | Low | Depends on FEAT-006; persistence is SharedPreferences only |

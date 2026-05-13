@@ -1,10 +1,14 @@
+import 'dart:async';
+import 'dart:io';
+
 import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:church_analytics/ui/screens/log_viewer_screen.dart';
-import 'package:church_analytics/ui/widgets/onboarding_overlay.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Startup gate that enforces required context (church + admin profile)
@@ -24,28 +28,16 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
   void initState() {
     super.initState();
     _routeFromState();
-    // After first frame: check for crash, then show onboarding on first launch.
+    // After first frame: check for crash recovery.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
       if (_navigationInProgress) return;
       await showCrashRecoveryDialogIfNeeded(context);
-      if (!mounted) return;
-      if (_navigationInProgress) return;
-      final done = await isOnboardingComplete();
-      if (!done && mounted && !_navigationInProgress) {
-        await Navigator.of(context).push(
-          MaterialPageRoute<void>(
-            fullscreenDialog: true,
-            builder: (_) => const OnboardingOverlay(),
-          ),
-        );
-      }
     });
   }
 
   Future<void> _routeFromState() async {
     try {
-      _navigationInProgress = true;
       final prefs = await SharedPreferences.getInstance();
       final db = ref.read(databaseProvider);
       final churchRepo = ChurchRepository(db);
@@ -59,6 +51,7 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
         await churchService.clearCurrentChurch();
         await profileService.clearCurrentProfile();
         if (!mounted) return;
+        _navigationInProgress = true;
         Navigator.of(context).pushReplacementNamed('/select-church');
         return;
       }
@@ -68,6 +61,7 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
         await churchService.clearCurrentChurch();
         await profileService.clearCurrentProfile();
         if (!mounted) return;
+        _navigationInProgress = true;
         Navigator.of(context).pushReplacementNamed('/select-church');
         return;
       }
@@ -77,6 +71,7 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
         await churchService.clearCurrentChurch();
         await profileService.clearCurrentProfile();
         if (!mounted) return;
+        _navigationInProgress = true;
         Navigator.of(context).pushReplacementNamed('/select-church');
         return;
       }
@@ -87,6 +82,7 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
       final currentProfileId = profileService.getCurrentProfileId();
       if (currentProfileId == null) {
         if (!mounted) return;
+        _navigationInProgress = true;
         Navigator.of(
           context,
         ).pushReplacementNamed('/select-profile', arguments: churchId);
@@ -102,13 +98,19 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
       if (!validProfile) {
         await profileService.clearCurrentProfile();
         if (!mounted) return;
+        _navigationInProgress = true;
         Navigator.of(
           context,
         ).pushReplacementNamed('/select-profile', arguments: churchId);
         return;
       }
 
+      // FEAT-004: belt-and-suspenders APK cleanup on every successful startup.
+      // Runs fire-and-forget so it never delays routing.
+      unawaited(_cleanUpStaleApks());
+
       if (!mounted) return;
+      _navigationInProgress = true;
       Navigator.of(
         context,
       ).pushReplacementNamed('/dashboard', arguments: churchId);
@@ -117,6 +119,53 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
       setState(() {
         _error = e;
       });
+    }
+  }
+
+  /// FEAT-004: Deletes any leftover `.apk` files from the directories where
+  /// the download service may have saved them.
+  ///
+  /// On Android the download can land in either the app's external-storage
+  /// directory (preferred) or the system temp directory (fallback), so both
+  /// are scanned.  On all other platforms only the temp directory is scanned.
+  ///
+  /// Catches all errors silently — this is purely best-effort hygiene and
+  /// must never surface to the user or block startup.
+  Future<void> _cleanUpStaleApks() async {
+    final dirsToScan = <Directory>[];
+
+    try {
+      // External storage (Android only) — matches _resolveDownloadDirectory
+      // in about_updates_card.dart.
+      if (!kIsWeb && Platform.isAndroid) {
+        try {
+          final external = await getExternalStorageDirectory();
+          if (external != null) dirsToScan.add(external);
+        } catch (_) {
+          // External storage unavailable — fall through to temp-only scan.
+        }
+      }
+      // System temp directory (all platforms / Android fallback).
+      dirsToScan.add(await getTemporaryDirectory());
+    } catch (_) {
+      // If we can't resolve any directory, do nothing.
+      return;
+    }
+
+    for (final dir in dirsToScan) {
+      try {
+        for (final entity in dir.listSync()) {
+          if (entity is File && entity.path.endsWith('.apk')) {
+            try {
+              await entity.delete();
+            } catch (_) {
+              // Individual file deletion failure — skip and continue.
+            }
+          }
+        }
+      } catch (_) {
+        // If we can't read a directory, skip it silently.
+      }
     }
   }
 

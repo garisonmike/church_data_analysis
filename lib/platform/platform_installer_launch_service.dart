@@ -127,6 +127,13 @@ class PlatformInstallerLaunchService implements InstallerLaunchService {
       case ResultType.done:
         // AC6 (UPDATE-007): exit the host app so the APK installer can run
         // without the app remaining in the foreground.
+        //
+        // FEAT-004: do NOT delete the APK here. OpenFile.open returning
+        // ResultType.done only means the intent was dispatched — the system
+        // installer process may not have opened the file yet. Deleting it
+        // immediately races the installer and can cause the install to fail
+        // with "file not found". The file is cleaned up on the next app
+        // startup by _cleanUpStaleApks() in StartupGateScreen.
         _popFn();
         return const InstallerLaunchResult.success();
       case ResultType.permissionDenied:

@@ -3,8 +3,8 @@ import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/models/models.dart' as models;
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
-import 'package:church_analytics/services/weekly_records_provider.dart';
 import 'package:church_analytics/ui/screens/screens.dart';
+import 'package:church_analytics/ui/widgets/onboarding_overlay.dart';
 import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // BUG-001: SystemNavigator.pop()
@@ -38,6 +38,56 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     _initializeProfileService();
     _loadData();
     _triggerBackgroundUpdateCheck();
+    _maybeShowOnboarding();
+  }
+
+  void _maybeShowOnboarding() {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      if (!mounted) return;
+      final done = await isOnboardingComplete();
+      if (!done && mounted) {
+        final wantsTour = await _askIfUserWantsTour(context);
+        if (wantsTour == true && mounted) {
+          await Navigator.of(context).push(
+            MaterialPageRoute<void>(
+              fullscreenDialog: true,
+              builder: (_) => const OnboardingOverlay(),
+            ),
+          );
+        } else {
+          // User skipped — mark complete so this dialog never re-appears.
+          await markOnboardingComplete();
+        }
+      }
+    });
+  }
+
+  /// FEAT-001: Shows a dialog asking whether the user wants a quick tour.
+  ///
+  /// Returns `true` if the user tapped "Show me around", `false` or `null`
+  /// if they tapped "Skip for now" or dismissed the dialog.
+  Future<bool?> _askIfUserWantsTour(BuildContext context) {
+    return showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Welcome to Church Analytics'),
+        content: const Text(
+          'Would you like a quick tour of the app? '
+          'You can always revisit it from Settings → Help & Tutorial.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Skip for now'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Show me around'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
