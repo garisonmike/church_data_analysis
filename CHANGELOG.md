@@ -5,7 +5,59 @@ Format: [BUG-XX] or [FEATURE] — Description — Files changed
 
 ---
 
-## [Unreleased] — May 2026
+## [Unreleased]
+
+- _No changes yet._
+
+---
+
+## [1.4.0] — 2026-05-13
+
+### Bug Fixes
+
+- **[BUG-11]** Fixed startup back-navigation race that could expose a stuck
+  loading screen.
+  - Files: `lib/ui/screens/startup_gate_screen.dart`,
+    `lib/ui/screens/dashboard_screen.dart`
+
+- **[BUG-12]** Android log export now resolves a valid save location.
+  - Files: `lib/ui/screens/log_viewer_screen.dart`
+
+- **[BUG-13]** Optional event counts in imports remain nullable and XLSX
+  integers parse correctly.
+  - Files: `lib/services/import_service.dart`
+
+### New Features
+
+- **[FEATURE]** Full imported-data list with filtering, edit entry points,
+  and safe delete across all modules.
+  - Files: `lib/ui/screens/imported_data_screen.dart`,
+    `lib/ui/screens/dashboard_screen.dart`,
+    `lib/services/weekly_records_provider.dart`,
+    `lib/repositories/weekly_record_repository.dart`,
+    `lib/repositories/board_meeting_repository.dart`,
+    `lib/repositories/holy_communion_repository.dart`,
+    `lib/repositories/business_meeting_repository.dart`,
+    `lib/ui/screens/weekly_entry_screen.dart`,
+    `lib/ui/screens/board_meeting_entry_screen.dart`,
+    `lib/ui/screens/holy_communion_entry_screen.dart`,
+    `lib/ui/screens/business_meeting_entry_screen.dart`,
+    `lib/ui/screens/screens.dart`, `test/database/database_test.dart`
+
+- **[FEATURE]** Excel (.xlsx) import support plus downloadable CSV/XLSX
+  templates from the import screen.
+  - Files: `lib/services/import_service.dart`,
+    `lib/services/import_template_service.dart`,
+    `lib/ui/screens/import_screen.dart`, `lib/services/services.dart`
+
+- **[FEATURE]** PDF report export now includes an expanded chart catalogue.
+  - Files: `lib/services/pdf_chart_builder.dart`,
+    `lib/services/pdf_graph_catalogue.dart`,
+    `lib/services/pdf_report_service.dart`
+
+---
+
+## [1.3.0] — 2026-05-12
 
 ### Bug Fixes
 
