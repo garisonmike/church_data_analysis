@@ -3,9 +3,11 @@ import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/models/models.dart' as models;
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
+import 'package:church_analytics/services/weekly_records_provider.dart';
 import 'package:church_analytics/ui/screens/screens.dart';
 import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // BUG-001: SystemNavigator.pop()
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -36,6 +38,18 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     _initializeProfileService();
     _loadData();
     _triggerBackgroundUpdateCheck();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // FEAT-015 fix: react to deletions from ImportedDataScreen.
+    // dashboardRefreshProvider is incremented after any successful delete so
+    // that this screen reloads its imperatively-fetched data even though it
+    // does not watch any list provider directly.
+    ref.listenManual(dashboardRefreshProvider, (_, __) {
+      if (mounted) _loadData();
+    });
   }
 
   Future<void> _triggerBackgroundUpdateCheck() async {
@@ -126,93 +140,105 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final isMedium = width >= 600 && width < 840;
     final isWide = width >= 840;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text(
-          'Church Analytics Dashboard',
-          overflow: TextOverflow.ellipsis,
-        ),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        actions: [
-          if (isWide) ...[
-            IconButton(
-              icon: const Icon(Icons.dashboard_customize),
-              onPressed: _openLayoutEditor,
-              tooltip: 'Customize Dashboard',
-              style: IconButton.styleFrom(
-                minimumSize: const Size(48, 48),
-                visualDensity: VisualDensity.standard,
+    // BUG-001 fix (Problem B): PopScope prevents back-navigation from the root
+    // dashboard to a ghost StartupGateScreen entry.  canPop: false also hides
+    // the AppBar back arrow automatically.  onPopInvokedWithResult exits the
+    // app cleanly when the user presses the system back button.
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) SystemNavigator.pop();
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text(
+            'Church Analytics Dashboard',
+            overflow: TextOverflow.ellipsis,
+          ),
+          backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+          actions: [
+            if (isWide) ...[
+              IconButton(
+                icon: const Icon(Icons.dashboard_customize),
+                onPressed: _openLayoutEditor,
+                tooltip: 'Customize Dashboard',
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                  visualDensity: VisualDensity.standard,
+                ),
               ),
-            ),
-            ChurchSelectorWidget(onChurchChanged: _loadData),
-            if (_profileService != null)
-              ProfileSwitcherWidget(
-                churchId: widget.churchId,
-                profileService: _profileService!,
-                onProfileChanged: _loadData,
+              ChurchSelectorWidget(onChurchChanged: _loadData),
+              if (_profileService != null)
+                ProfileSwitcherWidget(
+                  churchId: widget.churchId,
+                  profileService: _profileService!,
+                  onProfileChanged: _loadData,
+                ),
+              IconButton(
+                icon: const Icon(Icons.analytics_outlined),
+                onPressed: _openReports,
+                tooltip: 'Reports & Backup',
+                style: IconButton.styleFrom(
+                  minimumSize: const Size(48, 48),
+                  visualDensity: VisualDensity.standard,
+                ),
               ),
+            ],
+            _buildSettingsMenu(),
+            if (isNarrow || isMedium) _buildOverflowMenu(),
             IconButton(
-              icon: const Icon(Icons.analytics_outlined),
-              onPressed: _openReports,
-              tooltip: 'Reports & Backup',
+              icon: const Icon(Icons.refresh),
+              onPressed: _loadData,
+              tooltip: 'Refresh',
               style: IconButton.styleFrom(
                 minimumSize: const Size(48, 48),
                 visualDensity: VisualDensity.standard,
               ),
             ),
           ],
-          _buildSettingsMenu(),
-          if (isNarrow || isMedium) _buildOverflowMenu(),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadData,
-            tooltip: 'Refresh',
-            style: IconButton.styleFrom(
-              minimumSize: const Size(48, 48),
-              visualDensity: VisualDensity.standard,
-            ),
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          if (_showUpdateBanner && _latestUpdateVersion != null)
-            UpdateAvailableBanner(
-              version: _latestUpdateVersion!,
-              onDismiss: () => setState(() => _showUpdateBanner = false),
-              onGoToSettings: () => Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      ChurchSettingsScreen(churchId: widget.churchId),
+        ),
+        body: Column(
+          children: [
+            if (_showUpdateBanner && _latestUpdateVersion != null)
+              UpdateAvailableBanner(
+                version: _latestUpdateVersion!,
+                onDismiss: () => setState(() => _showUpdateBanner = false),
+                onGoToSettings: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        ChurchSettingsScreen(churchId: widget.churchId),
+                  ),
                 ),
               ),
+            Expanded(
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _errorMessage != null
+                  ? _buildErrorView()
+                  : _recentRecords.isEmpty
+                  ? _buildEmptyView()
+                  : _buildDashboardContent(),
             ),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _errorMessage != null
-                ? _buildErrorView()
-                : _recentRecords.isEmpty
-                ? _buildEmptyView()
-                : _buildDashboardContent(),
-          ),
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const WeeklyEntryScreen()),
-          );
-          if (result == true) {
-            _loadData();
-          }
-        },
-        tooltip: 'Add Weekly Entry',
-        child: const Icon(Icons.add),
-      ),
-    );
+          ],
+        ),
+        floatingActionButton: FloatingActionButton(
+          onPressed: () async {
+            final result = await Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const WeeklyEntryScreen(),
+              ),
+            );
+            if (result == true) {
+              _loadData();
+            }
+          },
+          tooltip: 'Add Weekly Entry',
+          child: const Icon(Icons.add),
+        ),
+      ), // closes child: Scaffold(
+    ); // closes PopScope(
   }
 
   Widget _buildErrorView() {
@@ -304,6 +330,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               },
               icon: const Icon(Icons.analytics),
               label: const Text('Reports & Backup'),
+            ),
+            const SizedBox(height: 8),
+            // FEAT-014 fix: entry point available even when _recentRecords is empty
+            TextButton.icon(
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        ImportedDataScreen(churchId: widget.churchId),
+                  ),
+                );
+              },
+              icon: const Icon(Icons.list_alt),
+              label: const Text('View All Imported Data'),
             ),
           ],
         ),
@@ -648,6 +688,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 8),
+                  // FEAT-014 fix: always-visible entry point independent of
+                  // whether the Recent Weeks section is shown or has data.
+                  _buildActionButton(
+                    'View All Data',
+                    Icons.list_alt,
+                    Colors.indigo,
+                    () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            ImportedDataScreen(churchId: widget.churchId),
+                      ),
+                    ),
+                  ),
                 ],
               );
             } else {
@@ -736,6 +790,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                       ),
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  // FEAT-014 fix: always-visible entry point independent of
+                  // whether the Recent Weeks section is shown or has data.
+                  _buildActionButton(
+                    'View All Data',
+                    Icons.list_alt,
+                    Colors.indigo,
+                    () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            ImportedDataScreen(churchId: widget.churchId),
+                      ),
+                    ),
+                  ),
                 ],
               );
             }
@@ -773,8 +841,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Text('Recent Weeks', style: Theme.of(context).textTheme.titleLarge),
             TextButton(
               onPressed: () {
-                // TODO: Navigate to full list view
-                _showComingSoon('Full List View');
+                // FEAT-014: navigate to the full imported-data list
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        ImportedDataScreen(churchId: widget.churchId),
+                  ),
+                );
               },
               child: const Text('View All'),
             ),
@@ -838,15 +911,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     // Use app settings currency formatter
     final notifier = ref.read(appSettingsProvider.notifier);
     return notifier.formatCurrency(amount);
-  }
-
-  void _showComingSoon(String feature) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('$feature coming soon!'),
-        duration: const Duration(seconds: 2),
-      ),
-    );
   }
 
   void _openLayoutEditor() {

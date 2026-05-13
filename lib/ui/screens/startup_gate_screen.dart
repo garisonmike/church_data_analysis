@@ -18,6 +18,7 @@ class StartupGateScreen extends ConsumerStatefulWidget {
 
 class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
   Object? _error;
+  bool _navigationInProgress = false;
 
   @override
   void initState() {
@@ -26,10 +27,12 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
     // After first frame: check for crash, then show onboarding on first launch.
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
+      if (_navigationInProgress) return;
       await showCrashRecoveryDialogIfNeeded(context);
       if (!mounted) return;
+      if (_navigationInProgress) return;
       final done = await isOnboardingComplete();
-      if (!done && mounted) {
+      if (!done && mounted && !_navigationInProgress) {
         await Navigator.of(context).push(
           MaterialPageRoute<void>(
             fullscreenDialog: true,
@@ -42,6 +45,7 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
 
   Future<void> _routeFromState() async {
     try {
+      _navigationInProgress = true;
       final prefs = await SharedPreferences.getInstance();
       final db = ref.read(databaseProvider);
       final churchRepo = ChurchRepository(db);

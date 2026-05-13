@@ -464,6 +464,71 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
     });
   }
 
+  // ── Template download (FEAT-017) ────────────────────────────────────────────
+
+  /// Shows a bottom sheet so the user can pick between XLSX and CSV formats,
+  /// then saves the chosen template and shows a snackbar with the saved path.
+  Future<void> _downloadTemplate() async {
+    if (!mounted) return;
+
+    final format = await showModalBottomSheet<String>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Padding(
+              padding: EdgeInsets.fromLTRB(16, 20, 16, 8),
+              child: Text(
+                'Choose template format',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+            ListTile(
+              leading: const Icon(Icons.table_chart_outlined),
+              title: const Text('Excel (.xlsx)'),
+              subtitle: const Text('Recommended — opens in Excel & Google Sheets'),
+              onTap: () => Navigator.of(ctx).pop('xlsx'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.text_snippet_outlined),
+              title: const Text('CSV (.csv)'),
+              subtitle: const Text('Plain text, compatible with any spreadsheet app'),
+              onTap: () => Navigator.of(ctx).pop('csv'),
+            ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (format == null || !mounted) return;
+
+    final service = ImportTemplateService();
+    final String? path;
+
+    if (format == 'xlsx') {
+      path = await service.downloadXlsx();
+    } else {
+      path = await service.downloadCsv();
+    }
+
+    if (!mounted) return;
+
+    if (path != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Template saved to $path'),
+          duration: const Duration(seconds: 5),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Could not save template. Check storage permissions.')),
+      );
+    }
+  }
+
   // ── Build ───────────────────────────────────────────────────────────────────
 
   @override
@@ -602,7 +667,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                 ),
               ),
             ] else ...[
-              const Text('Select a CSV file to import weekly records.'),
+              const Text(
+                'Select a CSV or Excel file to import weekly records.',
+              ),
               const SizedBox(height: 16),
               Center(
                 child: ElevatedButton.icon(
@@ -611,13 +678,23 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                   label: const Text('Choose File'),
                 ),
               ),
+              const SizedBox(height: 12),
+              // FEAT-017: Download Template button
+              Center(
+                child: OutlinedButton.icon(
+                  onPressed: _downloadTemplate,
+                  icon: const Icon(Icons.download_outlined),
+                  label: const Text('Download Template'),
+                ),
+              ),
             ],
             const SizedBox(height: 16),
             const Text(
-              'Format Requirements:\n'
+              'Supported formats: CSV (.csv) and Excel (.xlsx)\n'
               '• First row must contain column headers\n'
               '• Date format: YYYY-MM-DD or YYYY-MM-DDTHH:MM:SS\n'
-              '• Numbers should not have commas',
+              '• Numbers should not have commas\n'
+              '• For XLSX files, the first sheet is used',
               style: TextStyle(fontSize: 12, color: Colors.grey),
             ),
           ],

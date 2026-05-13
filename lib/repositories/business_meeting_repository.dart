@@ -1,13 +1,33 @@
-import 'package:church_analytics/database/app_database.dart' as db;
-import 'package:church_analytics/models/models.dart';
 import 'package:drift/drift.dart';
 
+import 'package:church_analytics/database/app_database.dart';
+import 'package:church_analytics/models/models.dart' as domain;
+
+// ignore_for_file: prefer_expression_function_bodies
+
+/// Repository for [domain.BusinessMeetingEvent] and its child
+/// [domain.BusinessMeetingAttendanceRow] rows.
+///
+/// Delete operations manually delete child attendance rows first to remain
+/// safe whether or not ON DELETE CASCADE is set on the foreign key.
+///
+/// ### Name-conflict resolution
+/// Drift auto-generates a row class also called `BusinessMeetingEvent` (from
+/// the `BusinessMeetingEvents` table definition). To prevent the analyser from
+/// seeing an ambiguous reference, the domain models barrel is imported under
+/// the `domain` prefix, so unqualified `BusinessMeetingEvent` inside this file
+/// always refers to the Drift-generated type.
 class BusinessMeetingRepository {
-  final db.AppDatabase _db;
+  final AppDatabase _db;
+
   BusinessMeetingRepository(this._db);
 
-  Future<List<BusinessMeetingEvent>> getByChurch(int churchId) async {
-    final events = await (_db.select(_db.businessMeetingEvents)
+  // ── queries ───────────────────────────────────────────────────────────────
+
+  /// Returns all Business Meeting events for [churchId], most recent first.
+  Future<List<domain.BusinessMeetingEvent>> getEventsByChurch(
+      int churchId) async {
+    final rows = await (_db.select(_db.businessMeetingEvents)
           ..where((t) => t.churchId.equals(churchId))
           ..orderBy([
             (t) => OrderingTerm.desc(t.year),
@@ -15,103 +35,161 @@ class BusinessMeetingRepository {
             (t) => OrderingTerm.desc(t.meetingNumber),
           ]))
         .get();
-    final result = <BusinessMeetingEvent>[];
-    for (final e in events) {
-      final rows = await _getAttendanceRows(e.id);
-      result.add(_toModel(e, rows));
-    }
-    return result;
+    return rows.map(_toModel).toList();
   }
 
-  Future<BusinessMeetingEvent?> getByQuarterAndNumber(
+  /// Alias for [getEventsByChurch] — used by [businessMeetingEventsProvider].
+  Future<List<domain.BusinessMeetingEvent>> getByChurch(int churchId) =>
+      getEventsByChurch(churchId);
+
+  /// Returns a single event by primary key, or `null`.
+  Future<domain.BusinessMeetingEvent?> getEventById(int id) async {
+    final row = await (_db.select(_db.businessMeetingEvents)
+          ..where((t) => t.id.equals(id)))
+        .getSingleOrNull();
+    return row == null ? null : _toModel(row);
+  }
+
+  /// Returns the event for a given church, year, quarter, and meeting number,
+  /// or `null`.
+  Future<domain.BusinessMeetingEvent?> getEventByChurchYearQuarterNumber(
       int churchId, int year, int quarter, int meetingNumber) async {
-    final q = _db.select(_db.businessMeetingEvents)
-      ..where((t) =>
-          t.churchId.equals(churchId) &
-          t.year.equals(year) &
-          t.quarter.equals(quarter) &
-          t.meetingNumber.equals(meetingNumber));
-    final e = await q.getSingleOrNull();
-    if (e == null) return null;
-    final rows = await _getAttendanceRows(e.id);
-    return _toModel(e, rows);
+    final row = await (_db.select(_db.businessMeetingEvents)
+          ..where((t) =>
+              t.churchId.equals(churchId) &
+              t.year.equals(year) &
+              t.quarter.equals(quarter) &
+              t.meetingNumber.equals(meetingNumber)))
+        .getSingleOrNull();
+    return row == null ? null : _toModel(row);
   }
 
-  Future<int> createEvent(BusinessMeetingEvent event) async {
-    final now = DateTime.now();
-    return _db.into(_db.businessMeetingEvents).insert(
-      db.BusinessMeetingEventsCompanion.insert(
-        churchId: event.churchId,
-        createdByAdminId: Value(event.createdByAdminId),
-        eventDate: event.eventDate,
-        year: event.year, quarter: event.quarter,
-        meetingNumber: Value(event.meetingNumber),
-        totalExpectedAtKcc: Value(event.totalExpectedAtKcc),
-        notes: Value(event.notes),
-        createdAt: now, updatedAt: now,
-      ),
-    );
+  // ── mutations ─────────────────────────────────────────────────────────────
+
+  /// Inserts a new Business Meeting event header and returns the new row's id.
+  Future<int> createEvent(domain.BusinessMeetingEvent event) async {
+    final id = await _db.into(_db.businessMeetingEvents).insert(
+          BusinessMeetingEventsCompanion.insert(
+            churchId: event.churchId,
+            createdByAdminId: Value(event.createdByAdminId),
+            eventDate: event.eventDate,
+            year: event.year,
+            quarter: event.quarter,
+            meetingNumber: Value(event.meetingNumber),
+            totalExpectedAtKcc: Value(event.totalExpectedAtKcc),
+            notes: Value(event.notes),
+            createdAt: event.createdAt,
+            updatedAt: event.updatedAt,
+          ),
+        );
+    return id;
   }
 
-  Future<void> upsertAttendanceRows(
-      int eventId, List<BusinessMeetingAttendanceRow> rows) async {
-    await (_db.delete(_db.businessMeetingAttendance)
-          ..where((t) => t.eventId.equals(eventId)))
-        .go();
-    for (final row in rows) {
-      await _db.into(_db.businessMeetingAttendance).insert(
-        db.BusinessMeetingAttendanceCompanion.insert(
-          eventId: eventId,
-          homeChurchId: row.homeChurchId,
-          actualAttendance: Value(row.actualAttendance),
-          expectedAtHc: Value(row.expectedAtHc),
-        ),
-      );
-    }
-  }
-
-  Future<bool> updateEvent(BusinessMeetingEvent event) async {
-    if (event.id == null) return false;
-    return _db.update(_db.businessMeetingEvents).replace(
-      db.BusinessMeetingEventsCompanion(
-        id: Value(event.id!), churchId: Value(event.churchId),
+  /// Updates an existing event header. [event.id] must be non-null.
+  Future<void> updateEvent(domain.BusinessMeetingEvent event) async {
+    assert(event.id != null, 'updateEvent requires a non-null id');
+    await (_db.update(_db.businessMeetingEvents)
+          ..where((t) => t.id.equals(event.id!)))
+        .write(
+      BusinessMeetingEventsCompanion(
+        churchId: Value(event.churchId),
         createdByAdminId: Value(event.createdByAdminId),
         eventDate: Value(event.eventDate),
-        year: Value(event.year), quarter: Value(event.quarter),
+        year: Value(event.year),
+        quarter: Value(event.quarter),
         meetingNumber: Value(event.meetingNumber),
         totalExpectedAtKcc: Value(event.totalExpectedAtKcc),
         notes: Value(event.notes),
-        createdAt: Value(event.createdAt), updatedAt: Value(DateTime.now()),
+        updatedAt: Value(DateTime.now()),
       ),
     );
   }
 
-  Future<int> deleteEvent(int id) async {
-    await (_db.delete(_db.businessMeetingAttendance)
-          ..where((t) => t.eventId.equals(id)))
-        .go();
-    return (_db.delete(_db.businessMeetingEvents)
-          ..where((t) => t.id.equals(id)))
-        .go();
+  /// Upserts [rows] as the complete set of per-home-church attendance rows for
+  /// [eventId], replacing any previously stored rows for that event.
+  ///
+  /// Each element of [rows] must be a [domain.BusinessMeetingAttendanceRow].
+  /// The operation runs inside a single transaction:
+  ///   1. Delete all existing [BusinessMeetingAttendance] rows for [eventId].
+  ///   2. Insert the new [rows].
+  ///
+  /// Callers that have already created the event header (via [createEvent] or
+  /// [updateEvent]) should pass the resolved [eventId] returned by the DB.
+  Future<void> upsertAttendanceRows(
+    int eventId,
+    List<domain.BusinessMeetingAttendanceRow> rows,
+  ) async {
+    await _db.transaction(() async {
+      // 1. Remove stale rows
+      await (_db.delete(_db.businessMeetingAttendance)
+            ..where((t) => t.eventId.equals(eventId)))
+          .go();
+
+      // 2. Insert the new set
+      for (final row in rows) {
+        await _db.into(_db.businessMeetingAttendance).insert(
+              BusinessMeetingAttendanceCompanion.insert(
+                eventId: eventId,
+                homeChurchId: row.homeChurchId,
+                actualAttendance: Value(row.actualAttendance),
+                expectedAtHc: Value(row.expectedAtHc),
+              ),
+            );
+      }
+    });
   }
 
-  Future<List<db.BusinessMeetingAttendanceData>> _getAttendanceRows(int eventId) =>
-      (_db.select(_db.businessMeetingAttendance)
-            ..where((t) => t.eventId.equals(eventId)))
-          .get();
+  // ── FEAT-015 — delete ─────────────────────────────────────────────────────
 
-  BusinessMeetingEvent _toModel(
-      db.BusinessMeetingEvent e, List<db.BusinessMeetingAttendanceData> rows) =>
-    BusinessMeetingEvent(
-      id: e.id, churchId: e.churchId, createdByAdminId: e.createdByAdminId,
-      eventDate: e.eventDate, year: e.year, quarter: e.quarter,
-      meetingNumber: e.meetingNumber,
-      totalExpectedAtKcc: e.totalExpectedAtKcc, notes: e.notes,
-      attendance: rows.map((r) => BusinessMeetingAttendanceRow(
-        id: r.id, eventId: r.eventId, homeChurchId: r.homeChurchId,
-        homeChurchName: '',
-        actualAttendance: r.actualAttendance, expectedAtHc: r.expectedAtHc,
-      )).toList(),
-      createdAt: e.createdAt, updatedAt: e.updatedAt,
-    );
+  /// Permanently deletes a Business Meeting event and all of its child
+  /// attendance rows, wrapped in a transaction.
+  Future<void> deleteEvent(int id) async {
+    await _db.transaction(() async {
+      // 1. Delete child attendance rows
+      await (_db.delete(_db.businessMeetingAttendance)
+            ..where((t) => t.eventId.equals(id)))
+          .go();
+
+      // 2. Delete the event header
+      await (_db.delete(_db.businessMeetingEvents)
+            ..where((t) => t.id.equals(id)))
+          .go();
+    });
+  }
+
+  /// Permanently deletes multiple events and their attendance rows.
+  Future<void> deleteEvents(List<int> ids) async {
+    if (ids.isEmpty) return;
+    await _db.transaction(() async {
+      for (final id in ids) {
+        await (_db.delete(_db.businessMeetingAttendance)
+              ..where((t) => t.eventId.equals(id)))
+            .go();
+        await (_db.delete(_db.businessMeetingEvents)
+              ..where((t) => t.id.equals(id)))
+            .go();
+      }
+    });
+  }
+
+  // ── mapping ───────────────────────────────────────────────────────────────
+
+  // [row] is the Drift-generated BusinessMeetingEvent (unqualified); the return
+  // type is the domain model (qualified with `domain.`).
+  domain.BusinessMeetingEvent _toModel(BusinessMeetingEvent row) =>
+      domain.BusinessMeetingEvent(
+        id: row.id,
+        churchId: row.churchId,
+        createdByAdminId: row.createdByAdminId,
+        eventDate: row.eventDate,
+        year: row.year,
+        quarter: row.quarter,
+        meetingNumber: row.meetingNumber,
+        totalExpectedAtKcc: row.totalExpectedAtKcc,
+        notes: row.notes,
+        createdAt: row.createdAt,
+        updatedAt: row.updatedAt,
+        // attendance rows are not eagerly loaded here; callers that need them
+        // should issue a separate query or call upsertAttendanceRows.
+      );
 }

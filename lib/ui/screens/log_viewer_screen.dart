@@ -85,12 +85,18 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
 
       // Ask user where to save.
       String? destPath;
-      if (!kIsWeb &&
-          (Platform.isLinux || Platform.isMacOS || Platform.isWindows)) {
-        // Use a temp path in documents when no file picker is integrated here.
-        // In production this would call fileService.pickSaveLocation().
-        final dir = await _getExportsDir();
-        destPath = '${dir.path}/$suggestedName';
+      if (!kIsWeb) {
+        if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
+          // Use a temp path in documents when no file picker is integrated here.
+          // In production this would call fileService.pickSaveLocation().
+          final dir = await _getExportsDir();
+          destPath = '${dir.path}/$suggestedName';
+        } else if (Platform.isAndroid) {
+          // BUG-002 fix: resolve an Android-specific exports directory.
+          // path_provider is already a dependency (^2.1.5 in pubspec.yaml).
+          final dir = await _getAndroidExportsDir();
+          if (dir != null) destPath = '${dir.path}/$suggestedName';
+        }
       }
 
       if (destPath == null) {
@@ -123,6 +129,28 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
       return dir;
     }
     return Directory.systemTemp;
+  }
+
+  // BUG-002 fix: Android-specific export directory resolver.
+  // Uses the app-scoped external storage directory (no manifest permission
+  // required on Android 10+) with a fallback to internal documents storage
+  // which is always accessible on all Android versions.
+  Future<Directory?> _getAndroidExportsDir() async {
+    try {
+      final external = await getExternalStorageDirectory();
+      if (external != null) {
+        final dir = Directory('${external.path}/church_analytics_exports');
+        if (!await dir.exists()) await dir.create(recursive: true);
+        return dir;
+      }
+    } catch (e) {
+      LogService.warning('LogViewer', 'External storage unavailable: $e');
+    }
+    // Fallback: app-internal documents directory (always accessible).
+    final docs = await getApplicationDocumentsDirectory();
+    final dir = Directory('${docs.path}/church_analytics_exports');
+    if (!await dir.exists()) await dir.create(recursive: true);
+    return dir;
   }
 
   void _showSnack(String msg, {bool success = false}) {

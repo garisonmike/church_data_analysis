@@ -150,6 +150,7 @@ class PdfReportService {
   static pw.Widget buildGraph({
     required PdfGraphId id,
     required List<models.WeeklyRecord> records,
+    List<models.HolyCommunionEvent> communionEvents = const [],
     String currencySymbol = r'$',
   }) {
     switch (id) {
@@ -184,6 +185,22 @@ class PdfReportService {
         return PdfChartBuilder.menWomenRatioTrend(records);
       case PdfGraphId.adultYoungRatioTrend:
         return PdfChartBuilder.adultYoungRatioTrend(records);
+      // Baptisms
+      case PdfGraphId.baptismsTrend:
+        return PdfChartBuilder.baptismsTrend(records);
+      case PdfGraphId.baptismsMonthly:
+        return PdfChartBuilder.baptismsMonthly(records);
+      case PdfGraphId.baptismsCumulative:
+        return PdfChartBuilder.baptismsCumulative(records);
+      // Holy Communion
+      case PdfGraphId.communionAttendanceRateTrend:
+        return PdfChartBuilder.communionAttendanceRateTrend(communionEvents);
+      case PdfGraphId.communionActualVsExpected:
+        return PdfChartBuilder.communionActualVsExpected(communionEvents);
+      case PdfGraphId.communionByHomeChurch:
+        return PdfChartBuilder.communionByHomeChurch(communionEvents);
+      case PdfGraphId.communionQuarterlyComparison:
+        return PdfChartBuilder.communionQuarterlyComparison(communionEvents);
     }
   }
 
@@ -266,6 +283,7 @@ class PdfReportService {
     required String churchName,
     required List<models.WeeklyRecord> records,
     List<PdfGraphId> selectedGraphs = const [], // 2.5-C
+    List<models.HolyCommunionEvent> communionEvents = const [], // FEAT-010
     DateTime? reportDate,
     bool includeGraphs = true,
     bool includeKpi = true,
@@ -321,6 +339,7 @@ class PdfReportService {
             ...selectedGraphs.map((id) => buildGraph(
                   id: id,
                   records: records,
+                  communionEvents: communionEvents, // FEAT-010
                   currencySymbol: currencySymbol ?? r'$',
                 )),
             pw.SizedBox(height: 20),

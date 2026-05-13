@@ -137,7 +137,39 @@ class ImportService {
           }
           return 0;
         }
-        final value = int.tryParse(valueStr);
+        var value = int.tryParse(valueStr);
+        // XLSX numeric cells are often stored as doubles (e.g. "120.0").
+        // int.tryParse rejects them, so fall back to a double parse and
+        // truncate only when the value is a true whole number.
+        if (value == null) {
+          final asDouble = double.tryParse(valueStr);
+          if (asDouble != null && asDouble == asDouble.truncateToDouble()) {
+            value = asDouble.toInt();
+          }
+        }
+        if (value == null) {
+          errors.add('$label must be a valid integer');
+          return null;
+        }
+        if (value < 0) {
+          errors.add('$label must be positive');
+          return null;
+        }
+        return value;
+      }
+
+      // Like parseIntField but always returns null when the column is absent or
+      // blank — never 0 — and is never treated as required.
+      int? parseNullableIntField(String fieldName, String label) {
+        final valueStr = getValue(fieldName);
+        if (valueStr == null || valueStr.isEmpty) return null;
+        var value = int.tryParse(valueStr);
+        if (value == null) {
+          final asDouble = double.tryParse(valueStr);
+          if (asDouble != null && asDouble == asDouble.truncateToDouble()) {
+            value = asDouble.toInt();
+          }
+        }
         if (value == null) {
           errors.add('$label must be a valid integer');
           return null;
@@ -197,6 +229,12 @@ class ImportService {
         required: !optionalFields.contains('plannedCollection'),
       );
 
+      // Optional event counts — null when the column is absent or blank,
+      // never required regardless of optionalFields.
+      final baptisms = parseNullableIntField('baptisms', 'Baptisms');
+      final holyCommunion =
+          parseNullableIntField('holyCommunion', 'Holy Communion');
+
       if (errors.isNotEmpty) {
         return WeeklyRecordImportResult.error(rowNumber, errors);
       }
@@ -215,6 +253,8 @@ class ImportService {
         offerings: offerings!,
         emergencyCollection: emergencyCollection!,
         plannedCollection: plannedCollection!,
+        baptisms: baptisms,
+        holyCommunion: holyCommunion,
         createdAt: now,
         updatedAt: now,
       );
@@ -243,6 +283,8 @@ class ImportService {
       'offerings': ['offerings', 'offering', 'offertory'],
       'emergencyCollection': ['emergencycollection', 'emergency'],
       'plannedCollection': ['plannedcollection', 'planned'],
+      'baptisms': ['baptisms', 'baptism', 'baptized', 'baptised'],
+      'holyCommunion': ['holycommunion', 'communion', 'holy_communion'],
     };
 
     final allFields = fieldVariations.keys.toList();

@@ -20,6 +20,17 @@ enum PdfGraphId {
   perCapitaGivingTrend,
   menWomenRatioTrend,
   adultYoungRatioTrend,
+
+  // Baptisms (grouped under Attendance per spec)
+  baptismsTrend,
+  baptismsMonthly,
+  baptismsCumulative,
+
+  // Holy Communion category
+  communionAttendanceRateTrend,
+  communionActualVsExpected,
+  communionByHomeChurch,
+  communionQuarterlyComparison,
 }
 
 /// Category used to group graph options in the selection UI.
@@ -27,6 +38,7 @@ enum PdfGraphCategory {
   attendance,
   financial,
   ratios,
+  holyCommunion,
 }
 
 /// Human-readable label for each category (used as section headers in the UI).
@@ -34,6 +46,7 @@ const Map<PdfGraphCategory, String> kPdfGraphCategoryLabels = {
   PdfGraphCategory.attendance: 'Attendance',
   PdfGraphCategory.financial: 'Financial',
   PdfGraphCategory.ratios: 'Ratios & Correlations',
+  PdfGraphCategory.holyCommunion: 'Holy Communion',
 };
 
 /// Display information for one graph option in the selection UI.
@@ -136,5 +149,51 @@ const List<PdfGraphOption> kPdfGraphCatalogue = [
     label: 'Adult:Young Ratio Trend',
     description: 'Weekly Adult-to-Young attendance ratio over time.',
     category: PdfGraphCategory.ratios,
+  ),
+
+  // ── Baptisms (Attendance category per FEAT-010 spec) ─────────────────────
+  PdfGraphOption(
+    id: PdfGraphId.baptismsTrend,
+    label: 'Baptisms Trend',
+    description: 'Weekly baptism counts as a line chart over time.',
+    category: PdfGraphCategory.attendance,
+  ),
+  PdfGraphOption(
+    id: PdfGraphId.baptismsMonthly,
+    label: 'Monthly Baptisms',
+    description: 'Baptisms aggregated by month as a bar chart.',
+    category: PdfGraphCategory.attendance,
+  ),
+  PdfGraphOption(
+    id: PdfGraphId.baptismsCumulative,
+    label: 'Cumulative Baptisms',
+    description: 'Running total of baptisms over time.',
+    category: PdfGraphCategory.attendance,
+  ),
+
+  // ── Holy Communion ────────────────────────────────────────────────────────
+  PdfGraphOption(
+    id: PdfGraphId.communionAttendanceRateTrend,
+    label: 'Communion Rate Trend',
+    description: 'Overall HC attendance rate (%) per event over time.',
+    category: PdfGraphCategory.holyCommunion,
+  ),
+  PdfGraphOption(
+    id: PdfGraphId.communionActualVsExpected,
+    label: 'Communion Actual vs Expected',
+    description: 'Total actual vs expected attendance per HC event.',
+    category: PdfGraphCategory.holyCommunion,
+  ),
+  PdfGraphOption(
+    id: PdfGraphId.communionByHomeChurch,
+    label: 'Communion by Home Church',
+    description: 'Per-home-church actual vs expected for the latest HC event.',
+    category: PdfGraphCategory.holyCommunion,
+  ),
+  PdfGraphOption(
+    id: PdfGraphId.communionQuarterlyComparison,
+    label: 'Quarterly Communion Comparison',
+    description: 'Total actual attendance per quarter label as a bar chart.',
+    category: PdfGraphCategory.holyCommunion,
   ),
 ];

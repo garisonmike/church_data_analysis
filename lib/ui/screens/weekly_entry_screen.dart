@@ -4,6 +4,7 @@ import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/models/models.dart' as models;
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
+import 'package:church_analytics/services/weekly_records_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -406,6 +407,61 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
     }
   }
 
+  // FEAT-015 fix: delete this weekly record from the entry/edit screen.
+  Future<void> _deleteRecord() async {
+    final record = widget.existingRecord;
+    if (record == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Record'),
+        content: const Text(
+            'Permanently delete this weekly record? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _isLoading = true);
+    try {
+      final database = ref.read(databaseProvider);
+      final repository = WeeklyRecordRepository(database);
+      await repository.deleteRecord(record.id!);
+      if (!mounted) return;
+      // Invalidate every provider that shows weekly records so the dashboard,
+      // chart screens, and ImportedDataScreen all reflect the deletion
+      // immediately without a manual refresh.
+      final churchId = record.churchId;
+      ref.invalidate(allWeeklyRecordsForChurchProvider(churchId));
+      ref.invalidate(weeklyRecordsForChurchProvider(churchId));
+      // Bump the dashboard refresh signal so DashboardScreen._loadData() fires
+      // even though it reads WeeklyRecordRepository directly rather than
+      // watching a provider.
+      ref.read(dashboardRefreshProvider.notifier).update((n) => n + 1);
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _errorMessage = 'Unable to delete record. Please try again.';
+        _isLoading = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     // Get screen dimensions for responsive padding
@@ -424,6 +480,16 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
               : 'Edit Weekly Entry',
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        // FEAT-015 fix: show delete only when editing an existing record
+        actions: [
+          if (widget.existingRecord != null)
+            IconButton(
+              icon: Icon(Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.error),
+              tooltip: 'Delete record',
+              onPressed: _isLoading ? null : _deleteRecord,
+            ),
+        ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())

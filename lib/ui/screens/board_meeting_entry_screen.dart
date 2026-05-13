@@ -113,6 +113,54 @@ class _BoardMeetingEntryScreenState
     }
   }
 
+  // FEAT-015 fix: delete this record from the edit screen.
+  Future<void> _delete() async {
+    if (widget.existing == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete Record'),
+        content: const Text(
+            'Permanently delete this board meeting record? This cannot be undone.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(context).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _saving = true);
+    try {
+      final settings = ref.read(appSettingsProvider);
+      final churchId = settings.selectedChurchId;
+      final repo = ref.read(boardMeetingRepositoryProvider);
+      await repo.deleteRecord(widget.existing!.id!);
+      if (churchId != null) ref.invalidate(boardMeetingRecordsProvider(churchId));
+      LogService.info('BoardMeetingEntry',
+          'Deleted board meeting record id=${widget.existing!.id}');
+      if (mounted) Navigator.pop(context, true);
+    } catch (e) {
+      LogService.error('BoardMeetingEntry', 'Delete failed', error: e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+        setState(() => _saving = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isEdit = widget.existing != null;
@@ -132,8 +180,17 @@ class _BoardMeetingEntryScreenState
                   width: 20, height: 20,
                   child: CircularProgressIndicator(strokeWidth: 2)),
             )
-          else
+          else ...[
+            // FEAT-015 fix: delete only shown when editing an existing record
+            if (widget.existing != null)
+              IconButton(
+                icon: Icon(Icons.delete_outline,
+                    color: Theme.of(context).colorScheme.error),
+                tooltip: 'Delete record',
+                onPressed: _delete,
+              ),
             TextButton(onPressed: _save, child: const Text('Save')),
+          ],
         ],
       ),
       body: SingleChildScrollView(
