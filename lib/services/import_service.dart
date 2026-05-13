@@ -137,7 +137,16 @@ class ImportService {
           }
           return 0;
         }
-        final value = int.tryParse(valueStr);
+        var value = int.tryParse(valueStr);
+        // XLSX numeric cells are often stored as doubles (e.g. "120.0").
+        // int.tryParse rejects them, so fall back to a double parse and
+        // truncate only when the value is a true whole number.
+        if (value == null) {
+          final asDouble = double.tryParse(valueStr);
+          if (asDouble != null && asDouble == asDouble.truncateToDouble()) {
+            value = asDouble.toInt();
+          }
+        }
         if (value == null) {
           errors.add('$label must be a valid integer');
           return null;
@@ -197,6 +206,18 @@ class ImportService {
         required: !optionalFields.contains('plannedCollection'),
       );
 
+      // Optional event counts — silently default to 0 when absent
+      final baptisms = parseIntField(
+        'baptisms',
+        'Baptisms',
+        required: !optionalFields.contains('baptisms'),
+      );
+      final holyCommunion = parseIntField(
+        'holyCommunion',
+        'Holy Communion',
+        required: !optionalFields.contains('holyCommunion'),
+      );
+
       if (errors.isNotEmpty) {
         return WeeklyRecordImportResult.error(rowNumber, errors);
       }
@@ -215,6 +236,8 @@ class ImportService {
         offerings: offerings!,
         emergencyCollection: emergencyCollection!,
         plannedCollection: plannedCollection!,
+        baptisms: baptisms,
+        holyCommunion: holyCommunion,
         createdAt: now,
         updatedAt: now,
       );
@@ -243,6 +266,8 @@ class ImportService {
       'offerings': ['offerings', 'offering', 'offertory'],
       'emergencyCollection': ['emergencycollection', 'emergency'],
       'plannedCollection': ['plannedcollection', 'planned'],
+      'baptisms': ['baptisms', 'baptism', 'baptized', 'baptised'],
+      'holyCommunion': ['holycommunion', 'communion', 'holy_communion'],
     };
 
     final allFields = fieldVariations.keys.toList();
