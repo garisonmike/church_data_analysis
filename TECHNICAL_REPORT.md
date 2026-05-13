@@ -1,10 +1,10 @@
 # Technical Report — Church Analytics: Feature Work & Bug Fixes
 
 **Date:** May 2026  
-**Scope:** Navigation bug, log export bug, update system improvements, tutorial opt-in, data management (view full imported data list, delete data), analytics graphs, PDF export, app icon & name documentation  
+**Scope:** Navigation bug, log export bug, update system improvements, tutorial opt-in, data management (view full imported data list, delete data), analytics graphs, PDF export, app icon & name documentation, Excel import & template download  
 **Codebase Version:** As at commit `HEAD` on 2026-05-12  
 **Author:** garisonmike  
-**Report Version:** 2.0 (supersedes v1.0)
+**Report Version:** 3.0 (supersedes v2.0)
 
 ---
 
@@ -35,6 +35,8 @@ Items are classified as **BUG** (something broken) or **FEAT** (new behaviour re
 - [FEAT-013 — App name documentation for forks](#feat-013)
 - [FEAT-014 — Home screen: view full list of imported data](#feat-014)
 - [FEAT-015 — Data management: delete imported records](#feat-015)
+- [FEAT-016 — Excel (.xlsx) import support](#feat-016)
+- [FEAT-017 — Downloadable import template](#feat-017)
 - [Testing Checklist](#testing-checklist)
 - [Risk Summary](#risk-summary)
 
@@ -1001,6 +1003,8 @@ No code changes. Documentation only.
 <a name="feat-014"></a>
 ## FEAT-014 — Home screen: view full list of imported data
 
+**Status:** Complete (2026-05-12)
+
 ### Current State
 The home screen surfaces summary cards and charts, but there is no way to open a complete list of the data that has already been imported. Users must navigate into individual modules (or cannot find the records at all) to confirm what was imported.
 
@@ -1029,6 +1033,8 @@ Low. This is a new, read-only screen plus a single navigation entry on the home 
 <a name="feat-015"></a>
 ## FEAT-015 — Data management: delete imported records
 
+**Status:** Complete (2026-05-12)
+
 ### Current State
 Imported records can be edited/updated, but there is no delete action in the UI. Mistakes in imported data cannot be removed without manual database edits.
 
@@ -1051,6 +1057,251 @@ Allow users to delete imported records from the app UI, with a confirmation step
 
 ### Risk
 Medium. This introduces destructive operations and requires careful confirmation and state refresh to avoid orphaned references.
+
+---
+
+<a name="feat-016"></a>
+## FEAT-016 — Excel (.xlsx) import support
+
+### Current State
+
+`lib/ui/screens/import_screen.dart` drives data import exclusively through `CsvImportService`, which calls `_fileService.pickFile(allowedExtensions: ['csv'])` and parses the result with the `csv` package. Users who maintain their records in Excel must export their workbook to CSV first — an extra manual step that introduces friction and opportunities for encoding errors (BOM characters, line-ending mismatches).
+
+A second, more capable service already exists: `lib/services/import_service.dart` (`ImportService`) was written to handle both `.csv` and `.xlsx`. It accepts both extensions in `pickFile()`, routes by file extension, and parses XLSX files using the `excel` package (already declared in `pubspec.yaml` at `^2.1.0`). It also shares the same `validateAndConvertRow` / `suggestColumnMapping` logic as `CsvImportService`.
+
+`ImportService` is **not currently wired to `ImportScreen`**. The screen instantiates `CsvImportService` directly:
+
+```dart
+// lib/ui/screens/import_screen.dart
+final _importService = ImportService();   // ← this is actually CsvImportService
+```
+
+*(The variable is named `_importService` but the type is `CsvImportService`; this is a naming inconsistency in the existing code.)*
+
+### What Is Requested
+
+Allow users to upload a `.xlsx` file directly from the Import screen, without converting to CSV first. The column-mapping and validation flow should be identical to the existing CSV path.
+
+### Affected Files
+
+| File | Change |
+|---|---|
+| `lib/ui/screens/import_screen.dart` | Replace `CsvImportService` with `ImportService`; no other logic changes needed |
+| `lib/services/csv_import_service.dart` | No change — kept for any callers outside `ImportScreen` |
+| `lib/services/import_service.dart` | No change — already handles both file types |
+
+### Proposed Change
+
+**Step 1 — Swap the service in `ImportScreen`.**
+
+```dart
+// lib/ui/screens/import_screen.dart  — BEFORE
+import 'package:church_analytics/services/csv_import_service.dart';
+...
+final _importService = CsvImportService();
+```
+
+```dart
+// lib/ui/screens/import_screen.dart  — AFTER
+import 'package:church_analytics/services/import_service.dart';
+...
+final _importService = ImportService();
+```
+
+Both services expose the same `pickFile()` and `parseFile()` / `parseCsvFile()` signatures (the file-parse method is called `parseFile` on `ImportService` vs `parseCsvFile` on `CsvImportService`). Any call sites that use the parse method will need the rename: `_importService.parseCsvFile(file)` → `_importService.parseFile(file)`.
+
+**Step 2 — Update any user-facing strings** that currently say "CSV file" in `ImportScreen` to say "CSV or Excel file" where appropriate (file-picker dialog hint, error messages, help text).
+
+**Step 3 — No changes to column mapping.** `ImportService.suggestColumnMapping()` is identical to `CsvImportService.suggestColumnMapping()`. The mapping UI, validation, and row-conversion logic are shared and require no modifications.
+
+### Risk
+
+Low. `ImportService` is already written and tested at the service layer. The only code change in `ImportScreen` is the import statement, the constructor call, and the parse-method rename. The entire validation and mapping flow is unchanged. XLSX files with multiple sheets will use the first sheet; this is documented behaviour in `ImportService._parseXlsxFile()`.
+
+---
+
+<a name="feat-017"></a>
+## FEAT-017 — Downloadable import template
+
+### Current State
+
+There is no in-app guide to the expected column structure for imported data. Users discover the required columns by trial and error or by reading the source code. The `suggestColumnMapping()` method in `ImportService` (and `CsvImportService`) accepts a set of fuzzy header aliases, but the canonical field names are not surfaced anywhere in the UI.
+
+The correct canonical column names for a weekly record import are:
+
+| Column | Type | Required | Notes |
+|---|---|---|---|
+| `week_start_date` | Date (YYYY-MM-DD) | ✅ | e.g. `2025-01-05` |
+| `men` | Integer | ✅ | |
+| `women` | Integer | ✅ | |
+| `youth` | Integer | ✅ | |
+| `children` | Integer | ✅ | |
+| `sunday_home_church` | Integer | ✅ | Home church attendance count |
+| `tithe` | Decimal | ✅ | |
+| `offerings` | Decimal | Optional | Defaults to 0 if omitted |
+| `emergency_collection` | Decimal | Optional | Defaults to 0 if omitted |
+| `planned_collection` | Decimal | Optional | Defaults to 0 if omitted |
+| `baptisms` | Integer | Optional | Defaults to 0 if omitted |
+| `holy_communion` | Integer | Optional | Defaults to 0 if omitted |
+
+These names come directly from `CsvExportService.weeklyRecordHeaders` and are the same headers produced when a user exports their data. The template should therefore be derivable from the export service with no separate maintenance.
+
+### What Is Requested
+
+From the Import screen, provide a "Download Template" button that produces a ready-to-fill spreadsheet with the correct column headers and one example row. Users can open it in Excel or Google Sheets, delete the example row, fill in their data, and re-import without guesswork.
+
+The template should be available in both `.xlsx` format (for Excel users, which is the primary use case driving this feature) and `.csv` format (for users without Excel).
+
+### Affected Files
+
+| File | Change |
+|---|---|
+| `lib/services/import_template_service.dart` | **New file.** Generates the template bytes in XLSX and CSV formats |
+| `lib/ui/screens/import_screen.dart` | Add "Download Template" button; call `ImportTemplateService` |
+| `pubspec.yaml` | No change — `excel ^2.1.0` already declared |
+
+### Proposed Change
+
+**Step 1 — Create `lib/services/import_template_service.dart`.**
+
+The service builds the template in memory using the `excel` package for XLSX and the `csv` package for CSV, then writes the result via `FileService.exportFile()`.
+
+```dart
+// lib/services/import_template_service.dart
+
+import 'package:church_analytics/services/csv_export_service.dart';
+import 'package:church_analytics/services/file_service.dart';
+import 'package:csv/csv.dart';
+import 'package:excel/excel.dart';
+
+class ImportTemplateService {
+  final FileService _fileService;
+
+  ImportTemplateService({FileService? fileService})
+      : _fileService = fileService ?? FileService();
+
+  // Columns that a user needs to fill in (system columns like id, church_id
+  // are excluded — the app assigns those on import).
+  static const List<String> _templateColumns = [
+    'week_start_date',
+    'men',
+    'women',
+    'youth',
+    'children',
+    'sunday_home_church',
+    'tithe',
+    'offerings',
+    'emergency_collection',
+    'planned_collection',
+    'baptisms',
+    'holy_communion',
+  ];
+
+  static const List<dynamic> _exampleRow = [
+    '2025-01-05', // week_start_date  — ISO 8601, Sunday of the week
+    120,          // men
+    95,           // women
+    40,           // youth
+    30,           // children
+    25,           // sunday_home_church
+    15000.00,     // tithe
+    3200.50,      // offerings
+    0,            // emergency_collection
+    500.00,       // planned_collection
+    2,            // baptisms
+    0,            // holy_communion (1 = yes, 0 = no for a weekly flag)
+  ];
+
+  Future<String?> downloadXlsx() async {
+    final excel = Excel.createExcel();
+    final sheet = excel['Weekly Records'];
+    excel.setDefaultSheet('Weekly Records');
+
+    // Header row
+    sheet.appendRow(_templateColumns.map((h) => TextCellValue(h)).toList());
+
+    // Example row
+    sheet.appendRow(_exampleRow.map((v) => _cellValue(v)).toList());
+
+    final bytes = excel.save();
+    if (bytes == null) return null;
+
+    return _fileService.exportFile(
+      bytes: bytes,
+      filename: 'church_analytics_import_template.xlsx',
+      mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    );
+  }
+
+  Future<String?> downloadCsv() async {
+    final rows = [_templateColumns, _exampleRow];
+    final csvString = const ListToCsvConverter().convert(rows);
+    final bytes = csvString.codeUnits;
+
+    return _fileService.exportFile(
+      bytes: bytes,
+      filename: 'church_analytics_import_template.csv',
+      mimeType: 'text/csv',
+    );
+  }
+
+  CellValue _cellValue(dynamic v) {
+    if (v is int) return IntCellValue(v);
+    if (v is double) return DoubleCellValue(v);
+    return TextCellValue(v.toString());
+  }
+}
+```
+
+**Step 2 — Add a "Download Template" button to `ImportScreen`.**
+
+Place it near the file-picker button, clearly labelled so users see it before they attempt an import:
+
+```dart
+// lib/ui/screens/import_screen.dart — in the pre-import state UI
+
+OutlinedButton.icon(
+  onPressed: _downloadTemplate,
+  icon: const Icon(Icons.download_outlined),
+  label: const Text('Download Template'),
+),
+```
+
+```dart
+Future<void> _downloadTemplate() async {
+  final service = ImportTemplateService();
+  // Offer both formats via a simple bottom sheet or two separate buttons
+  final path = await service.downloadXlsx();
+  if (!mounted) return;
+  if (path != null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Template saved to $path')),
+    );
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Could not save template')),
+    );
+  }
+}
+```
+
+**Column notes to include in the template (as a second sheet or comment row):**
+
+The XLSX template should include a second sheet named `Notes` with one row per column, explaining the expected format. This eliminates the need for any out-of-app documentation:
+
+| Column | Description | Example |
+|---|---|---|
+| `week_start_date` | Start of the week in ISO format (YYYY-MM-DD). Use the Sunday of the week. | `2025-01-05` |
+| `men` / `women` / `youth` / `children` | Attendance count for each group. Integer, no decimals. | `120` |
+| `sunday_home_church` | Attendance at the Sunday Home Church service. Integer. | `25` |
+| `tithe` | Tithe income for the week. Decimal, no currency symbol. | `15000.00` |
+| `offerings` / `emergency_collection` / `planned_collection` | Other income categories. Optional; defaults to 0. | `3200.50` |
+| `baptisms` | Number of baptisms that week. Optional; defaults to 0. | `2` |
+| `holy_communion` | Whether Holy Communion was held (1 = yes, 0 = no). Optional; defaults to 0. | `1` |
+
+### Risk
+
+Low. Template generation is entirely additive — a new service and a new button. It does not touch any existing import, export, or data path. The only dependency is the `excel` package, already present. Failure in template generation (disk full, permissions) is surfaced as a snackbar and does not affect any other screen state.
 
 ---
 
@@ -1147,6 +1398,31 @@ Medium. This introduces destructive operations and requires careful confirmation
 - [ ] Confirm delete removes the record and it stays deleted after app restart
 - [ ] Dashboards and charts refresh to reflect the deletion
 
+### FEAT-016 — Excel import
+
+- [ ] `flutter analyze` passes with zero warnings on changed files
+- [ ] Import screen file picker accepts both `.csv` and `.xlsx` extensions
+- [ ] Upload a valid `.xlsx` file → column mapping screen appears with headers pre-populated
+- [ ] Upload a `.xlsx` file with multiple sheets → first sheet is used, no crash
+- [ ] Upload a `.xlsx` file with an empty first sheet → error message shown, no crash
+- [ ] Upload a `.xlsx` file with missing required columns → validation errors shown per row
+- [ ] Upload a `.xlsx` file with all optional columns absent → records imported with defaults (0)
+- [ ] Existing CSV import path still works unchanged after the service swap
+- [ ] Error messages in the UI say "CSV or Excel file" where previously they said "CSV file"
+
+### FEAT-017 — Downloadable import template
+
+- [ ] "Download Template" button is visible on the Import screen before a file is selected
+- [ ] Tapping the button saves a `.xlsx` file and shows a snackbar with the saved path
+- [ ] Saved `.xlsx` opens in Excel / Google Sheets without errors
+- [ ] Template `.xlsx` has a `Weekly Records` sheet with the 12 correct column headers in row 1
+- [ ] Template `.xlsx` has a populated example row in row 2 with plausible values
+- [ ] Template `.xlsx` has a `Notes` sheet with one explanatory row per column
+- [ ] A CSV variant of the template (if exposed) produces equivalent headers and example row
+- [ ] On Android: file is saved to the expected external storage path; snackbar path is correct
+- [ ] On Windows/Linux: file is saved to the expected documents path; snackbar path is correct
+- [ ] Failure to write (e.g. no storage permission) shows an error snackbar; no crash
+
 ---
 
 <a name="risk-summary"></a>
@@ -1172,12 +1448,15 @@ Medium. This introduces destructive operations and requires careful confirmation
 | FEAT-013 Fork name doc | None | Documentation only |
 | FEAT-014 Home screen full data list | Low | New read-only screen plus navigation entry |
 | FEAT-015 Delete imported records | Medium | Destructive actions; data integrity and refresh required |
+| FEAT-016 Excel import support | Low | Service swap + parse-method rename; XLSX parsing already implemented |
+| FEAT-017 Downloadable import template | Low | Additive template generation + export; no impact on import flow |
 
 **Recommended implementation order:**
 1. BUG-001, BUG-002 (fixes first)
 2. FEAT-001, FEAT-004, FEAT-005 (low-risk features)
 3. FEAT-014, FEAT-015 (data management)
-4. FEAT-010, FEAT-011, FEAT-012, FEAT-013 (analytics and docs)
-5. FEAT-002, FEAT-003, FEAT-009 (update system, lower complexity)
-6. FEAT-006, FEAT-007 (update system, medium complexity — implement together)
-7. FEAT-008 (implement last, highest complexity)
+4. FEAT-016, FEAT-017 (import UX)
+5. FEAT-010, FEAT-011, FEAT-012, FEAT-013 (analytics and docs)
+6. FEAT-002, FEAT-003, FEAT-009 (update system, lower complexity)
+7. FEAT-006, FEAT-007 (update system, medium complexity — implement together)
+8. FEAT-008 (implement last, highest complexity)
