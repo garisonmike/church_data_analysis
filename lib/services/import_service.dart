@@ -158,6 +158,29 @@ class ImportService {
         return value;
       }
 
+      // Like parseIntField but always returns null when the column is absent or
+      // blank — never 0 — and is never treated as required.
+      int? parseNullableIntField(String fieldName, String label) {
+        final valueStr = getValue(fieldName);
+        if (valueStr == null || valueStr.isEmpty) return null;
+        var value = int.tryParse(valueStr);
+        if (value == null) {
+          final asDouble = double.tryParse(valueStr);
+          if (asDouble != null && asDouble == asDouble.truncateToDouble()) {
+            value = asDouble.toInt();
+          }
+        }
+        if (value == null) {
+          errors.add('$label must be a valid integer');
+          return null;
+        }
+        if (value < 0) {
+          errors.add('$label must be positive');
+          return null;
+        }
+        return value;
+      }
+
       // Parse financial fields
       double? parseDoubleField(
         String fieldName,
@@ -206,17 +229,11 @@ class ImportService {
         required: !optionalFields.contains('plannedCollection'),
       );
 
-      // Optional event counts — silently default to 0 when absent
-      final baptisms = parseIntField(
-        'baptisms',
-        'Baptisms',
-        required: !optionalFields.contains('baptisms'),
-      );
-      final holyCommunion = parseIntField(
-        'holyCommunion',
-        'Holy Communion',
-        required: !optionalFields.contains('holyCommunion'),
-      );
+      // Optional event counts — null when the column is absent or blank,
+      // never required regardless of optionalFields.
+      final baptisms = parseNullableIntField('baptisms', 'Baptisms');
+      final holyCommunion =
+          parseNullableIntField('holyCommunion', 'Holy Communion');
 
       if (errors.isNotEmpty) {
         return WeeklyRecordImportResult.error(rowNumber, errors);
