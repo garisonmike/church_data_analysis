@@ -18,7 +18,14 @@ import 'log_viewer_screen.dart';
 
 /// Screen for managing application settings like currency, locale etc.
 class AppSettingsScreen extends ConsumerWidget {
-  const AppSettingsScreen({super.key});
+  /// The church whose data this settings screen operates on.
+  ///
+  /// Passed through from [DashboardScreen] via route arguments so that
+  /// [AboutUpdatesCard] can offer a pre-update backup scoped to this church
+  /// (FEAT-003).
+  final int churchId;
+
+  const AppSettingsScreen({super.key, required this.churchId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -317,7 +324,10 @@ class AppSettingsScreen extends ConsumerWidget {
           const SizedBox(height: 16),
 
           // About & Updates Card
-          AboutUpdatesCard(launchService: PlatformInstallerLaunchService()),
+          AboutUpdatesCard(
+              launchService: PlatformInstallerLaunchService(),
+              churchId: churchId, // FEAT-003
+            ),
 
           const SizedBox(height: 16),
 

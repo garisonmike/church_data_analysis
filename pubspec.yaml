@@ -71,6 +71,9 @@ dependencies:
   flutter_markdown: ^0.7.7+1
   crypto: ^3.0.3
   open_file: ^3.3.2
+  # Runtime permission checks — used by install_permission_service.dart
+  # to proactively request REQUEST_INSTALL_PACKAGES on Android 8+ (FEAT-002)
+  permission_handler: ^11.3.1
   
   # File sharing
   share_plus: ^10.1.3

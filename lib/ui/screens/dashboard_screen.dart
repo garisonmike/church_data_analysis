@@ -35,6 +35,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
+    // FEAT-015 fix: react to deletions from ImportedDataScreen.
+    // dashboardRefreshProvider is incremented after any successful delete so
+    // that this screen reloads its imperatively-fetched data even though it
+    // does not watch any list provider directly.
+    //
+    // Registered here (initState) rather than didChangeDependencies to avoid
+    // creating duplicate listeners: didChangeDependencies is called every time
+    // an InheritedWidget above the tree changes, which can happen multiple
+    // times during a widget's lifetime, and each call was creating a new
+    // listener without cancelling the previous one.  In initState it runs
+    // exactly once.  With ConsumerStatefulWidget, ref is available here.
+    ref.listenManual(dashboardRefreshProvider, (_, __) {
+      if (mounted) _loadData();
+    });
     _initializeProfileService();
     _loadData();
     _triggerBackgroundUpdateCheck();
@@ -88,18 +102,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         ],
       ),
     );
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // FEAT-015 fix: react to deletions from ImportedDataScreen.
-    // dashboardRefreshProvider is incremented after any successful delete so
-    // that this screen reloads its imperatively-fetched data even though it
-    // does not watch any list provider directly.
-    ref.listenManual(dashboardRefreshProvider, (_, __) {
-      if (mounted) _loadData();
-    });
   }
 
   Future<void> _triggerBackgroundUpdateCheck() async {
@@ -995,7 +997,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             }
             break;
           case 'app':
-            Navigator.pushNamed(context, '/app-settings');
+            Navigator.pushNamed(context, '/app-settings', arguments: widget.churchId); // FEAT-003
             break;
         }
       },

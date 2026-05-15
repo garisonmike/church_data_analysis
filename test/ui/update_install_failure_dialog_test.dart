@@ -33,6 +33,7 @@ class _FakeDownloadService extends UpdateDownloadService {
     required Directory destDir,
     void Function(double progress)? onProgress,
     CancelToken? cancelToken,
+    PauseToken? pauseToken,
   }) async {
     // Return a fake path; no real file is created.
     return UpdateDownloadResult.success('${_tempDir.path}/fake-installer.bin');

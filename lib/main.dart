@@ -232,8 +232,14 @@ class ChurchAnalyticsApp extends ConsumerWidget {
                   CustomGraphBuilderScreen(churchId: churchId),
             );
           case '/app-settings':
+            // FEAT-003: churchId is passed as route arguments from DashboardScreen
+            // so that AboutUpdatesCard can offer a pre-update backup.
+            // Falls back to 0 when the route is reached without arguments
+            // (e.g. from a test or a deep link that does not carry a churchId).
             return MaterialPageRoute(
-              builder: (context) => const AppSettingsScreen(),
+              builder: (context) => AppSettingsScreen(
+                churchId: churchId ?? 0,
+              ),
             );
           case '/restore-backup':
             return MaterialPageRoute(
