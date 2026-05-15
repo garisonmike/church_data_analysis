@@ -186,7 +186,7 @@ The app includes an in-app update system. See [**docs/update-contract.md**](docs
 ## Forking This Project
 
 If you are deploying this app for a different church or organisation, see
-[**docs/FORK_GUIDE.md**](docs/FORK_GUIDE.md) for the complete checklist,
+[**docs/FORKING.md**](docs/FORKING.md) for the complete checklist,
 including:
 
 - Android keystore generation and GitHub Secrets setup

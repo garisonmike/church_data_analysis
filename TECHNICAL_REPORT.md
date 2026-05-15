@@ -4,7 +4,7 @@
 **Scope:** Navigation bug, log export bug, update system improvements, tutorial opt-in, data management (view full imported data list, delete data), analytics graphs, PDF export, app icon & name documentation, Excel import & template download  
 **Codebase Version:** As at commit `HEAD` on 2026-05-12  
 **Author:** garisonmike  
-**Report Version:** 3.0 (supersedes v2.0)
+**Report Version:** 3.1 (supersedes v3.0 — FEAT-008 architecture revised)
 
 ---
 
@@ -689,30 +689,379 @@ Clear this record when the download completes (success or clean failure/cancel).
 <a name="feat-008"></a>
 ## FEAT-008 — Update: continue downloading while app is in background (Android)
 
+> **Report version 3.1 — This section replaces the FEAT-008 content in v3.0.** The v3.0 plan described a background-isolate architecture that contained several fundamental errors. This version corrects them and defines the implementation clearly enough to code from.
+
 ### Current State
 The download runs in the Flutter main isolate. On Android, when the user sends the app to the background, Android may throttle or kill the process after several minutes (depending on device OEM, battery optimisation settings, Android version). The download would be interrupted.
 
 ### What Is Requested
 The download should continue even if the user minimises the app.
 
-### Technical Analysis
+---
 
-**Android Foreground Service is required.** Android's battery optimisation policies restrict background work. The only reliable way to do sustained network I/O in the background on Android 8+ is a Foreground Service — a long-running service that shows a persistent notification to the user (required by Android OS). This is not optional: without a Foreground Service, background downloads will be silently throttled or killed.
+### Why the v3.0 Plan Was Wrong
 
-**Implementation approach:** Use the `flutter_foreground_task` package (stable, actively maintained as of May 2026) to spawn a Foreground Service for the duration of the download. The download itself continues in an isolate managed by the service.
+The previous plan described the download running "in an isolate managed by the service" with progress communicated via `FlutterForegroundTask.sendDataToMain`. That description contains three critical errors that would have caused real failures during implementation:
 
-**Steps:**
-1. Add `flutter_foreground_task` to `pubspec.yaml`.
-2. Add the required Android manifest entries: `<service>` declaration, `FOREGROUND_SERVICE` permission, `FOREGROUND_SERVICE_DATA_SYNC` type (required on Android 14+).
-3. Create a `UpdateDownloadTask` that implements `TaskHandler` (the interface from `flutter_foreground_task`). It runs `UpdateDownloadService.download()` inside the service isolate and communicates progress back to the UI via `FlutterForegroundTask.sendDataToMain`.
-4. The notification must show "Downloading Church Analytics update (XX%)" while in progress. This is a mandatory UX change — the user will see a notification during download.
-5. Wrap the existing download trigger in `about_updates_card.dart` to start the foreground task instead of calling the service directly.
+**Error 1 — `http.Client` cannot cross an isolate boundary.**  
+`UpdateDownloadService` takes an injected `http.Client` (constructor field). Dart isolates have separate heaps. You cannot pass a live `http.Client` instance to a true background isolate via `SendPort` — the attempt throws a runtime error. If the download had been moved to a real separate isolate, the entire injectable-for-testing constructor pattern would have broken silently.
 
-**Desktop platforms (Windows, Linux):** Foreground services do not exist on desktop. The download already continues naturally in the background on desktop (the OS does not throttle Flutter desktop apps the same way). No change required for desktop.
+**Error 2 — `CancelToken` and `PauseToken` mutation is invisible across isolate boundaries.**  
+FEAT-006 and FEAT-007 use `CancelToken` and `PauseToken` as plain Dart objects mutated from UI callbacks (`cancelToken.cancel()`, `pauseToken.pause()`). If the download loop runs in a different isolate, mutating these objects in the UI isolate has zero effect on the copies in the service isolate — the Pause and Cancel buttons would silently do nothing. The v3.0 plan did not address this.
 
-**Risk assessment:** This is the highest-complexity item in the report. It introduces a new Flutter package, requires Android manifest changes, and changes the threading model of the download from the main isolate to a Foreground Service isolate. The communication channel (Dart isolate ↔ UI) has its own complexity. It also adds a mandatory notification, which changes the UX. This item should be the last update-system item implemented, after all others are tested. Estimated implementation effort: 2–3 days with tests.
+**Error 3 — SharedPreferences writes from a background isolate are not visible to the main isolate.**  
+FEAT-007's `DownloadStateService.persist()` writes a crash-recovery record to SharedPreferences during download. If this write happens inside a background isolate, the main isolate's cached SharedPreferences instance will not see it until a cold restart. The FEAT-007 crash-recovery dialog would fail to appear on the next launch.
 
-**Alternative (lower risk):** Use `wakelock_plus` to prevent the screen from sleeping during download, combined with a clear "don't leave the app until download completes" message in the progress dialog. This does not solve backgrounding but reduces accidental interruption. Implement this as a temporary stopgap while FEAT-008 is in development.
+---
+
+### Chosen Architecture: Main Isolate + Foreground Service as a Process Anchor
+
+The simplest correct architecture is:
+
+- The download continues to run in the **main Dart isolate**, exactly as it does today.
+- A **Foreground Service** is started for the duration of the download. Its sole jobs are to (a) post the mandatory persistent notification (required by Android OS) and (b) prevent Android from killing the process when the app is backgrounded.
+- The existing `CancelToken`, `PauseToken`, `DownloadStateService`, and `UpdateDownloadService` are **unchanged**. No isolate boundary is crossed. No new communication channel is needed.
+
+This eliminates all three errors above. It is also what most production Flutter apps do for background downloads — the Foreground Service is a process-lifecycle anchor, not a compute unit.
+
+---
+
+### Technical Requirements
+
+**Android Foreground Service is the only reliable mechanism.** Android's battery optimisation policies restrict background work on API 26+. Without a Foreground Service, background downloads will be silently throttled or killed. There is no alternative.
+
+**`flutter_foreground_task` package (pin to `^8.0.0`).** This package wraps the Android Foreground Service API for Flutter. Pin the version — the package has had breaking API changes between v4, v5, and v8 (notification config and `TaskHandler` interface differ substantially between them). As of May 2026 v8.x is current and stable. Do not use an unpinned constraint.
+
+**Desktop platforms (Windows, Linux) require no changes.** The OS does not throttle Flutter desktop processes the same way. The download already continues naturally in the background on desktop.
+
+---
+
+### Pre-Implementation Checklist
+
+Before writing any code, confirm:
+
+- [ ] `flutter pub add flutter_foreground_task:^8.0.0` resolves without conflicts.
+- [ ] `flutter --version` is ≥ 3.22 (required for `PopScope`, also needed here for compatibility with the package's Kotlin plugin).
+- [ ] The `minSdk` value in `android/app/build.gradle.kts` resolves to at least **21** (Android 5). Foreground Services are available from API 21+. The current build config uses `flutter.minSdkVersion` which defaults to 16 — this must be raised. If your device target is Android 8+ only, raise to 26 to simplify testing.
+- [ ] Confirm the production APK download URL returns `Accept-Ranges: bytes` in a `HEAD` response (needed for FEAT-006 pause/resume; also confirms the CDN allows sustained connections).
+
+---
+
+### AndroidManifest.xml Changes
+
+Add to `android/app/src/main/AndroidManifest.xml`:
+
+```xml
+<!-- Required for Foreground Service on all Android versions -->
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+<!-- Required on Android 14+ (API 34+) for network I/O in a foreground service.
+     Without this attribute on the <service> element AND this permission,
+     Android 14 crashes the service at start. -->
+<uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+
+<!-- Required on Android 13+ (API 33+) to post the mandatory download notification -->
+<uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+```
+
+Inside the `<application>` element, add the service declaration:
+
+```xml
+<service
+    android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+    android:foregroundServiceType="dataSync"
+    android:exported="false" />
+```
+
+> **Critical:** both the `<uses-permission android:name="...FOREGROUND_SERVICE_DATA_SYNC"/>` entry **and** the `android:foregroundServiceType="dataSync"` attribute on the `<service>` element are required on Android 14+. Either alone is insufficient and causes a runtime crash on API 34+ devices.
+
+---
+
+### pubspec.yaml Change
+
+```yaml
+dependencies:
+  flutter_foreground_task: ^8.0.0   # ADD — process anchor for background download
+```
+
+No other new dependencies. `http`, `shared_preferences`, and `path_provider` are already present.
+
+---
+
+### minSdk Change
+
+In `android/app/build.gradle.kts`, replace:
+
+```kotlin
+minSdk = flutter.minSdkVersion
+```
+
+with:
+
+```kotlin
+minSdk = 21  // Raised from flutter default (16) to support ForegroundService
+```
+
+If the project has explicitly confirmed it targets Android 8+ only, you may raise this to 26 and simplify the API-level gating below.
+
+---
+
+### Implementation — Step by Step
+
+#### Step 1 — Foreground service wrapper
+
+Create `lib/services/download_foreground_service.dart`:
+
+```dart
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+
+/// Manages the Android Foreground Service lifecycle for the duration of
+/// an update download.  On non-Android platforms this class is a no-op.
+///
+/// The service acts purely as a process anchor: it posts the mandatory
+/// persistent notification and prevents Android from killing the process
+/// when the app is backgrounded.  The download itself continues to run
+/// in the main Dart isolate — no isolate boundary is crossed.
+class DownloadForegroundService {
+  static bool _initialised = false;
+
+  /// Call once before [start], typically in [AboutUpdatesCard.initState] or
+  /// at app startup.  Safe to call multiple times.
+  static void init() {
+    if (_initialised || !Platform.isAndroid) return;
+    _initialised = true;
+
+    FlutterForegroundTask.init(
+      androidNotificationOptions: AndroidNotificationOptions(
+        channelId: 'church_analytics_update_download',
+        channelName: 'Update Download',
+        channelDescription: 'Shown while a Church Analytics update is downloading.',
+        channelImportance: NotificationChannelImportance.LOW,
+        priority: NotificationPriority.LOW,
+        // LOW importance: no sound, no heads-up — unobtrusive during download.
+      ),
+      iosNotificationOptions: const IOSNotificationOptions(), // no-op on iOS
+      foregroundTaskOptions: ForegroundTaskOptions(
+        eventAction: ForegroundTaskEventAction.nothing(),
+        // We drive progress updates ourselves via [updateNotification];
+        // the package's built-in event loop is not needed.
+        autoRunOnBoot: false,
+      ),
+    );
+  }
+
+  /// Start the foreground service with an initial notification.
+  /// Must be called from the main isolate with a valid [BuildContext] if
+  /// POST_NOTIFICATIONS permission has not been granted yet on Android 13+.
+  static Future<void> start({CancelToken? cancelToken}) async {
+    if (!Platform.isAndroid) return;
+    _activeCancelToken = cancelToken;
+    // Reset throttle state so the first update always fires immediately.
+    _lastNotificationTime = null;
+    _lastNotifiedPct = 0;
+    await FlutterForegroundTask.startService(
+      serviceId: 1001,
+      notificationTitle: 'Downloading update…',
+      notificationText: 'Church Analytics update is downloading',
+    );
+  }
+
+  /// Update the notification text to reflect current progress.
+  ///
+  /// Throttled: the notification is only updated when at least 2 seconds have
+  /// elapsed since the last update **or** the displayed percentage has moved
+  /// by ≥ 5 points — whichever comes first.  Both gates must be checked
+  /// because on a fast connection 5% ticks can arrive in under a second, and
+  /// on a slow connection the 2-second timer fires before 5% accumulates.
+  ///
+  /// Calling [FlutterForegroundTask.updateService] on every downloaded chunk
+  /// (which can be hundreds of times per second on a fast link) floods the
+  /// Android notification manager, causes visible notification flicker, and
+  /// generates unnecessary binder IPC traffic.  Throttling keeps the shade
+  /// feeling live without any of those side-effects.
+  static Future<void> updateProgress(double fraction) async {
+    if (!Platform.isAndroid) return;
+
+    final now = DateTime.now();
+    final pct = (fraction * 100).round();
+
+    final elapsedEnough = _lastNotificationTime == null ||
+        now.difference(_lastNotificationTime!).inMilliseconds >= 2000;
+    final deltaEnough = (pct - _lastNotifiedPct).abs() >= 5;
+
+    if (!elapsedEnough && !deltaEnough) return; // skip this tick
+
+    _lastNotificationTime = now;
+    _lastNotifiedPct = pct;
+
+    await FlutterForegroundTask.updateService(
+      notificationTitle: 'Downloading update… $pct%',
+      notificationText: 'Church Analytics update is downloading',
+    );
+  }
+
+  // Throttle state — reset by [start] so each download begins clean.
+  static DateTime? _lastNotificationTime;
+  static int _lastNotifiedPct = 0;
+
+  /// Stop the foreground service.  Call this when the download completes,
+  /// is cancelled, is paused, or errors out.
+  static Future<void> stop() async {
+    if (!Platform.isAndroid) return;
+    await FlutterForegroundTask.stopService();
+  }
+}
+```
+
+#### Step 2 — Wire into the download flow in `about_updates_card.dart`
+
+`_onDownloadUpdate()` already calls `UpdateDownloadService.download()` with an `onProgress` callback. Wrap it:
+
+```dart
+Future<void> _onDownloadUpdate() async {
+  // ... existing permission check, dialog setup, cancelToken/pauseToken creation ...
+
+  // START: anchor the process against Android backgrounding
+  await DownloadForegroundService.start();
+
+  UpdateDownloadResult result;
+  try {
+    result = await _downloadService.download(
+      manifest: _manifest!,
+      destDir: await getTemporaryDirectory(),
+      cancelToken: cancelToken,
+      pauseToken: pauseToken,
+      onProgress: (p) {
+        progressNotifier.value = p;
+        // Update the notification — DownloadForegroundService.updateProgress
+        // throttles internally (2 s or 5% delta) so this is safe to call on
+        // every chunk without flooding the Android notification manager.
+        DownloadForegroundService.updateProgress(p);
+      },
+    );
+  } finally {
+    // STOP: always tear down the service, whatever the outcome.
+    await DownloadForegroundService.stop();
+  }
+
+  popDialog();
+  WidgetsBinding.instance.addPostFrameCallback((_) => progressNotifier.dispose());
+
+  // ... existing result handling (success → _doInstall, paused → setState, etc.) ...
+}
+```
+
+Apply the same `start()`/`stop()` wrapping to `_onResumeDownload()`.
+
+#### Step 3 — Handle notification permission on Android 13+
+
+`POST_NOTIFICATIONS` is a runtime permission on Android 13+ (API 33+). The Foreground Service notification will be silently suppressed if it is not granted. Request it before calling `DownloadForegroundService.start()`:
+
+```dart
+// In _onDownloadUpdate(), before DownloadForegroundService.start():
+if (Platform.isAndroid) {
+  // permission_handler is already added for FEAT-002.
+  // POST_NOTIFICATIONS is a separate permission from REQUEST_INSTALL_PACKAGES.
+  final notifStatus = await Permission.notification.status;
+  if (!notifStatus.isGranted) {
+    await Permission.notification.request();
+    // If the user denies, the download still proceeds — the notification is
+    // just suppressed.  Do not block the download on notification permission.
+  }
+}
+```
+
+#### Step 4 — Handle system notification cancel
+
+When the user swipes away the foreground service notification or taps a system-level cancel action, Android stops the service. `flutter_foreground_task` surfaces this as a `FlutterForegroundTask.addTaskDataCallback` event or via the `onDestroy` lifecycle on the `TaskHandler`. In the main-isolate model, this means `FlutterForegroundTask.stopService()` is called by the OS. The download in the main isolate keeps running — the service stopping does not kill the isolate.
+
+However, if the user intended to cancel by dismissing the notification, the download continues invisibly. To handle this correctly:
+
+```dart
+// In DownloadForegroundService.init(), after FlutterForegroundTask.init():
+// Register a callback for when the service is stopped externally.
+FlutterForegroundTask.addTaskDataCallback((data) {
+  // The package sends a task-stopped event when the service is killed by the OS
+  // or by the user swiping the notification.
+  if (data == 'stop') {
+    // Notify the active cancelToken if one exists.
+    _activeCancelToken?.cancel();
+  }
+});
+```
+
+`_activeCancelToken` is a static nullable field on `DownloadForegroundService`, set when `start()` is called and cleared when `stop()` is called. Pass the `CancelToken` to `DownloadForegroundService.start(cancelToken: cancelToken)` so the service can cancel the download if the notification is dismissed.
+
+The `start()` signature shown in Step 1 already includes the `cancelToken` parameter and the throttle-state reset — no separate update is needed here. For reference, the fields involved:
+
+```dart
+static CancelToken? _activeCancelToken;
+static DateTime? _lastNotificationTime; // throttle
+static int _lastNotifiedPct = 0;        // throttle
+```
+
+`stop()` clears `_activeCancelToken`; the throttle fields are reset at the top of `start()` so each new download begins with a clean slate.
+
+---
+
+### What Does NOT Change
+
+- `UpdateDownloadService` — no changes. The download loop, `CancelToken`, `PauseToken`, `DownloadStateService`, SHA-256 verification, and error paths are all untouched.
+- `UpdateDownloadProgressDialog` — no changes. The in-app progress bar and Cancel/Pause buttons work exactly as before.
+- `startup_gate_screen.dart` crash-recovery flow — no changes. SharedPreferences writes happen in the main isolate as before.
+- Windows and Linux download paths — no changes.
+
+---
+
+### Stopgap: `wakelock_plus` (implement while FEAT-008 is in development)
+
+Use `wakelock_plus: ^1.3.4` to prevent the screen from sleeping during a download, combined with a clear "keep the app open until the download finishes" message in `UpdateDownloadProgressDialog`. This does not prevent Android from killing the background process but does reduce the most common interruption (screen turning off → system deciding to throttle). Implement this as a one-liner in `_onDownloadUpdate` and remove it once FEAT-008 ships.
+
+```dart
+// _onDownloadUpdate, before the download call:
+await WakelockPlus.enable();
+try {
+  result = await _downloadService.download(...);
+} finally {
+  await WakelockPlus.disable();
+  await DownloadForegroundService.stop();
+}
+```
+
+---
+
+### Risk Assessment
+
+| Sub-task | Risk | Notes |
+|---|---|---|
+| `flutter_foreground_task` package add | Low | Stable, widely used; pinned to `^8.0.0` |
+| AndroidManifest `<service>` + permissions | Low | Additive; wrong `foregroundServiceType` causes API 34+ crash — test on API 34 device |
+| `minSdk` raise to 21 | Low | Drops devices on Android 4.x (< 0.1% of active Android install base) |
+| Main-isolate download (no architecture change) | None | `UpdateDownloadService` is untouched |
+| `CancelToken` / notification cancel wiring | Low | Single static field; straightforward |
+| `POST_NOTIFICATIONS` runtime request | None | Download proceeds even if denied; notification just suppressed |
+| Desktop paths | None | Entire feature is gated by `Platform.isAndroid` |
+
+Overall: **Medium** (down from High in v3.0). The complexity is now in Android configuration, not in isolate communication or threading.
+
+**Estimated implementation effort:** 1 day with thorough testing on Android 8, 10, and 14 devices. The v3.0 estimate of 2–3 days assumed the background-isolate architecture.
+
+---
+
+### Testing Checklist for FEAT-008
+
+- [ ] `flutter analyze` passes with zero warnings on all changed files
+- [ ] `minSdk` resolves to 21 in `build.gradle.kts` (check `flutter build apk --analyze-size` output)
+- [ ] Android 8 (API 26): start download → minimise app → confirm download continues → notification visible in shade
+- [ ] Android 10 (API 29): same as above
+- [ ] Android 14 (API 34): same as above — this is the most important target; missing `foregroundServiceType` crashes here
+- [ ] Android 13+ (API 33+): confirm `POST_NOTIFICATIONS` dialog appears before first download; deny it → download still starts, notification absent (not a crash)
+- [ ] Swipe away notification mid-download → download cancels (via `_activeCancelToken.cancel()`) → in-app dialog dismisses → `DownloadForegroundService.stop()` called cleanly
+- [ ] Complete download while backgrounded → bring app to foreground → install flow proceeds as normal
+- [ ] Pause download → minimise app → foreground service notification updates to "Paused" or disappears (stop service on pause) → resume from in-app UI on return
+- [ ] Cancel from in-app Cancel button while backgrounded → service stops, partial file handled per FEAT-006/FEAT-007 rules
+- [ ] Windows: download unaffected; no foreground service code runs
+- [ ] Linux: same as Windows
 
 ---
 
@@ -1315,6 +1664,10 @@ Low. Template generation is entirely additive — a new service and a new button
 - [ ] Choose Resume → download continues from saved offset (requires FEAT-006)
 - [ ] Partial file missing on disk → dialog does NOT appear, SharedPreferences key is silently cleared
 
+### FEAT-008 — Background download
+
+See the dedicated testing checklist in the [FEAT-008 section](#feat-008) above.
+
 ### FEAT-010 — Baptism & Holy Communion graphs
 
 - [ ] `flutter analyze` → zero warnings
@@ -1384,7 +1737,7 @@ Low. Template generation is entirely additive — a new service and a new button
 | FEAT-005 Already-downloaded package check | None | Additive file-exists check before network call |
 | FEAT-006 Pause/resume download | Medium | Core change to download streaming strategy; requires thorough testing |
 | FEAT-007 Resume after closure | Low | Depends on FEAT-006; persistence is SharedPreferences only |
-| FEAT-008 Background download (Android) | High | New package, foreground service, isolate communication, manifest changes |
+| FEAT-008 Background download (Android) | Medium ↓ from High | Foreground Service as process anchor only; download stays in main isolate; no isolate communication, no token redesign |
 | FEAT-009 Platform parity doc | None | Documentation only |
 | FEAT-010 Baptism & Communion graphs | None | Entirely additive; 13 existing graphs untouched |
 | FEAT-011 PDF completeness | None | Consequence of FEAT-010 |
@@ -1403,4 +1756,4 @@ Low. Template generation is entirely additive — a new service and a new button
 5. FEAT-010, FEAT-011, FEAT-012, FEAT-013 (analytics and docs)
 6. FEAT-002, FEAT-003, FEAT-009 (update system, lower complexity)
 7. FEAT-006, FEAT-007 (update system, medium complexity — implement together)
-8. FEAT-008 (implement last, highest complexity)
+8. FEAT-008 (implement last; complete the pre-implementation checklist before starting)
