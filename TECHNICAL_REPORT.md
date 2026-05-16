@@ -1,9 +1,9 @@
 # Technical Report — Church Analytics: Feature Work & Bug Fixes
 
-**Date:** May 2026  
-**Scope:** Missing screen crash bugs, target analysis card copy, update system improvements, tutorial opt-in, Excel import & template download, background update checker connectivity, onboarding copy  
-**Codebase Version:** As at commit `HEAD` on 2026-05-12  
-**Author:** garisonmike  
+**Date:** May 2026
+**Scope:** Missing screen crash bugs, target analysis card copy, update system improvements, tutorial opt-in, Excel import & template download, background update checker connectivity, onboarding copy
+**Codebase Version:** As at commit `HEAD` on 2026-05-12
+**Author:** garisonmike
 **Report Version:** 3.4 (supersedes v3.3 — adds BUG-001 navigation guard fix; aligns FEAT-006 streaming correctness; adds FEAT-008 architecture alignment note, `flutter_foreground_task` v8 init requirements, and resolved minSdk decision)
 
 ---
@@ -309,7 +309,7 @@ Add to `android/app/src/main/AndroidManifest.xml` (already required but confirm 
 /// Returns false and optionally opens the settings screen if permission is denied.
 Future<bool> ensureInstallPermissionGranted(BuildContext context) async {
   if (!Platform.isAndroid) return true;
-  
+
   final status = await Permission.requestInstallPackages.status;
   if (status.isGranted) return true;
 
@@ -395,7 +395,7 @@ class PreUpdateBackupDialog extends StatefulWidget {
     barrierDismissible: false,
     builder: (_) => PreUpdateBackupDialog(churchId: churchId, db: db),
   );
-  
+
   // ... build: shows "Back Up Now" / "Skip & Update" / "Cancel"
   // "Back Up Now" calls BackupService.createBackup(), shows a progress indicator,
   // then on success shows a checkmark + file path, then returns true.
@@ -556,16 +556,16 @@ User should be able to pause the download (stop network transfer), resume it lat
 **Proposed Change (requires the Accept-Ranges header to be confirmed)**
 
 1. **New download strategy — stream to file, not to `BytesBuilder`:**
-   
+
    Change `update_download_service.dart` so that each chunk is appended to the destination file immediately. Two important corrections versus the naïve approach:
 
-   - **Use `sink.add(chunk)` directly, not `await sink.addStream(Stream.value(chunk))`.**  
+   - **Use `sink.add(chunk)` directly, not `await sink.addStream(Stream.value(chunk))`.**
      Wrapping each chunk in `Stream.value()` and calling `addStream` creates a new single-element stream object per iteration and internally awaits the stream's `done` future before returning. This unnecessary overhead can stall throughput on fast connections. `sink.add()` is synchronous and buffers the write immediately — use it instead.
 
-   - **Track resume progress correctly using `existingLength + received`.**  
+   - **Track resume progress correctly using `existingLength + received`.**
      If the download is resumed after a pause or crash (FEAT-007), the partial file already contains `existingLength` bytes on disk. Progress must be `(existingLength + received) / totalContentLength`. Using `received / totalContentLength` alone restarts the progress bar from 0% regardless of how much was already downloaded.
 
-   - **Use `Content-Range` / 206 handling for resume.**  
+   - **Use `Content-Range` / 206 handling for resume.**
      When resuming via `Range: bytes=<existingLength>-`, the server responds with HTTP 206. The `Content-Length` header in a 206 response is the *remaining* bytes, not the full file size. Store the total file size from the manifest (or the initial 200 `Content-Length`) and use it as the denominator for all progress calculations.
 
    ```dart
@@ -671,20 +671,20 @@ The download should continue even if the user minimises the app.
 
 The previous plan described the download running "in an isolate managed by the service" with progress communicated via `FlutterForegroundTask.sendDataToMain`. That description contains three critical errors that would have caused real failures during implementation:
 
-**Error 1 — `http.Client` cannot cross an isolate boundary.**  
+**Error 1 — `http.Client` cannot cross an isolate boundary.**
 `UpdateDownloadService` takes an injected `http.Client` (constructor field). Dart isolates have separate heaps. You cannot pass a live `http.Client` instance to a true background isolate via `SendPort` — the attempt throws a runtime error. If the download had been moved to a real separate isolate, the entire injectable-for-testing constructor pattern would have broken silently.
 
-**Error 2 — `CancelToken` and `PauseToken` mutation is invisible across isolate boundaries.**  
+**Error 2 — `CancelToken` and `PauseToken` mutation is invisible across isolate boundaries.**
 FEAT-006 and FEAT-007 use `CancelToken` and `PauseToken` as plain Dart objects mutated from UI callbacks (`cancelToken.cancel()`, `pauseToken.pause()`). If the download loop runs in a different isolate, mutating these objects in the UI isolate has zero effect on the copies in the service isolate — the Pause and Cancel buttons would silently do nothing. The v3.0 plan did not address this.
 
-**Error 3 — SharedPreferences writes from a background isolate are not visible to the main isolate.**  
+**Error 3 — SharedPreferences writes from a background isolate are not visible to the main isolate.**
 FEAT-007's `DownloadStateService.persist()` writes a crash-recovery record to SharedPreferences during download. If this write happens inside a background isolate, the main isolate's cached SharedPreferences instance will not see it until a cold restart. The FEAT-007 crash-recovery dialog would fail to appear on the next launch.
 
 ---
 
-> **Review note — Medium (architectural alignment required before implementation):**  
-> The architecture described in this section (download stays in the main isolate; Foreground Service is a process anchor only) **conflicts with `PLATFORM_PARITY.md` §100**, which specifies moving the download into a `TaskHandler` isolate. These two documents must be reconciled before any FEAT-008 code is written. Building from either spec in isolation will produce the wrong architecture and require a rework.  
->  
+> **Review note — Medium (architectural alignment required before implementation):**
+> The architecture described in this section (download stays in the main isolate; Foreground Service is a process anchor only) **conflicts with `PLATFORM_PARITY.md` §100**, which specifies moving the download into a `TaskHandler` isolate. These two documents must be reconciled before any FEAT-008 code is written. Building from either spec in isolation will produce the wrong architecture and require a rework.
+>
 > **Recommended resolution:** Hold a brief alignment review. The main-isolate approach described here is technically sounder (eliminates the three isolate-boundary errors documented above), but if the parity doc's TaskHandler model has already been agreed with stakeholders, that decision takes precedence and the error analysis above must be addressed first. Update whichever document loses so both specs agree before implementation starts.
 
 ---
@@ -723,7 +723,7 @@ Before writing any code, confirm:
   void startCallback() {
     FlutterForegroundTask.setTaskHandler(_DownloadAnchorHandler());
   }
-  
+
   class _DownloadAnchorHandler extends TaskHandler {
     @override Future<void> onStart(DateTime timestamp, SendPort? sendPort) async {}
     @override Future<void> onRepeatEvent(DateTime timestamp, SendPort? sendPort) async {}
@@ -1328,16 +1328,16 @@ The background update checker already runs with a 24-hour cooldown (confirmed in
 
 ### Technical Analysis
 
-**Connectivity check approach.**  
+**Connectivity check approach.**
 The `connectivity_plus` package (pub.dev, well-maintained, MIT licence) provides both a one-shot `Connectivity().checkConnectivity()` call and a `Connectivity().onConnectivityChanged` stream. Check whether `connectivity_plus` is already in `pubspec.yaml`. If not, add it — it has no native permissions requirements and adds negligible APK size (~50 KB).
 
-**Why a one-shot check is sufficient before each HTTP call.**  
+**Why a one-shot check is sufficient before each HTTP call.**
 A race condition where the device goes offline between the connectivity check and the HTTP call is benign: the HTTP call will throw a `SocketException`, which the existing error handler already catches. The connectivity check is purely an optimisation to avoid unnecessary network attempts and misleading UI states.
 
-**Connectivity-restore trigger.**  
+**Connectivity-restore trigger.**
 Subscribe to `Connectivity().onConnectivityChanged` in the service or in the app's root widget lifecycle. When the stream emits a status that is not `ConnectivityResult.none`, re-run the update check (if the 24-hour cooldown has elapsed). The stream subscription must be cancelled in `dispose()` to avoid leaks.
 
-**Launch trigger.**  
+**Launch trigger.**
 In the update checker's initialisation path (wherever the first-run or periodic timer is set up), add a call to `_checkForUpdates()` unconditionally on startup, gated only by the existing 24-hour cooldown logic. This is a one-liner.
 
 ### Proposed Change
