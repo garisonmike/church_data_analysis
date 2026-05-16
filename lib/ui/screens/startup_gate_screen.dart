@@ -5,11 +5,9 @@ import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:church_analytics/platform/platform_installer_launch_service.dart';
-import 'package:church_analytics/services/background_update_service.dart'; // FEAT-018
 import 'package:church_analytics/services/download_foreground_service.dart'; // FEAT-008
 import 'package:church_analytics/services/download_state_service.dart'; // FEAT-007
 import 'package:church_analytics/models/update_error_type.dart'; // FEAT-007
-import 'package:church_analytics/services/update_download_service.dart'; // FEAT-007
 import 'package:church_analytics/ui/screens/log_viewer_screen.dart';
 import 'package:church_analytics/ui/widgets/installer_confirmation_dialog.dart'; // FEAT-007
 import 'package:church_analytics/ui/widgets/update_download_progress_dialog.dart'; // FEAT-007
