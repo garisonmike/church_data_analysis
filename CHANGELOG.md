@@ -11,6 +11,61 @@ Format: [BUG-XX] or [FEATURE] — Description — Files changed
 
 ---
 
+## [1.5.0] — 2026-05-16
+
+### Bug Fixes
+
+- **[BUG-14]** Fixed onboarding/update-gating edge cases so startup and
+  dashboard navigation recover cleanly after update prompts and install
+  attempts.
+  - Files: `lib/ui/screens/startup_gate_screen.dart`,
+    `lib/ui/screens/dashboard_screen.dart`,
+    `lib/platform/platform_installer_launch_service.dart`,
+    `test/services/update_download_service_test.dart`
+
+- **[BUG-15]** Update downloads now use stronger result handling, checksum
+  validation, Android install permission checks, and foreground download
+  support.
+  - Files: `lib/services/update_download_service.dart`,
+    `lib/services/update_download_result.dart`,
+    `lib/platform/install_permission_service.dart`,
+    `lib/services/download_foreground_service.dart`,
+    `android/app/src/main/AndroidManifest.xml`,
+    `test/services/update_download_service_test.dart`,
+    `test/services/download_state_service_test.dart`
+
+### New Features
+
+- **[FEATURE]** Enhanced in-app update flow with backup prompts, visible
+  download progress, install failure recovery, and update controls in settings.
+  - Files: `lib/ui/screens/startup_gate_screen.dart`,
+    `lib/ui/widgets/about_updates_card.dart`,
+    `lib/ui/widgets/pre_update_backup_dialog.dart`,
+    `lib/ui/widgets/update_download_progress_dialog.dart`,
+    `lib/services/download_state_service.dart`,
+    `lib/ui/screens/app_settings_screen.dart`
+
+- **[FEATURE]** Background update checks now respect connectivity state and
+  app lifecycle startup paths.
+  - Files: `lib/main.dart`, `lib/services/background_update_service.dart`,
+    `lib/ui/widgets/about_updates_card.dart`,
+    `test/services/background_update_service_test.dart`
+
+- **[FEATURE]** Release CI now builds Android, Windows, and web container
+  assets from branch and version tag pushes.
+  - Files: `.github/workflows/build-release.yml`,
+    `.github/workflows/build-android.yml`, `android/app/build.gradle.kts`
+
+### Documentation
+
+- Refreshed forking, customization, platform parity, and technical report
+  documentation for the update/release workflow.
+  - Files: `README.md`, `TECHNICAL_REPORT.md`, `docs/FORKING.md`,
+    `docs/FORK_GUIDE.md`, `docs/CUSTOMISATION.md`,
+    `docs/PLATFORM_PARITY.md`
+
+---
+
 ## [1.4.0] — 2026-05-13
 
 ### Bug Fixes
