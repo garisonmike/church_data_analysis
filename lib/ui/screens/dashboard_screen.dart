@@ -4,15 +4,12 @@ import 'package:church_analytics/models/models.dart' as models;
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:church_analytics/ui/screens/screens.dart';
-import 'package:church_analytics/ui/widgets/onboarding_overlay.dart';
 import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart'; // BUG-001: SystemNavigator.pop()
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
-import 'reports_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
   final int churchId;
@@ -49,6 +46,27 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     ref.listenManual(dashboardRefreshProvider, (_, __) {
       if (mounted) _loadData();
     });
+
+    // FEAT-018 fix: listen to backgroundUpdateCheckProvider for the lifetime
+    // of the dashboard — not just once at init — so that a result produced by
+    // the connectivity-restore trigger in main.dart also surfaces the banner.
+    //
+    // Without this listener the one-shot read in _triggerBackgroundUpdateCheck
+    // captures the value at startup, but any subsequent provider run triggered
+    // by ref.invalidate + ref.read in ChurchAnalyticsApp._connectivitySubscription
+    // never reaches this widget.  ref.listenManual keeps the subscription alive
+    // until dispose() and fires _applyUpdateCheckResult on every new value.
+    ref.listenManual(
+      backgroundUpdateCheckProvider,
+      (_, next) {
+        next.whenOrNull(
+          data: (result) {
+            if (mounted) _applyUpdateCheckResult(result);
+          },
+        );
+      },
+    );
+
     _initializeProfileService();
     _loadData();
     _triggerBackgroundUpdateCheck();
@@ -104,15 +122,26 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
   }
 
+  /// Applies an [UpdateCheckResult] to the dashboard state.
+  ///
+  /// Extracted so that both the one-shot launch check
+  /// ([_triggerBackgroundUpdateCheck]) and the ongoing listener registered in
+  /// [initState] share identical banner logic.  This ensures a result produced
+  /// by the connectivity-restore trigger surfaces the banner even when the
+  /// dashboard is already visible.
+  void _applyUpdateCheckResult(UpdateCheckResult? result) {
+    if (result?.isUpdateAvailable == true && mounted) {
+      setState(() {
+        _showUpdateBanner = true;
+        _latestUpdateVersion = result!.latestVersion;
+      });
+    }
+  }
+
   Future<void> _triggerBackgroundUpdateCheck() async {
     try {
       final result = await ref.read(backgroundUpdateCheckProvider.future);
-      if (result?.isUpdateAvailable == true && mounted) {
-        setState(() {
-          _showUpdateBanner = true;
-          _latestUpdateVersion = result!.latestVersion;
-        });
-      }
+      _applyUpdateCheckResult(result);
     } catch (_) {
       // Background check must never disrupt the dashboard
     }
@@ -255,12 +284,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               UpdateAvailableBanner(
                 version: _latestUpdateVersion!,
                 onDismiss: () => setState(() => _showUpdateBanner = false),
-                onGoToSettings: () => Navigator.push(
+                onGoToSettings: () => Navigator.pushNamed(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) =>
-                        ChurchSettingsScreen(churchId: widget.churchId),
-                  ),
+                  '/app-settings',
+                  arguments: widget.churchId,
                 ),
               ),
             Expanded(

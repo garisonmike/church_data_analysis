@@ -5,9 +5,9 @@ import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:church_analytics/platform/platform_installer_launch_service.dart';
+import 'package:church_analytics/services/download_foreground_service.dart'; // FEAT-008
 import 'package:church_analytics/services/download_state_service.dart'; // FEAT-007
 import 'package:church_analytics/models/update_error_type.dart'; // FEAT-007
-import 'package:church_analytics/services/update_download_service.dart'; // FEAT-007
 import 'package:church_analytics/ui/screens/log_viewer_screen.dart';
 import 'package:church_analytics/ui/widgets/installer_confirmation_dialog.dart'; // FEAT-007
 import 'package:church_analytics/ui/widgets/update_download_progress_dialog.dart'; // FEAT-007
@@ -28,18 +28,40 @@ class StartupGateScreen extends ConsumerStatefulWidget {
 
 class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
   Object? _error;
-  bool _navigationInProgress = false;
+
+  // BUG-001 fix: _navigationInProgress has been removed.
+  //
+  // The old flag was set to true inside _routeFromState() on every navigation
+  // path but never reset. The postFrameCallback for crash recovery checked it
+  // and returned early, so crash recovery was permanently suppressed after the
+  // very first call — even on hot-restart, OS resume, or a retry from the
+  // error UI.
+  //
+  // Fix: addPostFrameCallback is registered once in initState and runs a
+  // single sequential async chain (_startup). Crash recovery always runs
+  // before _routeFromState, with a mounted check between them. The flag is no
+  // longer needed because the callback is only ever registered once.
 
   @override
   void initState() {
     super.initState();
-    _routeFromState();
-    // After first frame: check for crash recovery.
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      if (_navigationInProgress) return;
-      await showCrashRecoveryDialogIfNeeded(context);
-    });
+    // Registered exactly once — no re-entrancy is possible, so no flag needed.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startup());
+  }
+
+  /// Single sequential startup chain.
+  ///
+  /// Step 1 — crash recovery dialog (must run before routing so the user sees
+  /// it on a blank screen rather than over the dashboard).
+  /// Step 2 — route to the correct initial screen.
+  ///
+  /// Each await boundary is followed by a mounted check so that widget
+  /// disposal mid-flight is handled safely.
+  Future<void> _startup() async {
+    if (!mounted) return;
+    await showCrashRecoveryDialogIfNeeded(context);
+    if (!mounted) return;
+    await _routeFromState();
   }
 
   Future<void> _routeFromState() async {
@@ -57,7 +79,6 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
         await churchService.clearCurrentChurch();
         await profileService.clearCurrentProfile();
         if (!mounted) return;
-        _navigationInProgress = true;
         Navigator.of(context).pushReplacementNamed('/select-church');
         return;
       }
@@ -67,7 +88,6 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
         await churchService.clearCurrentChurch();
         await profileService.clearCurrentProfile();
         if (!mounted) return;
-        _navigationInProgress = true;
         Navigator.of(context).pushReplacementNamed('/select-church');
         return;
       }
@@ -77,7 +97,6 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
         await churchService.clearCurrentChurch();
         await profileService.clearCurrentProfile();
         if (!mounted) return;
-        _navigationInProgress = true;
         Navigator.of(context).pushReplacementNamed('/select-church');
         return;
       }
@@ -88,7 +107,6 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
       final currentProfileId = profileService.getCurrentProfileId();
       if (currentProfileId == null) {
         if (!mounted) return;
-        _navigationInProgress = true;
         Navigator.of(
           context,
         ).pushReplacementNamed('/select-profile', arguments: churchId);
@@ -104,7 +122,6 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
       if (!validProfile) {
         await profileService.clearCurrentProfile();
         if (!mounted) return;
-        _navigationInProgress = true;
         Navigator.of(
           context,
         ).pushReplacementNamed('/select-profile', arguments: churchId);
@@ -122,10 +139,24 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
       unawaited(_cleanUpStaleApks());
 
       if (!mounted) return;
-      _navigationInProgress = true;
       Navigator.of(
         context,
       ).pushReplacementNamed('/dashboard', arguments: churchId);
+
+      // FEAT-018: Fire a background update check on cold launch.
+      //
+      // Runs fire-and-forget immediately after the dashboard route is pushed.
+      // The provider handles both the 24-hour cooldown gate and the
+      // connectivity pre-check internally, so this call is always safe to
+      // make unconditionally here.
+      //
+      // The provider is invalidated before reading so that it re-evaluates
+      // on every cold launch rather than returning a cached value from a
+      // previous session.  Without invalidation, a FutureProvider that
+      // completed in a prior session would return its cached result
+      // immediately and skip the cooldown/connectivity logic entirely.
+      ref.invalidate(backgroundUpdateCheckProvider);
+      unawaited(ref.read(backgroundUpdateCheckProvider.future));
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -232,42 +263,95 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
       final existingBytes = await partialFile.length();
       if (existingBytes > 0) seedValue = 0.05; // approximate non-zero seed
     } catch (_) {}
+    // Guard: partialFile.length() is async — widget may have been disposed.
+    if (!mounted) return;
+
     final progressNotifier = ValueNotifier<double>(seedValue);
+    var dialogShown = false;
     var dialogPopped = false;
 
     void popDialog() {
-      if (!dialogPopped && mounted) {
+      if (dialogShown && !dialogPopped && mounted) {
         dialogPopped = true;
         Navigator.of(context, rootNavigator: true).pop();
       }
     }
 
-    // ignore: unawaited_futures
-    UpdateDownloadProgressDialog.show(
-      context,
-      progress: progressNotifier,
-      filename: record.destPath.split('/').last,
-      onCancel: () {
-        cancelToken.cancel();
-        popDialog();
-      },
-      onPause: () => pauseToken.pause(),
-    );
+    // FEAT-008: initialise and start the foreground service BEFORE showing the
+    // progress dialog so that any start failure is caught by the try/finally
+    // below — which stops the service and disposes the notifier — rather than
+    // leaving the modal stuck open or leaking resources.
+    // init() is idempotent — safe to call here even if AboutUpdatesCard has
+    // already called it in a prior session.
+    DownloadForegroundService.init();
 
-    final service = UpdateDownloadService();
-    final result = await service.resumeFile(
-      downloadUrl: record.url,
-      partialFilePath: record.destPath,
-      expectedSha256: record.sha256,
-      onProgress: (p) => progressNotifier.value = p,
-      cancelToken: cancelToken,
-      pauseToken: pauseToken,
-    );
+    late UpdateDownloadResult result;
+    try {
+      await DownloadForegroundService.start(cancelToken: cancelToken);
+      // start() is async — re-check mounted before touching context.
+      if (!mounted) return;
 
-    popDialog();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => progressNotifier.dispose(),
-    );
+      // Show the progress dialog only after the service has started
+      // successfully.  Fire-and-forget: dismissed imperatively via popDialog().
+      dialogShown = true;
+      // ignore: unawaited_futures
+      UpdateDownloadProgressDialog.show(
+        context,
+        progress: progressNotifier,
+        filename: record.destPath.split('/').last,
+        onCancel: () {
+          cancelToken.cancel();
+          popDialog();
+        },
+        onPause: () => pauseToken.pause(),
+      );
+
+      final service = UpdateDownloadService();
+      result = await service.resumeFile(
+        downloadUrl: record.url,
+        partialFilePath: record.destPath,
+        expectedSha256: record.sha256,
+        onProgress: (p) {
+          progressNotifier.value = p;
+          // Mirror progress to the foreground service notification (throttled
+          // internally by DownloadForegroundService).
+          DownloadForegroundService.updateProgress(p);
+        },
+        cancelToken: cancelToken,
+        pauseToken: pauseToken,
+      );
+    } on ForegroundServiceStartException {
+      // The foreground service failed to start (e.g. not initialised, Android
+      // timeout).  This is not a fatal startup error — the user can still use
+      // the app normally.
+      //
+      // Clear the interrupted-download record so this prompt does not recur on
+      // future launches.  AboutUpdatesCard does not read DownloadStateService,
+      // so the record cannot be resumed from Settings → Updates; leaving it
+      // would re-prompt the user on every launch until it was manually cleared.
+      // The partial file is left on disk — the OS will eventually reclaim it.
+      await DownloadStateService.clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not resume the interrupted download. '
+              'Start a fresh download from Settings → Updates.',
+            ),
+            duration: Duration(seconds: 6),
+          ),
+        );
+      }
+      return;
+    } finally {
+      // FEAT-008: always stop the foreground service, whatever the outcome
+      // (success, cancel, error, start failure, or unexpected exception).
+      await DownloadForegroundService.stop();
+      popDialog();
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => progressNotifier.dispose(),
+      );
+    }
 
     if (!mounted) return;
 
@@ -382,7 +466,7 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
                 ElevatedButton(
                   onPressed: () {
                     setState(() => _error = null);
-                    _routeFromState();
+                    _startup();
                   },
                   child: const Text('Retry'),
                 ),

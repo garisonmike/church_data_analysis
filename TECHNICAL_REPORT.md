@@ -1,10 +1,10 @@
 # Technical Report — Church Analytics: Feature Work & Bug Fixes
 
 **Date:** May 2026  
-**Scope:** Navigation bug, log export bug, update system improvements, tutorial opt-in, data management (view full imported data list, delete data), analytics graphs, PDF export, app icon & name documentation, Excel import & template download  
+**Scope:** Missing screen crash bugs, target analysis card copy, update system improvements, tutorial opt-in, Excel import & template download, background update checker connectivity, onboarding copy  
 **Codebase Version:** As at commit `HEAD` on 2026-05-12  
 **Author:** garisonmike  
-**Report Version:** 3.1 (supersedes v3.0 — FEAT-008 architecture revised)
+**Report Version:** 3.4 (supersedes v3.3 — adds BUG-001 navigation guard fix; aligns FEAT-006 streaming correctness; adds FEAT-008 architecture alignment note, `flutter_foreground_task` v8 init requirements, and resolved minSdk decision)
 
 ---
 
@@ -18,8 +18,9 @@ Items are classified as **BUG** (something broken) or **FEAT** (new behaviour re
 
 ## Table of Contents
 
-- [BUG-001 — Back button from Dashboard leads to stuck loading screen](#bug-001)
-- [BUG-002 — Log export fails on Android ("Could not determine save location")](#bug-002)
+- [BUG-001 — `_navigationInProgress` guard suppresses crash recovery and onboarding indefinitely](#bug-001)
+- [BUG-003 — Tapping SpecialEvents / HomeChurchAnalytics / BoardMeeting / FinancialGlossary crashes (missing screen classes)](#bug-003)
+- [BUG-004 — Target Analysis card description misleads users into thinking the screen is empty](#bug-004)
 - [FEAT-001 — Tutorial: ask user before showing onboarding](#feat-001)
 - [FEAT-002 — Update: request install-unknown-apps permission proactively](#feat-002)
 - [FEAT-003 — Update: prompt user to back up before updating](#feat-003)
@@ -28,242 +29,192 @@ Items are classified as **BUG** (something broken) or **FEAT** (new behaviour re
 - [FEAT-006 — Update: pause and resume download](#feat-006)
 - [FEAT-007 — Update: resume download after unexpected app closure](#feat-007)
 - [FEAT-008 — Update: continue downloading while app is in background (Android)](#feat-008)
-- [FEAT-009 — Platform feature parity audit](#feat-009)
-- [FEAT-010 — Baptism & Holy Communion graphs](#feat-010)
-- [FEAT-011 — PDF export completeness](#feat-011)
-- [FEAT-012 — App icon customisation documentation](#feat-012)
-- [FEAT-013 — App name documentation for forks](#feat-013)
-- [FEAT-014 — Home screen: view full list of imported data](#feat-014)
-- [FEAT-015 — Data management: delete imported records](#feat-015)
 - [FEAT-016 — Excel (.xlsx) import support](#feat-016)
 - [FEAT-017 — Downloadable import template](#feat-017)
+- [FEAT-018 — Background update checker: connectivity check + trigger on launch and connectivity restore](#feat-018)
+- [FEAT-019 — Onboarding slide 4: add Chart Center hint](#feat-019)
 - [Testing Checklist](#testing-checklist)
 - [Risk Summary](#risk-summary)
 
 ---
 
 <a name="bug-001"></a>
-## BUG-001 — Back button from Dashboard leads to stuck loading screen
+## BUG-001 — `_navigationInProgress` guard suppresses crash recovery and onboarding indefinitely
 
-**Status:** Complete (2026-05-12)
+> **Added in Review — High severity. Fix before any FEAT work is merged.**
 
 ### Severity
-Medium. Reproducible when specific timing conditions are met. Confusing but non-destructive.
+High. As written, the `_navigationInProgress` flag in `startup_gate_screen.dart` is set to `true` before the first `await` in the post-frame callback. Because the flag is **never reset to `false` on the success path**, any subsequent post-frame callback (re-entry from the OS, a hot-restart in debug, or a deferred route trigger) hits the early-return guard and does nothing. The practical effect is that crash recovery and onboarding are silently suppressed after the first call — the user sees a blank or frozen startup screen with no forward route being pushed.
 
-### Observed Behaviour
-From the `DashboardScreen`, pressing the AppBar back arrow navigates to a screen showing only a spinning progress indicator that never resolves. The user is stuck and must kill and reopen the app.
+### Root Cause
 
-### Root Cause Analysis
+```dart
+// startup_gate_screen.dart — current (broken)
+WidgetsBinding.instance.addPostFrameCallback((_) async {
+  if (_navigationInProgress) return;   // <— guard checked here
+  _navigationInProgress = true;        // <— set before await, never cleared on success
+  await _routeFromState();
+  // _navigationInProgress remains true forever — next callback always returns early
+});
+```
 
-**Two independent problems compound to produce this bug.**
+The guard was written to prevent concurrent re-entrant calls, but it conflates "in progress right now" with "ever attempted". A flag that is set and never cleared behaves like a one-shot latch rather than a mutex.
 
-**Problem A — Race condition in `StartupGateScreen.initState()`.**
+### Fix — Two options (choose one)
 
-`lib/ui/screens/startup_gate_screen.dart`, `initState()` schedules two concurrent async operations at startup:
+**Option A — Reset the flag after `_routeFromState()` completes (minimal change):**
+
+```dart
+WidgetsBinding.instance.addPostFrameCallback((_) async {
+  if (_navigationInProgress) return;
+  _navigationInProgress = true;
+  try {
+    await _routeFromState();
+  } finally {
+    _navigationInProgress = false;  // always reset, even on exception
+  }
+});
+```
+
+This is the lowest-risk fix. The `finally` block ensures the flag is always cleared — even if `_routeFromState()` throws — so a subsequent callback can retry.
+
+**Option B — Serialize the entire startup flow in a single async chain (preferred for new code):**
+
+Remove the `_navigationInProgress` flag entirely. Instead, ensure `addPostFrameCallback` is only registered once (e.g. in `initState`), and make `_routeFromState()` itself idempotent using a `Completer` or `mounted` checks at each `await` boundary:
 
 ```dart
 @override
 void initState() {
   super.initState();
-  _routeFromState();                              // (1) async, starts immediately
-  WidgetsBinding.instance.addPostFrameCallback((_) async {
-    if (!mounted) return;
-    await showCrashRecoveryDialogIfNeeded(context); // (2) async, fires after first frame
-    if (!mounted) return;
-    final done = await isOnboardingComplete();
-    if (!done && mounted) {
-      await Navigator.of(context).push(           // (3) pushes OnboardingOverlay
-        MaterialPageRoute(builder: (_) => const OnboardingOverlay()),
-      );
-    }
-  });
+  WidgetsBinding.instance.addPostFrameCallback((_) => _startup());
+  // Only one registration — no flag needed.
+}
+
+Future<void> _startup() async {
+  await showCrashRecoveryDialogIfNeeded();
+  if (!mounted) return;
+  await _routeFromState();
 }
 ```
 
-`_routeFromState()` awaits `SharedPreferences.getInstance()` and multiple database calls before it calls `pushReplacementNamed('/dashboard')`. `addPostFrameCallback` fires after the first frame — which is drawn immediately, while `_routeFromState()` is still awaiting. Both are running "at the same time" from Dart's cooperative scheduler perspective.
+If `_routeFromState()` is only ever called from this single chain, there is no re-entrancy to guard against.
 
-In the normal path (onboarding already done), `isOnboardingComplete()` returns true quickly and the callback finishes without pushing anything. `_routeFromState()` then does its `pushReplacementNamed('/dashboard')` and the stack is clean: `[DashboardScreen]`. No back button is shown because `Navigator.canPop()` is false.
+### Affected Files
 
-**The problem path**: On slow devices or cold starts, the postFrameCallback reaches `showCrashRecoveryDialogIfNeeded()` and `isOnboardingComplete()` and finds that a crash occurred last session OR onboarding is not complete. It `await`s a dialog or pushes the `OnboardingOverlay`. During this await, `_routeFromState()` finishes and calls `pushReplacementNamed('/dashboard')` from the `StartupGateScreen` context. 
+| File | Change |
+|---|---|
+| `lib/ui/screens/startup_gate_screen.dart` | Apply Option A or Option B above |
 
-`pushReplacementNamed` replaces `StartupGateScreen` in the stack. If `OnboardingOverlay` was already pushed above it, the stack becomes `[DashboardScreen, OnboardingOverlay]` — the overlay sits *on top* of the dashboard. When the user dismisses the overlay, they see the dashboard with `canPop() == true` because... wait, actually in this case there's nothing below Dashboard, so `canPop()` would still be false.
+### Risk
+Low. The fix is surgical — it changes flag lifecycle only. The routing logic inside `_routeFromState()` and all downstream navigation calls are untouched. Test by simulating a crash-recovery path on first launch to confirm the dialog appears.
 
-The more dangerous race is: `_routeFromState()` calls `pushReplacementNamed` *while the `mounted` guard in the postFrameCallback has already passed but before the overlay push completes*. Flutter's navigation is not synchronised between these two code paths, so the navigator can end up in an inconsistent intermediate state that, in some builds/devices, leaves a ghost `StartupGateScreen` entry below `DashboardScreen` in the internal route history. When the dashboard's implied back button triggers a pop, this ghost route is revealed — and because it was "replaced" its `_routeFromState()` never runs again, leaving the user staring at the spinner.
+---
 
-**Problem B — DashboardScreen does not protect against back-navigation.**
+<a name="bug-003"></a>
+## BUG-003 — Tapping SpecialEvents / HomeChurchAnalytics / BoardMeeting / FinancialGlossary crashes (missing screen classes)
 
-`lib/ui/screens/dashboard_screen.dart`, the `Scaffold`'s `AppBar` has no `automaticallyImplyLeading: false` and there is no `PopScope` wrapping the `Scaffold`. This means Flutter will automatically render a back arrow any time `Navigator.canPop()` returns true on the dashboard's route, whether that is expected or not. On a phone with Android's gesture navigation, a swipe-from-left also triggers a pop.
+### Severity
+High. Any user who taps one of these four navigation entries in `graph_center_screen.dart` receives an immediate crash (either a compile-time `Undefined class` error if the project fails to build, or — if stub imports were accidentally omitted — a runtime `NoSuchMethodError` / `Null check operator used on a null value` when the route builder executes). The affected entries are visible in the UI, so all users are exposed.
+
+### Observed Behaviour
+In `lib/ui/screens/graph_center_screen.dart`, four navigation destinations reference the following classes:
+
+```
+SpecialEventsScreen
+HomeChurchAnalyticsScreen
+BoardMeetingAnalyticsScreen
+FinancialGlossaryScreen
+```
+
+None of these classes exist anywhere in the codebase. The file has import statements (or inline route builders) for each, meaning:
+- If the imports are present, the project **fails to compile** entirely.
+- If they are missing (the imports were stripped during a prior cleanup), the navigator route builder throws at runtime the moment the user taps the tile.
+
+Either way the app crashes.
+
+### Root Cause
+The four screens were planned and wired into the Chart Center navigation before their Dart files were created. The navigation references were committed; the implementations were not.
 
 ### Affected Files
 
 | File | What the problem is |
 |---|---|
-| `lib/ui/screens/startup_gate_screen.dart` | Two async tasks in `initState()` with no coordination guard, can both attempt navigation |
-| `lib/ui/screens/dashboard_screen.dart` | No `PopScope` guard; shows a back arrow whenever `canPop()` is true |
+| `lib/ui/screens/graph_center_screen.dart` | References four undefined screen classes |
+| *(missing)* `lib/ui/screens/special_events_screen.dart` | Does not exist |
+| *(missing)* `lib/ui/screens/home_church_analytics_screen.dart` | Does not exist |
+| *(missing)* `lib/ui/screens/board_meeting_analytics_screen.dart` | Does not exist |
+| *(missing)* `lib/ui/screens/financial_glossary_screen.dart` | Does not exist |
 
 ### Proposed Fix
 
-**Step 1 — Coordinate the two async tasks in `StartupGateScreen`.**
+**Phase 1 — Create placeholder screens (fixes the crash immediately, zero functional regression).**
 
-Add a `bool _navigationInProgress = false` flag. `_routeFromState()` sets it to `true` before its first `await`. The `addPostFrameCallback` checks this flag before calling `showCrashRecoveryDialogIfNeeded` or pushing the overlay. If the flag is true the callback returns early. This ensures only one of the two paths pushes a navigation event.
+Create each missing file as a minimal `StatelessWidget` that displays the screen's title and a "Coming soon" body. This unblocks compilation and stops the crash on tap:
 
 ```dart
-// lib/ui/screens/startup_gate_screen.dart
+// lib/ui/screens/special_events_screen.dart
+import 'package:flutter/material.dart';
 
-bool _navigationInProgress = false;   // ADD THIS
+class SpecialEventsScreen extends StatelessWidget {
+  const SpecialEventsScreen({super.key});
 
-@override
-void initState() {
-  super.initState();
-  _routeFromState();
-  WidgetsBinding.instance.addPostFrameCallback((_) async {
-    if (!mounted || _navigationInProgress) return;  // GUARD ADDED
-    await showCrashRecoveryDialogIfNeeded(context);
-    if (!mounted || _navigationInProgress) return;  // GUARD ADDED
-    final done = await isOnboardingComplete();
-    if (!done && mounted && !_navigationInProgress) { // GUARD ADDED
-      await Navigator.of(context).push(...);
-    }
-  });
-}
-
-Future<void> _routeFromState() async {
-  _navigationInProgress = true;  // SET FLAG AT ENTRY
-  try {
-    // ... existing logic unchanged ...
-  } catch (e) {
-    _navigationInProgress = false;  // Release on error so the callback can run
-    if (!mounted) return;
-    setState(() => _error = e);
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Special Events')),
+      body: const Center(child: Text('Coming soon')),
+    );
   }
 }
 ```
 
-**Why this is safe:** `_routeFromState()` sets the flag synchronously at entry, before any `await`. Dart's event loop runs synchronously until the first `await`, so by the time the postFrameCallback can run (it's scheduled for the next microtask after the first frame), the flag is already set. No real concurrency — just Dart cooperative scheduling — so this guard is sufficient.
+Apply the identical pattern for `HomeChurchAnalyticsScreen`, `BoardMeetingAnalyticsScreen`, and `FinancialGlossaryScreen`, substituting the appropriate title string.
 
-**Step 2 — Protect `DashboardScreen` with `PopScope`.**
+**Phase 2 — Replace placeholders with real screens** as separate follow-on tasks. Each screen gets its own work item and testing. Phase 1 and Phase 2 are deliberately decoupled so the crash is resolved immediately without waiting for full feature implementation.
 
-Wrap the `DashboardScreen` `Scaffold` in a `PopScope` with `canPop: false` and an `onPopInvokedWithResult` that uses `SystemNavigator.pop()` to exit the app cleanly when the user presses back from the root dashboard:
-
-```dart
-// lib/ui/screens/dashboard_screen.dart
-import 'package:flutter/services.dart'; // already imported elsewhere in the project
-
-@override
-Widget build(BuildContext context) {
-  return PopScope(
-    canPop: false,
-    onPopInvokedWithResult: (didPop, _) {
-      if (!didPop) SystemNavigator.pop(); // clean app exit on back
-    },
-    child: Scaffold(
-      appBar: AppBar( ... ), // unchanged
-      ...
-    ),
-  );
-}
-```
-
-**Why `PopScope` and not `WillPopScope`?** `WillPopScope` is deprecated as of Flutter 3.22 and will be removed. The codebase targets a version that has `PopScope`; `SystemNavigator` is already imported elsewhere (see `platform_installer_launch_service.dart`). Using `PopScope(canPop: false)` means the back arrow also disappears from the AppBar automatically, which is the correct UX for a root screen.
-
-**Compatibility:** `PopScope` with `onPopInvokedWithResult` (two parameters) requires Flutter 3.22+. Check `flutter --version` before merging. If the project is on an older Flutter, use `onPopInvoked` (one parameter, deprecated signature) instead. Do NOT use `WillPopScope`.
-
-### What Does NOT Change
-The navigation logic inside `_routeFromState()` is untouched. All routes (`/select-church`, `/select-profile`, `/dashboard`) remain identical. The rest of the `DashboardScreen` build is untouched.
+### Why This Is Safe
+Phase 1 creates four new files and changes nothing else. `graph_center_screen.dart` is not modified — the class names it already references will simply become resolvable. No existing navigation routes, providers, or data layers are touched.
 
 ### Risk
-Low. The flag guard is purely additive. `PopScope` is a standard Flutter widget replacing a deprecated one. The only meaningful change is that pressing the system back button from the dashboard now exits the app instead of navigating backward — which is the expected behaviour for any root screen.
+None (Phase 1). Phase 2 risk depends on the complexity of each individual screen; those are separate assessments.
 
 ---
 
-<a name="bug-002"></a>
-## BUG-002 — Log export fails on Android ("Could not determine save location")
-
-**Status:** Complete (2026-05-12)
+<a name="bug-004"></a>
+## BUG-004 — Target Analysis card description misleads users into thinking the screen is empty
 
 ### Severity
-Low-medium. App logs export is a diagnostic feature; the failure is not data-threatening, but the error message is confusing.
+Low. The screen is fully functional (graphs G-49 through G-74 exist and render), but users abandon it before entering any data because the card description implies there is nothing to see. This is a UX confusion bug, not a code defect.
 
 ### Observed Behaviour
-As seen in the screenshot (Image 2): after tapping the Export button in the App Logs screen, the red snackbar "Could not determine save location." appears at the bottom. The log file is never written.
+On the Chart Center (or wherever the Target Analysis entry card is shown), the card's description text is vague — it does not indicate that the screen contains charts (G-49 to G-74) or that the user needs to enter target data for those charts to populate. Users interpret the empty initial state as a broken or unfinished screen and navigate away.
 
 ### Root Cause
-
-`lib/ui/screens/log_viewer_screen.dart`, the `_exportLogs()` method:
-
-```dart
-String? destPath;
-if (!kIsWeb && (Platform.isLinux || Platform.isMacOS || Platform.isWindows)) {
-  final dir = await _getExportsDir();
-  destPath = '${dir.path}/$suggestedName';
-}
-
-if (destPath == null) {
-  _showSnack('Could not determine save location.');
-  return;
-}
-```
-
-Android is not handled. `destPath` is never assigned on Android, so the null check fires and the error is shown. The `_getExportsDir()` helper itself also only handles Linux/macOS (using the `HOME` env variable for Documents folder) and falls back to `Directory.systemTemp` on other platforms — but this whole helper is not even called on Android because of the `Platform.isLinux || Platform.isMacOS || Platform.isWindows` guard.
+The card description copy was written before the screen was fully built and was never updated to reflect the final content. The screen itself works correctly; only the text is wrong.
 
 ### Affected Files
 
-| File | Line range | What to change |
-|---|---|---|
-| `lib/ui/screens/log_viewer_screen.dart` | ~78–97 (`_exportLogs`) | Add Android branch |
-| `lib/ui/screens/log_viewer_screen.dart` | ~116–127 (`_getExportsDir`) | Add Android path resolution |
+| File | Change |
+|---|---|
+| The file containing the Target Analysis card widget or its string constants | Update description text |
+
+> **Note for implementer:** Locate the card description string in the codebase (likely in `graph_center_screen.dart`, a constants file, or the card widget itself) and confirm the exact current wording before editing.
 
 ### Proposed Fix
 
-The project already uses `path_provider: ^2.1.5` (confirmed in `pubspec.yaml`). `path_provider` exposes `getExternalStorageDirectory()` on Android, which returns the app's external files directory (e.g. `/sdcard/Android/data/com.church.church_analytics/files`). This does not require any storage permission on Android 10+.
+Replace the current vague description with copy that tells the user two things: what the screen contains, and what action is needed.
 
-**Change `_exportLogs()`:**
+**Suggested new description:**
 
-```dart
-String? destPath;
-if (!kIsWeb) {
-  if (Platform.isLinux || Platform.isMacOS || Platform.isWindows) {
-    final dir = await _getExportsDir();
-    destPath = '${dir.path}/$suggestedName';
-  } else if (Platform.isAndroid) {             // ADD THIS BRANCH
-    final dir = await _getAndroidExportsDir(); // ADD THIS CALL
-    if (dir != null) destPath = '${dir.path}/$suggestedName';
-  }
-}
-```
+> "Set attendance and financial targets for your church, then view 26 charts (G-49 – G-74) that compare actuals against those targets. Tap to enter your targets and unlock the analysis."
 
-**Add `_getAndroidExportsDir()`:**
+Adjust the exact wording to match the app's existing tone, but the description must communicate: (a) charts exist, (b) data entry is required to activate them.
 
-```dart
-Future<Directory?> _getAndroidExportsDir() async {
-  try {
-    final external = await getExternalStorageDirectory();
-    if (external != null) {
-      final dir = Directory('${external.path}/church_analytics_exports');
-      if (!await dir.exists()) await dir.create(recursive: true);
-      return dir;
-    }
-  } catch (e) {
-    LogService.warning('LogViewer', 'External storage unavailable: $e');
-  }
-  // Fallback: app-internal documents directory (always accessible, no permission needed)
-  final docs = await getApplicationDocumentsDirectory();
-  final dir = Directory('${docs.path}/church_analytics_exports');
-  if (!await dir.exists()) await dir.create(recursive: true);
-  return dir;
-}
-```
-
-**Why this is safe:**
-- `getExternalStorageDirectory()` is app-scoped on Android 10+ (no manifest permission needed).
-- The `getApplicationDocumentsDirectory()` fallback is always available on all Android versions.
-- No new dependencies required.
-- The existing desktop path is completely untouched.
-
-**One additional improvement:** After a successful export on Android, show the destination path in the snackbar so the user knows where to find the file. This is already done for desktop by the success snackbar: `'Exported $lines lines → $destPath'`.
+### What Does NOT Change
+The screen, the charts (G-49–G-74), the data model, and any navigation logic are entirely untouched.
 
 ### Risk
-None. The Android branch is new code that did not exist before. The existing Linux/macOS/Windows branch is untouched. The fallback chain ensures a valid path is always produced on Android.
+None. This is a string change only.
 
 ---
 
@@ -606,23 +557,40 @@ User should be able to pause the download (stop network transfer), resume it lat
 
 1. **New download strategy — stream to file, not to `BytesBuilder`:**
    
-   Change `update_download_service.dart` so that each chunk is appended to the destination file immediately:
+   Change `update_download_service.dart` so that each chunk is appended to the destination file immediately. Two important corrections versus the naïve approach:
+
+   - **Use `sink.add(chunk)` directly, not `await sink.addStream(Stream.value(chunk))`.**  
+     Wrapping each chunk in `Stream.value()` and calling `addStream` creates a new single-element stream object per iteration and internally awaits the stream's `done` future before returning. This unnecessary overhead can stall throughput on fast connections. `sink.add()` is synchronous and buffers the write immediately — use it instead.
+
+   - **Track resume progress correctly using `existingLength + received`.**  
+     If the download is resumed after a pause or crash (FEAT-007), the partial file already contains `existingLength` bytes on disk. Progress must be `(existingLength + received) / totalContentLength`. Using `received / totalContentLength` alone restarts the progress bar from 0% regardless of how much was already downloaded.
+
+   - **Use `Content-Range` / 206 handling for resume.**  
+     When resuming via `Range: bytes=<existingLength>-`, the server responds with HTTP 206. The `Content-Length` header in a 206 response is the *remaining* bytes, not the full file size. Store the total file size from the manifest (or the initial 200 `Content-Length`) and use it as the denominator for all progress calculations.
+
    ```dart
    final sink = file.openWrite(mode: FileMode.append); // append, not overwrite
    int received = 0;
-   await for (final chunk in streamedResponse.stream) {
-     if (cancelToken?.isCancelled == true) { ... }
-     if (pauseToken?.isPaused == true) {
-       await sink.flush();
-       await sink.close();
-       return UpdateDownloadResult.paused(file.path, bytesReceived: received);
+   final existingLength = await file.length(); // 0 for fresh download, >0 on resume
+
+   try {
+     await for (final chunk in streamedResponse.stream) {
+       if (cancelToken?.isCancelled == true) { ... }
+       if (pauseToken?.isPaused == true) {
+         await sink.flush();
+         await sink.close();
+         return UpdateDownloadResult.paused(file.path, bytesReceived: existingLength + received);
+       }
+       sink.add(chunk);                                          // NOT addStream(Stream.value(chunk))
+       received += chunk.length;
+       onProgress?.call((existingLength + received) / totalContentLength); // full-file denominator
      }
-     await sink.addStream(Stream.value(chunk));
-     received += chunk.length;
-     onProgress?.call(received / responseContentLength!);
+     await sink.flush();
+     await sink.close();
+   } catch (e) {
+     await sink.close();
+     rethrow;
    }
-   await sink.flush();
-   await sink.close();
    ```
 
 2. **New `PauseToken` class (sibling of `CancelToken`):**
@@ -714,6 +682,13 @@ FEAT-007's `DownloadStateService.persist()` writes a crash-recovery record to Sh
 
 ---
 
+> **Review note — Medium (architectural alignment required before implementation):**  
+> The architecture described in this section (download stays in the main isolate; Foreground Service is a process anchor only) **conflicts with `PLATFORM_PARITY.md` §100**, which specifies moving the download into a `TaskHandler` isolate. These two documents must be reconciled before any FEAT-008 code is written. Building from either spec in isolation will produce the wrong architecture and require a rework.  
+>  
+> **Recommended resolution:** Hold a brief alignment review. The main-isolate approach described here is technically sounder (eliminates the three isolate-boundary errors documented above), but if the parity doc's TaskHandler model has already been agreed with stakeholders, that decision takes precedence and the error analysis above must be addressed first. Update whichever document loses so both specs agree before implementation starts.
+
+---
+
 ### Chosen Architecture: Main Isolate + Foreground Service as a Process Anchor
 
 The simplest correct architecture is:
@@ -742,7 +717,21 @@ Before writing any code, confirm:
 
 - [ ] `flutter pub add flutter_foreground_task:^8.0.0` resolves without conflicts.
 - [ ] `flutter --version` is ≥ 3.22 (required for `PopScope`, also needed here for compatibility with the package's Kotlin plugin).
-- [ ] The `minSdk` value in `android/app/build.gradle.kts` resolves to at least **21** (Android 5). Foreground Services are available from API 21+. The current build config uses `flutter.minSdkVersion` which defaults to 16 — this must be raised. If your device target is Android 8+ only, raise to 26 to simplify testing.
+- [ ] **Confirm the exact v8 API for service startup.** Earlier versions of `flutter_foreground_task` (v4–v7) required a `startCallback` top-level function annotated with `@pragma('vm:entry-point')` and a `setTaskHandler(MyHandler())` call before `startService()` could succeed. If v8 retains this requirement, `DownloadForegroundService.start()` as written in Step 1 will **fail silently at runtime** — `startService()` returns without starting the service and no notification appears. Check the v8 migration guide and the package's own example app to verify whether `@pragma('vm:entry-point')` + `setTaskHandler` are still mandatory. If they are, add the minimal no-op handler:
+  ```dart
+  @pragma('vm:entry-point')
+  void startCallback() {
+    FlutterForegroundTask.setTaskHandler(_DownloadAnchorHandler());
+  }
+  
+  class _DownloadAnchorHandler extends TaskHandler {
+    @override Future<void> onStart(DateTime timestamp, SendPort? sendPort) async {}
+    @override Future<void> onRepeatEvent(DateTime timestamp, SendPort? sendPort) async {}
+    @override Future<void> onDestroy(DateTime timestamp, SendPort? sendPort) async {}
+  }
+  ```
+  Pass `startCallback` to `FlutterForegroundTask.init()` if required. **Confirm or rule this out before coding Step 1.**
+- [ ] The `minSdk` is resolved to **21** in `android/app/build.gradle.kts` per the minSdk Decision section below — confirm the explicit value is committed before building.
 - [ ] Confirm the production APK download URL returns `Accept-Ranges: bytes` in a `HEAD` response (needed for FEAT-006 pause/resume; also confirms the CDN allows sustained connections).
 
 ---
@@ -788,7 +777,15 @@ No other new dependencies. `http`, `shared_preferences`, and `path_provider` are
 
 ---
 
-### minSdk Change
+### minSdk Decision — Resolved
+
+> **Review note:** The pre-implementation checklist originally said "confirm the resolved value before locking this approach." Here is that decision.
+
+`flutter.minSdkVersion` is a Gradle property injected by the Flutter toolchain. Its value is **not fixed** — it is the minimum SDK floor for the Flutter version currently in use. As of Flutter 3.22 (the version required by `flutter_foreground_task ^8.0.0`), `flutter.minSdkVersion` resolves to **16** (Android 4.1). Foreground Services require API 21+. At minSdk 16, any device running Android 4.1–4.4 would receive an APK that references a service class the OS cannot start — resulting in a runtime crash on those devices.
+
+**Decision: set minSdk explicitly to 21.**
+
+The global Android 4.x install base is below 0.1% and dropping. Church Analytics already depends on packages that implicitly require API 21+ (Kotlin coroutines, `flutter_local_notifications`, and the Material 3 theme engine all have practical API 21 floors). Keeping minSdk at 16 provides no real-world benefit and risks confusing the build system.
 
 In `android/app/build.gradle.kts`, replace:
 
@@ -799,10 +796,12 @@ minSdk = flutter.minSdkVersion
 with:
 
 ```kotlin
-minSdk = 21  // Raised from flutter default (16) to support ForegroundService
+minSdk = 21  // Raised: ForegroundService requires API 21+; flutter default (16) is insufficient
 ```
 
-If the project has explicitly confirmed it targets Android 8+ only, you may raise this to 26 and simplify the API-level gating below.
+**If your confirmed device targets are Android 8+ only:** raise to **26** instead of 21. This lets you drop the API-level runtime guards in `DownloadForegroundService` (the `if (Build.VERSION.SDK_INT >= 26)` branches) and simplifies testing. Only do this if you have confirmed that no supported device runs Android 5 or 6.
+
+No other Gradle changes are needed. This does not affect Windows or Linux builds.
 
 ---
 
@@ -1065,294 +1064,6 @@ Overall: **Medium** (down from High in v3.0). The complexity is now in Android c
 
 ---
 
-<a name="feat-009"></a>
-## FEAT-009 — Platform feature parity audit
-
-### Current State
-The app targets Android and Windows (primary), with Linux support in the build config. Several features have platform-specific branches. A formal parity audit has not been documented.
-
-### Findings from Code Review
-
-| Feature | Android | Windows | Linux |
-|---|---|---|---|
-| Update download | ✅ Full | ✅ Full (ZIP extract) | ✅ Full (tar extract) |
-| Update install | ✅ APK open intent | ⚠️ Manual copy required | ⚠️ Manual copy required |
-| Log export | ❌ Broken (BUG-002) | ✅ Works | ✅ Works |
-| Backup / restore | ✅ | ✅ | ✅ |
-| PDF export | ✅ | ✅ | ✅ |
-| CSV export | ✅ | ✅ | ✅ |
-| CSV import | ✅ | ✅ | ✅ |
-| Onboarding tutorial | ✅ | ✅ | ✅ |
-| Crash recovery dialog | ✅ | ✅ | ✅ |
-| Permission request (install) | ⚠️ Reactive only (FEAT-002) | N/A | N/A |
-| Background download | ❌ Backgrounding kills it | ✅ OS allows it | ✅ OS allows it |
-| File picker (save location) | ✅ via `file_picker` | ✅ via `file_picker` | ✅ via `file_picker` |
-
-**Key gaps:**
-- Android log export is broken (BUG-002 above).
-- Windows/Linux update install requires the user to manually copy files. This is a known limitation documented in the code (`PlatformInstallerLaunchService._launchWindows()`). Future work could automate the swap via a small helper launcher, but this is out of scope for the current report.
-- Android background download requires a Foreground Service (FEAT-008 above).
-
-### Proposed Change
-
-No code changes in this item beyond what is described in BUG-002 and FEAT-008. This item exists to document the current parity state so any developer picking up this project has a clear baseline and does not accidentally introduce a feature that exists only on one platform.
-
-**Action:** Add a `docs/PLATFORM_PARITY.md` file summarising the table above and noting which items are known limitations vs. bugs. Update it whenever a platform-specific code path is added.
-
----
-
-<a name="feat-010"></a>
-## FEAT-010 — Baptism & Holy Communion graphs
-
-**Status:** Complete (2026-05-12)
-
-*This section is carried forward from v1.0 of this report with minor additions.*
-
-### Current State (Confirmed by Code Review)
-
-**Baptisms:** Stored on `WeeklyRecord.baptisms` (nullable int). `AnalyticsService.baptismsTrend()` exists but is connected to nothing — no graph, no PDF widget, no UI card renders it anywhere.
-
-**Holy Communion:** Two data sources:
-- `WeeklyRecord.holyCommunion` (nullable int, simple weekly flag)
-- `HolyCommunionEvent` — rich model with quarterly event data, per-home-church actual vs expected attendance, `overallRate`, `quarterLabel`
-
-Three methods in `AnalyticsService` operate on `HolyCommunionEvent`:
-- `holyCommunionRateTrend(events)`
-- `holyCommunionActualVsExpected(events)`
-- `holyCommunionByHomeChurch(event)`
-
-**Zero of these three are connected to any graph, screen, or PDF export.** `holyCommunionEventsProvider` exists in `lib/services/weekly_records_provider.dart` and is ready to consume.
-
-### Proposed Graph Set
-
-#### Baptisms → `PdfGraphCategory.attendance`
-
-| Graph ID | Chart Type | Analytics Method |
-|---|---|---|
-| `baptismsTrend` | Line | `baptismsTrend(records)` |
-| `baptismsMonthly` | Bar | aggregate by month from `baptismsTrend` |
-| `baptismsCumulative` | Line | running sum from `baptismsTrend` |
-
-Monthly aggregation matters because individual weekly baptism counts are often 0 or 1 — a monthly bar gives better visual signal for leadership. Cumulative is the number pastoral leadership cares about at year-end.
-
-#### Holy Communion → new `PdfGraphCategory.holyCommunion`
-
-| Graph ID | Chart Type | Analytics Method |
-|---|---|---|
-| `communionAttendanceRateTrend` | Line | `holyCommunionRateTrend(events)` |
-| `communionActualVsExpected` | Grouped bar | `holyCommunionActualVsExpected(events)` |
-| `communionByHomeChurch` | Grouped bar | `holyCommunionByHomeChurch(event)` |
-| `communionQuarterlyComparison` | Bar | `totalActual` per `quarterLabel` |
-
-### File-by-File Changes (All Additive)
-
-**`lib/services/pdf_graph_catalogue.dart`**
-- Add 3 enum values to `PdfGraphId`: `baptismsTrend`, `baptismsMonthly`, `baptismsCumulative`
-- Add 4 enum values to `PdfGraphId`: `communionAttendanceRateTrend`, `communionActualVsExpected`, `communionByHomeChurch`, `communionQuarterlyComparison`
-- Add `PdfGraphCategory.holyCommunion`
-- Add `'Holy Communion'` entry to `kPdfGraphCategoryLabels`
-- Add 7 new `PdfGraphOption` entries to `kPdfGraphCatalogue`
-
-**`lib/services/pdf_chart_builder.dart`**
-- Add 3 static methods for baptism charts (all take `List<WeeklyRecord>`)
-- Add 4 static methods for communion charts (all take `List<HolyCommunionEvent>`)
-
-**`lib/services/pdf_report_service.dart`**
-- `buildGraph()` receives a new optional parameter: `List<HolyCommunionEvent> communionEvents = const []`
-- Add 7 new `case` branches in `buildGraph()` switch
-- Pass the same optional parameter through `buildMultiChartReport()`
-
-**`lib/ui/screens/reports_screen.dart`**
-- `_exportPdf()` watches `holyCommunionEventsProvider` (provider already exists)
-- Passes the resolved list to `buildMultiChartReport(communionEvents: events)`
-- No UI changes needed — `_buildReportBuilderCard` already iterates `kPdfGraphCatalogue` dynamically
-
-**Risk:** None. Adding enum values is backwards-compatible. The 13 existing graphs and their IDs are entirely untouched. Dart enforces exhaustive switch at compile time — any unhandled new case will be a compile-time warning, not a silent runtime failure.
-
----
-
-<a name="feat-011"></a>
-## FEAT-011 — PDF export completeness
-
-After FEAT-010 is implemented, the PDF export will cover 20 graphs across 4 categories:
-
-- **Attendance (8):** Total Attendance Trend, Demographic Breakdown, Attendance Growth Rate, Home Church Trend, Adult vs Young Distribution, Baptisms Trend, Baptisms Monthly, Baptisms Cumulative
-- **Financial (5):** Total Income Trend, Income Composition, Tithe vs Offerings Trend, Income Per Attendee, Regular vs Special Income
-- **Ratios & Correlations (3):** Per-Capita Giving Trend, Men:Women Ratio Trend, Adult:Young Ratio Trend
-- **Holy Communion (4):** Attendance Rate Trend, Actual vs Expected, By Home Church, Quarterly Comparison
-
-That covers every meaningful metric the app currently tracks. No gap will remain after FEAT-010.
-
-The catalogue-driven architecture (`kPdfGraphCatalogue` → `buildGraph()` switch) means adding another graph in the future requires only: one new enum value, one new `PdfGraphOption`, and one new `case`. The UI, pipeline, and layout update automatically. No changes to this section beyond what FEAT-010 specifies.
-
----
-
-<a name="feat-012"></a>
-## FEAT-012 — App icon customisation documentation
-
-### Current State
-`flutter_launcher_icons: ^0.14.1` is in `pubspec.yaml` (confirmed). The icon source is `assets/images/app_icon.png`. The tooling is already fully configured for all platforms.
-
-### What Is Missing
-Clear documentation for church developers who fork the project.
-
-### Proposed Change
-
-Create `docs/CUSTOMISATION.md`:
-
-```markdown
-# Customising Church Analytics
-
-## App Icon
-
-Replace `assets/images/app_icon.png` with your own 1024×1024 PNG.
-
-Rules:
-- Square dimensions required (1024×1024 recommended)
-- Transparent background is supported (Android adaptive icon will apply a background colour)
-- Do not rename the file — the pubspec.yaml config references it by path
-
-Then run:
-```
-dart run flutter_launcher_icons
-```
-
-Then rebuild:
-```
-flutter build apk --release         # Android
-flutter build windows --release     # Windows
-```
-
-The config in pubspec.yaml already handles Android adaptive icons, Windows .ico, web favicon, and Linux icons from this single source file. No further configuration is needed.
-
-**Tip:** Add an `assets/images/app_icon_template.png` — a 1024×1024 blank white square with a centred placeholder cross or church icon — as a starting point for forking churches.
-```
-
-No code changes. Documentation only.
-
----
-
-<a name="feat-013"></a>
-## FEAT-013 — App name documentation for forks
-
-### Current State — Where the App Name Lives
-
-| File | Value | Controls |
-|---|---|---|
-| `android/app/src/main/AndroidManifest.xml` | `android:label="church_analytics"` | Android launcher name |
-| `android/app/build.gradle.kts` | `applicationId = "com.church.church_analytics"` | Android package ID |
-| `pubspec.yaml` | `name: church_analytics` | Dart package name (internal only, not user-visible) |
-| `lib/` (multiple screens) | Hardcoded string `"Church Analytics"` | App bar titles, About screen |
-| `windows/runner/Runner.rc` | `ProductName`, `FileDescription` | Windows taskbar/title |
-
-### Proposed Change
-
-Create `docs/FORKING.md`:
-
-```markdown
-# Forking Church Analytics for Your Church
-
-## Step 1 — Android launcher name (what users see on their home screen)
-Edit `android/app/src/main/AndroidManifest.xml`:
-Change `android:label="church_analytics"` to your church name.
-Example: `android:label="Nairobi Central SDA"`
-
-## Step 2 — Android application ID (required if publishing to Play Store)
-Edit `android/app/build.gradle.kts`:
-Change both `namespace` and `applicationId` from `com.church.church_analytics`
-to a unique reverse-domain ID for your church.
-Example: `com.nairobicentralsda.analytics`
-
-Two apps on the Play Store cannot share the same applicationId.
-
-## Step 3 — Windows app name
-Edit `windows/runner/Runner.rc`:
-Change the `VALUE "ProductName"` and `VALUE "FileDescription"` strings.
-
-## Step 4 — In-app display name
-Search the `lib/` directory for the string `"Church Analytics"` and replace
-with your church name. These appear in app bar titles and the About screen.
-(Approximately 8–12 occurrences across screens.)
-
-## Step 5 — App icon
-Follow the instructions in `docs/CUSTOMISATION.md`.
-
-## Step 6 — Signing (critical for Play Store)
-Generate a new signing keystore for your fork.
-Do not reuse the original church's keystore.
-Follow the Android keytool documentation or Android Studio's signing wizard.
-
-## Step 7 — `pubspec.yaml` name field
-The `name: church_analytics` field is the Dart package name.
-It is referenced internally by imports (`package:church_analytics/...`).
-If you change it, you must run a find-and-replace across all `lib/` imports.
-This step is optional if you are not publishing to pub.dev.
-```
-
-No code changes. Documentation only.
-
----
-
-<a name="feat-014"></a>
-## FEAT-014 — Home screen: view full list of imported data
-
-**Status:** Complete (2026-05-12)
-
-### Current State
-The home screen surfaces summary cards and charts, but there is no way to open a complete list of the data that has already been imported. Users must navigate into individual modules (or cannot find the records at all) to confirm what was imported.
-
-### What Is Requested
-From the home screen, provide a "View all imported data" entry that opens a full list of imported records for the current church, with basic filters (type and date) and a read-only view of each record.
-
-### Proposed Change
-
-**Add a simple entry point on the home screen.**
-In `lib/ui/screens/dashboard_screen.dart`, add a "View all data" button or list tile in the data summary area.
-
-**Create a new list screen.**
-Add `lib/ui/screens/imported_data_screen.dart` that:
-- loads imported records via existing repositories/providers
-- groups by data type (tabs or filter chips)
-- provides date range filtering and search
-- navigates to existing detail/edit screens when an item is tapped
-
-**Keep it read-only.** Deletion or editing remains in the existing screens; this screen only exposes the full list.
-
-### Risk
-Low. This is a new, read-only screen plus a single navigation entry on the home screen.
-
----
-
-<a name="feat-015"></a>
-## FEAT-015 — Data management: delete imported records
-
-**Status:** Complete (2026-05-12)
-
-### Current State
-Imported records can be edited/updated, but there is no delete action in the UI. Mistakes in imported data cannot be removed without manual database edits.
-
-### What Is Requested
-Allow users to delete imported records from the app UI, with a confirmation step to prevent accidental loss.
-
-### Proposed Change
-
-**Add delete actions to record views.**
-- Add a "Delete" button or menu action in existing record detail/edit screens.
-- Confirm with a destructive dialog ("Delete" / "Cancel").
-
-**Wire delete through repositories/DAOs.**
-- Add `delete` methods where missing in `lib/repositories/` and `lib/database/` so the UI can remove records safely.
-- After deletion, refresh providers so dashboards and charts update.
-
-**Guard against accidental loss.**
-- Show a success snackbar and remove the item from lists immediately.
-- If a record is referenced elsewhere, block deletion with a clear message (or cascade-delete if appropriate).
-
-### Risk
-Medium. This introduces destructive operations and requires careful confirmation and state refresh to avoid orphaned references.
-
----
-
 <a name="feat-016"></a>
 ## FEAT-016 — Excel (.xlsx) import support
 
@@ -1598,22 +1309,161 @@ Low. Template generation is entirely additive — a new service and a new button
 
 ---
 
+<a name="feat-018"></a>
+## FEAT-018 — Background update checker: connectivity check + trigger on launch and connectivity restore
+
+### Current State
+
+The background update checker already runs with a 24-hour cooldown (confirmed in the codebase). However it has two gaps:
+
+1. **No connectivity check.** The checker fires regardless of whether the device has an active network connection. On Android, an HTTP request to the update manifest while offline produces either a `SocketException` or a timeout. Depending on how the error is caught, this can surface a misleading "Update check failed" message to the user, consume battery/CPU on a retry loop, or silently swallow the error — none of which is correct behaviour.
+
+2. **Only triggered by the cooldown timer, not on launch or connectivity restore.** If a user launches the app for the first time that day (within the 24-hour window from the last check), no check fires. If a user was offline all morning and regains connectivity, no check fires unless the timer also happens to expire. The net effect is that users see stale "up to date" status even when a new version has been published.
+
+### What Is Requested
+
+- Wrap every update check HTTP call in a connectivity pre-check. If offline, skip silently and do not count the attempt against the 24-hour cooldown.
+- Also trigger a check on cold app launch (subject to the 24-hour cooldown).
+- Also trigger a check when connectivity is restored from offline to online (subject to the cooldown, so a device that reconnects 10 minutes after the last check does not immediately re-check).
+
+### Technical Analysis
+
+**Connectivity check approach.**  
+The `connectivity_plus` package (pub.dev, well-maintained, MIT licence) provides both a one-shot `Connectivity().checkConnectivity()` call and a `Connectivity().onConnectivityChanged` stream. Check whether `connectivity_plus` is already in `pubspec.yaml`. If not, add it — it has no native permissions requirements and adds negligible APK size (~50 KB).
+
+**Why a one-shot check is sufficient before each HTTP call.**  
+A race condition where the device goes offline between the connectivity check and the HTTP call is benign: the HTTP call will throw a `SocketException`, which the existing error handler already catches. The connectivity check is purely an optimisation to avoid unnecessary network attempts and misleading UI states.
+
+**Connectivity-restore trigger.**  
+Subscribe to `Connectivity().onConnectivityChanged` in the service or in the app's root widget lifecycle. When the stream emits a status that is not `ConnectivityResult.none`, re-run the update check (if the 24-hour cooldown has elapsed). The stream subscription must be cancelled in `dispose()` to avoid leaks.
+
+**Launch trigger.**  
+In the update checker's initialisation path (wherever the first-run or periodic timer is set up), add a call to `_checkForUpdates()` unconditionally on startup, gated only by the existing 24-hour cooldown logic. This is a one-liner.
+
+### Proposed Change
+
+**Step 1 — Add `connectivity_plus` if not already present.**
+
+```yaml
+# pubspec.yaml
+dependencies:
+  connectivity_plus: ^6.0.5   # ADD if not already present — check existing pubspec first
+```
+
+No Android manifest changes are needed; `connectivity_plus` does not require the `ACCESS_NETWORK_STATE` permission declaration on modern Flutter (the plugin handles it internally).
+
+**Step 2 — Add a connectivity pre-check helper.**
+
+In the update checker service (locate the file that calls the update manifest HTTP endpoint):
+
+```dart
+import 'package:connectivity_plus/connectivity_plus.dart';
+
+/// Returns true if the device has any active network connection.
+Future<bool> _hasConnectivity() async {
+  final result = await Connectivity().checkConnectivity();
+  return result != ConnectivityResult.none;
+}
+```
+
+**Step 3 — Guard the HTTP call.**
+
+At the entry point of the method that performs the update check:
+
+```dart
+Future<void> _checkForUpdates() async {
+  if (!await _hasConnectivity()) {
+    debugPrint('[UpdateChecker] Skipping — no connectivity');
+    return; // Do NOT update the lastChecked timestamp
+  }
+  // ... existing HTTP + cooldown logic unchanged ...
+}
+```
+
+The critical invariant: **only update the `lastChecked` timestamp when the HTTP call actually fires.** If the check is skipped due to no connectivity, the timestamp must not be updated, so the cooldown does not consume the user's daily window while offline.
+
+**Step 4 — Trigger on launch.**
+
+Where the update checker is initialised (likely `StartupGateScreen._routeFromState()` or a dedicated `UpdateCheckerService.init()`), add a fire-and-forget launch check after routing is resolved:
+
+```dart
+unawaited(UpdateCheckerService.instance.checkIfDue());
+// checkIfDue() internally respects the 24-hour cooldown and the connectivity guard
+```
+
+**Step 5 — Trigger on connectivity restore.**
+
+In the same initialisation location (or in the root `App` widget's `initState()`), subscribe to the connectivity stream:
+
+```dart
+_connectivitySubscription = Connectivity().onConnectivityChanged.listen((result) {
+  if (result != ConnectivityResult.none) {
+    unawaited(UpdateCheckerService.instance.checkIfDue());
+  }
+});
+```
+
+Cancel in `dispose()`:
+
+```dart
+@override
+void dispose() {
+  _connectivitySubscription?.cancel();
+  super.dispose();
+}
+```
+
+### Files Changed
+
+| File | Change |
+|---|---|
+| `pubspec.yaml` | Add `connectivity_plus` if absent |
+| Update checker service file | Add `_hasConnectivity()` helper; guard HTTP call; add launch trigger |
+| `lib/ui/screens/startup_gate_screen.dart` or root `App` widget | Subscribe to connectivity stream; fire launch check |
+
+### What Does NOT Change
+The 24-hour cooldown logic, the manifest parsing, the update notification UI, and all existing update download/install flows are entirely untouched.
+
+### Risk
+Low. The connectivity check is purely additive — it adds an early-return guard before existing code. The connectivity stream subscription follows standard Flutter lifecycle patterns and is cancelled on dispose. The only new dependency is `connectivity_plus`, which is one of the most widely used Flutter packages and has no breaking surface on the platforms this app targets (Android, Windows, Linux).
+
+---
+
+<a name="feat-019"></a>
+## FEAT-019 — Onboarding slide 4: add Chart Center hint
+
+### Current State
+`lib/ui/widgets/onboarding_overlay.dart` contains a 5-slide onboarding flow. Slide 4's current content does not mention the Chart Center or direct users to it for additional analytics graphs.
+
+### What Is Requested
+Add a line to slide 4's body text telling users they can find more charts in the Chart Center. The exact placement and phrasing should match the existing slide copy style.
+
+### Proposed Change
+
+Locate slide 4 in `onboarding_overlay.dart` (the slides are likely defined as a list of widget or data objects — find the one at index 3). Add the following sentence to the body copy, appended after the existing text:
+
+> "You can find more detailed charts and category breakdowns in the **Chart Center**."
+
+Adjust phrasing to match the app's existing slide tone. If slide 4 uses a subtitle/body two-field layout, add this as a second body line or as a sub-bullet.
+
+**No structural changes:** do not add new slides, change slide count, or modify slide navigation logic. This is a text addition inside an existing slide only.
+
+### Files Changed
+
+| File | Change |
+|---|---|
+| `lib/ui/widgets/onboarding_overlay.dart` | Add one sentence to slide 4 body copy |
+
+### What Does NOT Change
+All other slides, the slide navigation, the `fromSettings` flag behaviour, and the `markOnboardingComplete()` logic are entirely untouched. FEAT-001's onboarding gate logic is unaffected — it pushes the overlay as a whole; it does not inspect individual slide content.
+
+### Risk
+None. Single string addition in a widget data definition.
+
+---
+
 <a name="testing-checklist"></a>
 ## Testing Checklist
-
-### BUG-001 — Back button fix
-
-- [ ] `flutter analyze` passes with zero warnings on changed files
-- [ ] On Android: launch app fresh → navigate to Dashboard → press system back button → app exits cleanly (does not show loading screen)
-- [ ] On Android: launch app fresh → navigate to Dashboard → press AppBar back arrow → no arrow is visible (since `PopScope(canPop: false)` removes it)
-- [ ] On Android: first launch, onboarding not complete → crash dialog (simulate a crash) → confirm startup proceeds normally without double navigation
-- [ ] On Android: first launch, race condition simulation → add 500ms artificial delay to `_routeFromState()` → confirm onboarding is shown, completing it resolves to dashboard correctly
-
-### BUG-002 — Log export
-
-- [ ] On Android: App Logs screen → Export → file is written to external storage directory → snackbar shows file path
-- [ ] On Android: External storage unavailable (rooted device, secondary storage absent) → fallback to internal documents directory → export succeeds
-- [ ] On Linux/macOS/Windows: existing log export paths still work unchanged
 
 ### FEAT-001 — Tutorial opt-in
 
@@ -1668,33 +1518,6 @@ Low. Template generation is entirely additive — a new service and a new button
 
 See the dedicated testing checklist in the [FEAT-008 section](#feat-008) above.
 
-### FEAT-010 — Baptism & Holy Communion graphs
-
-- [ ] `flutter analyze` → zero warnings
-- [ ] `kPdfGraphCatalogue.length == 20`
-- [ ] Every `PdfGraphId` appears exactly once in `kPdfGraphCatalogue`
-- [ ] All 3 baptism chart builder methods handle empty dataset without throwing
-- [ ] All 4 communion chart builder methods handle empty dataset without throwing
-- [ ] Reports screen: all 20 graphs appear, grouped by category, "Holy Communion" section header visible
-- [ ] Select all 20 → export PDF → PDF opens without crash
-- [ ] Select only communion graphs with zero events in DB → PDF renders empty-chart placeholders, no crash
-- [ ] All 13 original graphs render identically to pre-change baseline
-- [ ] Existing `flutter test` suite passes
-
-### FEAT-014 — Home screen full data list
-
-- [ ] Home screen shows a "View all data" entry when a church is selected
-- [ ] Tapping opens the Imported Data screen with the full list for the current church
-- [ ] Type/date filters update the list correctly
-- [ ] Empty state is shown when no data has been imported
-
-### FEAT-015 — Delete imported records
-
-- [ ] Delete action is visible in record detail/edit screens
-- [ ] Cancel leaves the record unchanged
-- [ ] Confirm delete removes the record and it stays deleted after app restart
-- [ ] Dashboards and charts refresh to reflect the deletion
-
 ### FEAT-016 — Excel import
 
 - [ ] `flutter analyze` passes with zero warnings on changed files
@@ -1720,6 +1543,51 @@ See the dedicated testing checklist in the [FEAT-008 section](#feat-008) above.
 - [ ] On Windows/Linux: file is saved to the expected documents path; snackbar path is correct
 - [ ] Failure to write (e.g. no storage permission) shows an error snackbar; no crash
 
+### BUG-001 — Navigation guard fix
+
+- [ ] Cold launch with no crash-recovery state: startup routes normally to Dashboard, no freeze or blank screen
+- [ ] Cold launch with crash-recovery SharedPreferences key set: crash-recovery dialog appears (confirms the post-frame callback runs past the guard)
+- [ ] First launch (onboarding incomplete): onboarding dialog (FEAT-001) appears after Dashboard loads
+- [ ] Hot-restart in debug mode: startup flow re-runs cleanly without hanging on the guard
+- [ ] `_navigationInProgress` is `false` after `_routeFromState()` completes (add a debug assertion to confirm during development)
+
+### BUG-003 — Missing screen classes
+
+- [ ] `flutter analyze` passes with zero warnings after all four placeholder files are created
+- [ ] `flutter build apk --debug` succeeds (no compile-time `Undefined class` errors)
+- [ ] Chart Center → tap "Special Events" → `SpecialEventsScreen` opens with correct AppBar title, no crash
+- [ ] Chart Center → tap "Home Church Analytics" → `HomeChurchAnalyticsScreen` opens with correct AppBar title, no crash
+- [ ] Chart Center → tap "Board Meeting Analytics" → `BoardMeetingAnalyticsScreen` opens with correct AppBar title, no crash
+- [ ] Chart Center → tap "Financial Glossary" → `FinancialGlossaryScreen` opens with correct AppBar title, no crash
+- [ ] Back navigation from each placeholder returns to Chart Center correctly
+- [ ] All existing Chart Center destinations (not among the four new screens) continue to work as before
+
+### BUG-004 — Target Analysis card description
+
+- [ ] Locate the card description string and confirm the new text is deployed
+- [ ] Target Analysis card shows a description that mentions charts and data entry requirement
+- [ ] Tapping the card still navigates to the Target Analysis screen (navigation unchanged)
+- [ ] Charts G-49 through G-74 still render once target data is entered (screen unchanged)
+
+### FEAT-018 — Update checker connectivity + launch/restore triggers
+
+- [ ] `flutter analyze` passes with zero warnings on changed files
+- [ ] Device offline at launch → update checker does not fire, no error shown to user, `lastChecked` timestamp unchanged
+- [ ] Device online at launch, cooldown expired → update checker fires on startup
+- [ ] Device online at launch, cooldown NOT expired → update checker does not fire on startup
+- [ ] Device starts offline → regains connectivity → update checker fires (if cooldown elapsed), does not fire (if cooldown has not elapsed)
+- [ ] Device online throughout → cooldown behaviour unchanged from current implementation
+- [ ] Connectivity stream subscription is cancelled when the subscribing widget/service is disposed (no leaked listeners — verify with Flutter DevTools)
+- [ ] Windows: `connectivity_plus` behaves correctly (returns connected status); update checker fires on launch as expected
+
+### FEAT-019 — Onboarding slide 4 Chart Center hint
+
+- [ ] First launch (onboarding not complete) → proceed through to slide 4 → Chart Center hint text is visible
+- [ ] Slide 4 layout is not broken (text does not overflow, wraps cleanly on small screens)
+- [ ] All 5 slides still render; slide count unchanged
+- [ ] Settings → Help & Tutorial → slide 4 shows the updated text
+- [ ] Slide 5 (final slide) and its completion behaviour are unchanged
+
 ---
 
 <a name="risk-summary"></a>
@@ -1727,33 +1595,34 @@ See the dedicated testing checklist in the [FEAT-008 section](#feat-008) above.
 
 | Item | Risk | Reason |
 |---|---|---|
-| BUG-001 flag guard in `StartupGateScreen` | Low | Additive guard, does not change routing logic |
-| BUG-001 `PopScope` on `DashboardScreen` | Low | Standard Flutter API replacing deprecated pattern; changes back-press to app-exit |
-| BUG-002 Android log export path | None | New branch only; existing desktop branches untouched |
+| BUG-001 `_navigationInProgress` flag never cleared | High | Fix immediately — suppresses all startup routing after first call; Option A is one `finally` block |
+| BUG-003 Missing screen class placeholders | None | Four new files only; `graph_center_screen.dart` unchanged |
+| BUG-004 Target Analysis card description | None | String change only |
 | FEAT-001 Tutorial opt-in dialog | Low | Move onboarding gate to Dashboard; remove StartupGate guard issue |
 | FEAT-002 Permission request (Android) | Low | New package (`permission_handler`); guarded by `Platform.isAndroid` |
 | FEAT-003 Backup before update | Low | New dialog + new file; existing install flow unchanged |
 | FEAT-004 Auto-delete installer | Low | Startup-only cleanup; avoids install-time race |
 | FEAT-005 Already-downloaded package check | None | Additive file-exists check before network call |
-| FEAT-006 Pause/resume download | Medium | Core change to download streaming strategy; requires thorough testing |
+| FEAT-006 Pause/resume download | Medium | Core change to download streaming strategy; `sink.add()` replaces `addStream`; resume progress uses `existingLength + received`; requires thorough testing |
 | FEAT-007 Resume after closure | Low | Depends on FEAT-006; persistence is SharedPreferences only |
-| FEAT-008 Background download (Android) | Medium ↓ from High | Foreground Service as process anchor only; download stays in main isolate; no isolate communication, no token redesign |
-| FEAT-009 Platform parity doc | None | Documentation only |
-| FEAT-010 Baptism & Communion graphs | None | Entirely additive; 13 existing graphs untouched |
-| FEAT-011 PDF completeness | None | Consequence of FEAT-010 |
-| FEAT-012 Icon doc | None | Documentation only |
-| FEAT-013 Fork name doc | None | Documentation only |
-| FEAT-014 Home screen full data list | Low | New read-only screen plus navigation entry |
-| FEAT-015 Delete imported records | Medium | Destructive actions; data integrity and refresh required |
+| FEAT-008 Background download (Android) | Medium | Foreground Service as process anchor only; confirm `flutter_foreground_task` v8 `TaskHandler` requirements and architecture alignment with PLATFORM_PARITY.md before starting |
 | FEAT-016 Excel import support | Low | Service swap + parse-method rename; XLSX parsing already implemented |
 | FEAT-017 Downloadable import template | Low | Additive template generation + export; no impact on import flow |
+| FEAT-018 Update checker connectivity + launch/restore | Low | Additive guard + stream subscription; cooldown logic untouched |
+| FEAT-019 Onboarding slide 4 Chart Center hint | None | Single string addition in widget data |
 
 **Recommended implementation order:**
-1. BUG-001, BUG-002 (fixes first)
-2. FEAT-001, FEAT-004, FEAT-005 (low-risk features)
-3. FEAT-014, FEAT-015 (data management)
-4. FEAT-016, FEAT-017 (import UX)
-5. FEAT-010, FEAT-011, FEAT-012, FEAT-013 (analytics and docs)
-6. FEAT-002, FEAT-003, FEAT-009 (update system, lower complexity)
-7. FEAT-006, FEAT-007 (update system, medium complexity — implement together)
-8. FEAT-008 (implement last; complete the pre-implementation checklist before starting)
+1. BUG-001 (navigation guard fix — fix this before anything else; active startup regression)
+2. BUG-003 (placeholder screens — fixes live crash, fastest win)
+3. BUG-004 (Target Analysis card copy — quick UX win)
+4. FEAT-019 (onboarding copy — trivial)
+5. FEAT-001 (tutorial opt-in flow)
+6. FEAT-016 (Excel import support)
+7. FEAT-017 (downloadable import template)
+8. FEAT-002 (install permission prompt)
+9. FEAT-003 (backup before update)
+10. FEAT-005 (already-downloaded package check)
+11. FEAT-004 (auto-delete installer cleanup)
+12. FEAT-018 (update checker connectivity + launch/restore)
+13. FEAT-006 + FEAT-007 (pause/resume + resume after closure)
+14. FEAT-008 (background download — complete pre-implementation checklist first)

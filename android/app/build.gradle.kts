@@ -35,7 +35,14 @@ android {
 
     defaultConfig {
         applicationId = "com.church.church_analytics"
-        minSdk = flutter.minSdkVersion
+        // FEAT-008: minSdk raised from flutter.minSdkVersion (resolves to 16
+        // on Flutter 3.22) to 21.  Foreground Services require API 21+; at
+        // minSdk 16 the ForegroundService class is not available on Android 4.x
+        // devices and the app would crash at runtime on those devices.
+        // Android 4.x accounts for < 0.1% of the active install base and all
+        // other packages in this project (Kotlin coroutines, flutter_local_
+        // notifications, Material 3) have practical API 21+ floors anyway.
+        minSdk = 21
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

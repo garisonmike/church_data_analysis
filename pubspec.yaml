@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.4.0+7
+version: 1.5.0+8
 
 environment:
   sdk: ^3.9.2
@@ -62,6 +62,9 @@ dependencies:
   intl: ^0.19.0
   excel: ^2.1.0
 
+  # Connectivity status — used by background update checker (FEAT-018)
+  connectivity_plus: ^6.0.5
+
   # URL / folder launcher
   url_launcher: ^6.3.1
 
@@ -74,6 +77,11 @@ dependencies:
   # Runtime permission checks — used by install_permission_service.dart
   # to proactively request REQUEST_INSTALL_PACKAGES on Android 8+ (FEAT-002)
   permission_handler: ^11.3.1
+
+  # Android Foreground Service anchor for background downloads (FEAT-008).
+  # Pinned to ^8.0.0 — the package has had breaking API changes between
+  # v4, v5, and v8.  Do not unpin without reviewing the migration guide.
+  flutter_foreground_task: ^8.0.0
   
   # File sharing
   share_plus: ^10.1.3

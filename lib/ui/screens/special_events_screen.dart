@@ -4,7 +4,6 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 
 import '../../models/models.dart';
 import '../../services/analytics_service.dart';
-import '../../services/settings_service.dart';
 import '../../services/weekly_records_provider.dart';
 import '../widgets/charts/ctrl_scroll_zoom_wrapper.dart';
 import 'holy_communion_entry_screen.dart';
@@ -12,7 +11,9 @@ import 'business_meeting_entry_screen.dart';
 
 /// Tabbed screen: Holy Communion | Business Meeting
 class SpecialEventsScreen extends ConsumerWidget {
-  const SpecialEventsScreen({super.key});
+  final int churchId;
+
+  const SpecialEventsScreen({super.key, required this.churchId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -26,9 +27,9 @@ class SpecialEventsScreen extends ConsumerWidget {
             Tab(icon: Icon(Icons.groups), text: 'Business Meeting'),
           ]),
         ),
-        body: const TabBarView(children: [
-          _HolyCommunionTab(),
-          _BusinessMeetingTab(),
+        body: TabBarView(children: [
+          _HolyCommunionTab(churchId: churchId),
+          _BusinessMeetingTab(churchId: churchId),
         ]),
       ),
     );
@@ -38,14 +39,12 @@ class SpecialEventsScreen extends ConsumerWidget {
 // ── Holy Communion Tab ────────────────────────────────────────────────────────
 
 class _HolyCommunionTab extends ConsumerWidget {
-  const _HolyCommunionTab();
+  final int churchId;
+
+  const _HolyCommunionTab({required this.churchId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(appSettingsProvider);
-    final churchId = settings.selectedChurchId;
-    if (churchId == null) return const Center(child: Text('No church selected.'));
-
     final eventsAsync = ref.watch(holyCommunionEventsProvider(churchId));
 
     return eventsAsync.when(
@@ -139,14 +138,12 @@ class _HolyCommunionTab extends ConsumerWidget {
 // ── Business Meeting Tab ──────────────────────────────────────────────────────
 
 class _BusinessMeetingTab extends ConsumerWidget {
-  const _BusinessMeetingTab();
+  final int churchId;
+
+  const _BusinessMeetingTab({required this.churchId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(appSettingsProvider);
-    final churchId = settings.selectedChurchId;
-    if (churchId == null) return const Center(child: Text('No church selected.'));
-
     final eventsAsync = ref.watch(businessMeetingEventsProvider(churchId));
 
     return eventsAsync.when(

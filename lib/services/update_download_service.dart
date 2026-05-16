@@ -397,6 +397,10 @@ class UpdateDownloadService {
       try {
         final existingHash = await _sha256HexOfFile(file);
         if (existingHash == asset.sha256.toLowerCase()) {
+          // FEAT-007: clear the persisted state record so the next launch does
+          // not show a false "Download Interrupted" dialog for a file that is
+          // already complete.
+          await DownloadStateService.clear();
           onProgress?.call(1.0);
           return UpdateDownloadResult.success(file.path);
         }
@@ -422,10 +426,16 @@ class UpdateDownloadService {
         // it passes; otherwise delete and report an error.
         final computed = await _sha256HexOfFile(file);
         if (computed == asset.sha256.toLowerCase()) {
+          // FEAT-007: clear persisted state — file is complete.
+          await DownloadStateService.clear();
           onProgress?.call(1.0);
           return UpdateDownloadResult.success(file.path);
         }
+        // FEAT-007 fix: clear persisted state on checksum mismatch after 416
+        // so the next launch does not surface a phantom resume dialog pointing
+        // at a partial file that has now been deleted.
         await _deletePartial(file);
+        await DownloadStateService.clear();
         return UpdateDownloadResult.failure(
           'The partial file appears corrupt (Range Not Satisfiable and '
           'checksum mismatch). Please download again.',
@@ -436,7 +446,10 @@ class UpdateDownloadService {
       if (streamedResponse.statusCode != 206) {
         // Server returned 200 (no range support) or an error.
         // Delete the partial file so the caller can restart cleanly.
+        // FEAT-007 fix: clear persisted state so the next launch does not
+        // surface a phantom "Resume interrupted download?" dialog.
         await _deletePartial(file);
+        await DownloadStateService.clear();
         return UpdateDownloadResult.failure(
           'The server does not support resumable downloads '
           '(HTTP ${streamedResponse.statusCode}). '
@@ -466,13 +479,19 @@ class UpdateDownloadService {
       if (!result.isPaused) await DownloadStateService.clear();
       return result;
     } on UpdateSecurityException catch (e) {
+      // FEAT-007 fix: clear persisted state on every non-paused terminal result,
+      // including security errors caught before _streamToDisk is reached.
       await _deletePartial(file);
+      await DownloadStateService.clear();
       return UpdateDownloadResult.failure(
         e.message,
         errorType: UpdateErrorType.securityError,
       );
     } catch (e) {
+      // FEAT-007 fix: clear persisted state on unexpected errors so stale
+      // FEAT-007 state cannot accumulate across failed resume attempts.
       await _deletePartial(file);
+      await DownloadStateService.clear();
       return UpdateDownloadResult.failure(
         '$e',
         errorType: UpdateErrorType.downloadError,
@@ -589,10 +608,13 @@ class UpdateDownloadService {
         cancelToken: cancelToken,
         pauseToken: pauseToken,
         mode: FileMode.append,
-        keepOnCancel: true, // FEAT-007: cancel in crash-resume context keeps the file
+        // FEAT-007: cancel in crash-resume context keeps the file.
+        keepOnCancel: true,
       );
 
-      if (!result.isPaused && !result.isCancelledResumable) await DownloadStateService.clear();
+      if (!result.isPaused && !result.isCancelledResumable) {
+        await DownloadStateService.clear();
+      }
       return result;
     } on UpdateSecurityException catch (e) {
       await _deletePartial(file);
@@ -718,6 +740,29 @@ class UpdateDownloadService {
     }
 
     return UpdateDownloadResult.success(file.path);
+  }
+
+  // -------------------------------------------------------------------------
+  // Public helpers
+  // -------------------------------------------------------------------------
+
+  /// Issues a HEAD request to [assetUrl] using the injected HTTP client and
+  /// returns `true` when the server advertises `Accept-Ranges: bytes`.
+  ///
+  /// Used by [AboutUpdatesCard._checkForUpdates] to decide whether to show
+  /// the Pause button (FEAT-006).  By using the injected [_client] instead of
+  /// creating a raw `http.Client()`, widget tests can inject a mock client and
+  /// control the HEAD response without making real network requests.
+  ///
+  /// Returns `false` on any error so the Pause button is hidden (fail-open).
+  Future<bool> checkAcceptRanges(String assetUrl) async {
+    try {
+      final response = await _client.head(Uri.parse(assetUrl));
+      final acceptRanges = response.headers['accept-ranges'] ?? '';
+      return acceptRanges.toLowerCase().contains('bytes');
+    } catch (_) {
+      return false;
+    }
   }
 
   // -------------------------------------------------------------------------

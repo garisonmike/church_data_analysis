@@ -90,7 +90,8 @@ class _OnboardingOverlayState extends State<OnboardingOverlay> {
       title: 'Analytics & Charts',
       body:
           'The Graph Center gives you attendance trends, financial breakdowns, '
-          'and correlations. All charts update automatically as you add records.',
+          'and correlations. All charts update automatically as you add records. '
+          'You can find more detailed charts and category breakdowns in the Chart Center.',
     ),
     _OnboardingPage(
       icon: Icons.picture_as_pdf,

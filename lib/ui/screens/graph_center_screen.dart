@@ -116,7 +116,7 @@ class _GraphCenterScreenState extends ConsumerState<GraphCenterScreen> {
       ChartItem(
         title: 'Target Analysis',
         description:
-            'DS2 targets, achievement gauges, scatter correlations, and heatmaps',
+            'Set attendance and financial targets for your church, then view 26 charts (G-49 – G-74) that compare actuals against those targets. Tap to enter your targets and unlock the analysis.',
         icon: Icons.track_changes,
         color: Colors.red.shade700,
         category: ChartCategory.analysis,
@@ -139,7 +139,7 @@ class _GraphCenterScreenState extends ConsumerState<GraphCenterScreen> {
         icon: Icons.assignment,
         color: Colors.blue.shade800,
         category: ChartCategory.attendance,
-        screenBuilder: (_) => const BoardMeetingAnalyticsScreen(),
+        screenBuilder: (churchId) => BoardMeetingAnalyticsScreen(churchId: churchId),
         route: '/board-meeting',
       ),
       ChartItem(
@@ -148,7 +148,7 @@ class _GraphCenterScreenState extends ConsumerState<GraphCenterScreen> {
         icon: Icons.church,
         color: Colors.purple,
         category: ChartCategory.attendance,
-        screenBuilder: (_) => const SpecialEventsScreen(),
+        screenBuilder: (churchId) => SpecialEventsScreen(churchId: churchId),
         route: '/special-events',
       ),
       ChartItem(
@@ -157,7 +157,7 @@ class _GraphCenterScreenState extends ConsumerState<GraphCenterScreen> {
         icon: Icons.home_work,
         color: Colors.teal,
         category: ChartCategory.attendance,
-        screenBuilder: (_) => const HomeChurchAnalyticsScreen(),
+        screenBuilder: (churchId) => HomeChurchAnalyticsScreen(churchId: churchId),
         route: '/home-church-analytics',
       ),
       ChartItem(

@@ -1,15 +1,15 @@
 {
-    "version": "1.4.0",
-    "release_date": "2026-05-13",
+    "version": "1.5.0",
+    "release_date": "2026-05-16",
     "min_supported_version": "1.0.0",
-    "release_notes": "## What's New\n\n- Manage imported data from a full list view (filter, edit, delete).\n- Import Excel (.xlsx) files and download CSV/XLSX templates.\n- PDF report export includes an expanded chart catalogue.\n\n## Bug Fixes\n\n- Fixed a startup back-navigation race that could leave a stuck loading screen.\n- Fixed Android log export save location.\n- Optional import event counts remain nullable; XLSX integer parsing improved.",
+    "release_notes": "## What's New\n\n- Enhanced in-app update flow with backup prompts, visible download progress, install failure recovery, and update controls in settings.\n- Background update checks now respect connectivity state and app lifecycle startup paths.\n- Release CI now builds Android, Windows, and web container assets from branch and version tag pushes.\n\n## Bug Fixes\n\n- Fixed onboarding/update-gating edge cases after update prompts and install attempts.\n- Strengthened update download result handling, checksum validation, Android install permission checks, and foreground download support.",
     "platforms": {
         "android": {
-            "download_url": "https://github.com/GarisonMike/church_data_analysis/releases/download/v1.4.0/app-release.apk",
+            "download_url": "https://github.com/GarisonMike/church_data_analysis/releases/download/v1.5.0/app-release.apk",
             "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
         },
         "windows": {
-            "download_url": "https://github.com/GarisonMike/church_data_analysis/releases/download/v1.4.0/ChurchAnalytics-Windows.zip",
+            "download_url": "https://github.com/GarisonMike/church_data_analysis/releases/download/v1.5.0/ChurchAnalytics-Windows.zip",
             "sha256": "0000000000000000000000000000000000000000000000000000000000000000"
         }
     }

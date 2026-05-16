@@ -994,6 +994,660 @@ void main() {
       },
     );
   });
+
+  // -------------------------------------------------------------------------
+  // UpdateDownloadService — pause and resume (FEAT-006)
+  // -------------------------------------------------------------------------
+
+  group('UpdateDownloadService — pause mid-download (FEAT-006)', () {
+    test(
+      'returns paused result when PauseToken is signalled before first chunk',
+      () async {
+        const content = 'chunk-one-data';
+        final pauseToken = PauseToken()..pause(); // pre-paused
+
+        final service = UpdateDownloadService(
+          client: MockClient((_) async => http.Response(content, 200)),
+        );
+
+        final destDir = await Directory.systemTemp.createTemp('uds_pause_');
+        try {
+          final result = await service.download(
+            manifest: makeManifest(sha256: sha256Of(content)),
+            destDir: destDir,
+            pauseToken: pauseToken,
+          );
+          expect(result.isPaused, isTrue,
+              reason: 'A pre-paused token must produce a paused result');
+          expect(result.isSuccess, isFalse);
+          expect(result.isError, isFalse);
+          expect(result.filePath, isNotNull);
+          expect(result.bytesReceived, isNotNull);
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'partial file is kept on disk when download is paused',
+      () async {
+        const content = 'kept-on-disk-bytes';
+        final pauseToken = PauseToken()..pause();
+
+        final service = UpdateDownloadService(
+          client: MockClient((_) async => http.Response(content, 200)),
+        );
+
+        final destDir = await Directory.systemTemp.createTemp('uds_pause_');
+        try {
+          final result = await service.download(
+            manifest: makeManifest(sha256: sha256Of(content)),
+            destDir: destDir,
+            pauseToken: pauseToken,
+          );
+
+          expect(result.isPaused, isTrue);
+          // The partial file must still exist — the service must NOT delete it.
+          final partialFile = File(result.filePath!);
+          expect(await partialFile.exists(), isTrue,
+              reason: 'Partial file must be kept on disk for resume');
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'partialFilePath is a convenience alias for filePath when paused',
+      () async {
+        const content = 'alias-test';
+        final pauseToken = PauseToken()..pause();
+
+        final service = UpdateDownloadService(
+          client: MockClient((_) async => http.Response(content, 200)),
+        );
+
+        final destDir = await Directory.systemTemp.createTemp('uds_pause_');
+        try {
+          final result = await service.download(
+            manifest: makeManifest(sha256: sha256Of(content)),
+            destDir: destDir,
+            pauseToken: pauseToken,
+          );
+
+          expect(result.isPaused, isTrue);
+          expect(result.partialFilePath, equals(result.filePath),
+              reason: 'partialFilePath must be the same path as filePath when paused');
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'bytesReceived is non-negative when download is paused',
+      () async {
+        const content = 'bytes-received-test';
+        final pauseToken = PauseToken()..pause();
+
+        final service = UpdateDownloadService(
+          client: MockClient((_) async => http.Response(content, 200)),
+        );
+
+        final destDir = await Directory.systemTemp.createTemp('uds_pause_');
+        try {
+          final result = await service.download(
+            manifest: makeManifest(sha256: sha256Of(content)),
+            destDir: destDir,
+            pauseToken: pauseToken,
+          );
+
+          expect(result.isPaused, isTrue);
+          expect(result.bytesReceived, isNotNull);
+          expect(result.bytesReceived, greaterThanOrEqualTo(0));
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'PauseToken.isPaused reflects pause/resume state correctly',
+      () {
+        final token = PauseToken();
+        expect(token.isPaused, isFalse);
+        token.pause();
+        expect(token.isPaused, isTrue);
+        token.resume();
+        expect(token.isPaused, isFalse);
+      },
+    );
+
+    test(
+      'paused result toString contains paused and path',
+      () async {
+        const content = 'tostring-check';
+        final pauseToken = PauseToken()..pause();
+        final service = UpdateDownloadService(
+          client: MockClient((_) async => http.Response(content, 200)),
+        );
+        final destDir = await Directory.systemTemp.createTemp('uds_pause_');
+        try {
+          final result = await service.download(
+            manifest: makeManifest(sha256: sha256Of(content)),
+            destDir: destDir,
+            pauseToken: pauseToken,
+          );
+          expect(result.isPaused, isTrue);
+          expect(result.toString(), contains('paused'));
+          expect(result.toString(), contains(result.filePath!));
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // UpdateDownloadService — resume (FEAT-006)
+  // -------------------------------------------------------------------------
+
+  group('UpdateDownloadService — resume paused download (FEAT-006)', () {
+    test(
+      'resume() completes the download and returns success',
+      () async {
+        // Simulate a mid-stream pause by writing the first half to disk
+        // manually — this is what the service does when PauseToken fires mid-
+        // stream.  The pre-pause approach produces an empty file because the
+        // implementation checks pause *before* calling sink.add(), so
+        // nothing is written.  Writing the partial file directly is the only
+        // way to give resume() something real to resume from.
+        const firstHalf = 'first-half-';
+        const secondHalf = 'second-half';
+        const fullContent = '$firstHalf$secondHalf';
+        final correctSha = sha256Of(fullContent);
+        final firstHalfBytes = utf8.encode(firstHalf);
+        final secondHalfBytes = utf8.encode(secondHalf);
+        final totalLength = firstHalfBytes.length + secondHalfBytes.length;
+
+        final destDir = await Directory.systemTemp.createTemp('uds_resume_');
+        try {
+          // Write the "paused" partial file (first half already on disk).
+          final partialFile = File('${destDir.path}/app-1.0.0.tar.gz');
+          await partialFile.writeAsBytes(firstHalfBytes);
+          expect(await partialFile.length(), firstHalfBytes.length);
+
+          // Service only needs to handle the 206 range request for the
+          // second half — no initial 200 GET is issued by resume().
+          final service = UpdateDownloadService(
+            client: _StreamedResponseClient(
+              onRequest: (request) {
+                // resume() issues a Range request for the second half.
+                expect(request.headers['range'],
+                    'bytes=${firstHalfBytes.length}-',
+                    reason: 'Range header must start from existing file length');
+                return http.StreamedResponse(
+                  Stream.fromIterable([secondHalfBytes]),
+                  206,
+                  contentLength: secondHalfBytes.length,
+                );
+              },
+            ),
+          );
+
+          final resumeResult = await service.resume(
+            manifest: makeManifest(sha256: correctSha),
+            partialFilePath: partialFile.path,
+          );
+
+          expect(resumeResult.isSuccess, isTrue,
+              reason: 'Resume must complete successfully');
+          expect(resumeResult.filePath, isNotNull);
+
+          // The completed file must be the concatenation of both halves.
+          final completedFile = File(resumeResult.filePath!);
+          expect(await completedFile.exists(), isTrue);
+          final bytes = await completedFile.readAsBytes();
+          expect(bytes.length, totalLength,
+              reason: 'Completed file must be exactly first-half + second-half');
+          expect(utf8.decode(bytes), fullContent);
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'resume() falls back to full download when partial file is missing',
+      () async {
+        const content = 'full-fallback-content';
+        final correctSha = sha256Of(content);
+        int getCount = 0;
+
+        final service = UpdateDownloadService(
+          client: MockClient((request) async {
+            if (request.method == 'HEAD') return http.Response('', 200);
+            getCount++;
+            return http.Response(content, 200);
+          }),
+        );
+
+        final destDir = await Directory.systemTemp.createTemp('uds_resume_');
+        try {
+          // Provide a path that does not exist on disk.
+          final missingPath = '${destDir.path}/does_not_exist.apk';
+          final result = await service.resume(
+            manifest: makeManifest(sha256: correctSha),
+            partialFilePath: missingPath,
+          );
+
+          expect(result.isSuccess, isTrue,
+              reason: 'Should fall back to a full fresh download');
+          expect(getCount, 1, reason: 'Exactly one fresh GET should be issued');
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'resume() returns downloadError when server responds 200 instead of 206 (no range support)',
+      () async {
+        const content = 'no-range-content';
+        final correctSha = sha256Of(content);
+
+        // Write a partial file to give resume() something to work with.
+        final destDir = await Directory.systemTemp.createTemp('uds_resume_');
+        final partialFile = File('${destDir.path}/app-1.0.0.tar.gz');
+        await partialFile.writeAsString('partial');
+
+        final service = UpdateDownloadService(
+          client: MockClient((_) async => http.Response(content, 200)),
+        );
+
+        try {
+          final result = await service.resume(
+            manifest: makeManifest(sha256: correctSha),
+            partialFilePath: partialFile.path,
+          );
+
+          expect(result.isError, isTrue,
+              reason: 'A 200 response to a range request means no range support');
+          expect(result.errorType, UpdateErrorType.downloadError);
+          expect(result.error, contains('does not support resumable downloads'));
+          // Partial file must be deleted when resume fails.
+          expect(await partialFile.exists(), isFalse);
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'resume() returns success on 416 when partial file checksum already matches',
+      () async {
+        // 416 Range Not Satisfiable means the server thinks the range is past
+        // the end — the file may already be complete.  If the checksum passes
+        // the service should declare success without re-downloading.
+        const content = 'already-complete';
+        final correctSha = sha256Of(content);
+
+        final destDir = await Directory.systemTemp.createTemp('uds_resume_');
+        final completeFile = File('${destDir.path}/app-1.0.0.tar.gz');
+        await completeFile.writeAsString(content);
+
+        final service = UpdateDownloadService(
+          client: MockClient((_) async => http.Response('', 416)),
+        );
+
+        try {
+          final result = await service.resume(
+            manifest: makeManifest(sha256: correctSha),
+            partialFilePath: completeFile.path,
+          );
+
+          expect(result.isSuccess, isTrue,
+              reason: '416 + passing checksum = file already complete');
+          expect(result.filePath, completeFile.path);
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'resume() is cancellable via CancelToken',
+      () async {
+        final cancelToken = CancelToken()..cancel(); // pre-cancelled
+
+        // The SHA of what a complete file would look like.  The download is
+        // cancelled before the checksum is ever evaluated, so any valid-format
+        // string suffices; we use the natural concatenation of the partial
+        // content and the remaining chunk so the value is at least plausible.
+        final correctSha = sha256Of('partial-bytesremaining');
+
+        // Write a small partial file.
+        final destDir = await Directory.systemTemp.createTemp('uds_resume_');
+        final partialFile = File('${destDir.path}/app-1.0.0.tar.gz');
+        await partialFile.writeAsString('partial-bytes');
+
+        final service = UpdateDownloadService(
+          client: _StreamedResponseClient(
+            onRequest: (_) => http.StreamedResponse(
+              Stream.fromIterable([utf8.encode('remaining')]),
+              206,
+              contentLength: utf8.encode('remaining').length,
+            ),
+          ),
+        );
+        try {
+          final result = await service.resume(
+            manifest: makeManifest(sha256: correctSha),
+            partialFilePath: partialFile.path,
+            cancelToken: cancelToken,
+          );
+
+          // A pre-cancelled token must stop the download on the first chunk.
+          // The result is either a failure(downloadCancelled) or a paused
+          // result — either way it must not be success.
+          expect(result.isSuccess, isFalse,
+              reason: 'Pre-cancelled token must prevent a successful resume');
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'resume() progress accounts for already-downloaded bytes',
+      () async {
+        // The progress fraction must never start from 0% when resuming.
+        // With existingLength bytes already on disk and the 206 Content-Length
+        // reporting the remainder, the very first chunk must produce a
+        // progress value > 0.
+        const existingContent = 'existing-'; // 9 bytes on disk
+        const remainingContent = 'remaining'; // 9 bytes from server
+        const fullContent = '$existingContent$remainingContent';
+        final correctSha = sha256Of(fullContent);
+        // totalLength is the expected denominator for progress calculations.
+        // The final progress value must equal 1.0 once the full file is on disk.
+        final totalLength = utf8.encode(fullContent).length;
+
+        final progressValues = <double>[];
+        final destDir = await Directory.systemTemp.createTemp('uds_resume_');
+        final partialFile = File('${destDir.path}/app-1.0.0.tar.gz');
+        await partialFile.writeAsString(existingContent);
+
+        final service = UpdateDownloadService(
+          client: _StreamedResponseClient(
+            onRequest: (_) => http.StreamedResponse(
+              Stream.fromIterable([utf8.encode(remainingContent)]),
+              206,
+              contentLength: utf8.encode(remainingContent).length,
+            ),
+          ),
+        );
+
+        try {
+          final result = await service.resume(
+            manifest: makeManifest(sha256: correctSha),
+            partialFilePath: partialFile.path,
+            onProgress: progressValues.add,
+          );
+
+          expect(result.isSuccess, isTrue);
+          expect(progressValues, isNotEmpty,
+              reason: 'At least one progress event must be emitted');
+
+          // The final progress value must be 1.0 — the full file is on disk.
+          expect(
+            progressValues.last,
+            closeTo(1.0, 0.001),
+            reason:
+                'Final progress must be 1.0 once all $totalLength bytes are received',
+          );
+
+          // Every progress value must be > 0 because existingLength > 0.
+          for (final v in progressValues) {
+            expect(
+              v,
+              greaterThan(0.0),
+              reason:
+                  'Progress must account for already-downloaded bytes; '
+                  'starting from 0 would mislead the user',
+            );
+            expect(v, inInclusiveRange(0.0, 1.0));
+          }
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // UpdateDownloadService — resumeFile (FEAT-007)
+  // -------------------------------------------------------------------------
+
+  group('UpdateDownloadService — resumeFile crash-recovery (FEAT-007)', () {
+    test(
+      'resumeFile() succeeds when partial file is valid and server supports 206',
+      () async {
+        const existing = 'crash-recovery-part1-';
+        const remaining = 'part2-complete';
+        const full = '$existing$remaining';
+        final correctSha = sha256Of(full);
+
+        final destDir = await Directory.systemTemp.createTemp('uds_resumefile_');
+        final partialFile = File('${destDir.path}/crash_partial.apk');
+        await partialFile.writeAsString(existing);
+
+        final service = UpdateDownloadService(
+          client: _StreamedResponseClient(
+            onRequest: (_) => http.StreamedResponse(
+              Stream.fromIterable([utf8.encode(remaining)]),
+              206,
+              contentLength: utf8.encode(remaining).length,
+            ),
+          ),
+        );
+
+        try {
+          final result = await service.resumeFile(
+            downloadUrl: 'https://example.com/app.apk',
+            partialFilePath: partialFile.path,
+            expectedSha256: correctSha,
+          );
+
+          expect(result.isSuccess, isTrue,
+              reason: 'resumeFile must complete successfully from the partial file');
+          expect(result.filePath, isNotNull);
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'resumeFile() returns error (not crash) when partial file does not exist',
+      () async {
+        final service = UpdateDownloadService(
+          client: MockClient((_) async => http.Response('data', 200)),
+        );
+
+        final destDir = await Directory.systemTemp.createTemp('uds_resumefile_');
+        try {
+          final result = await service.resumeFile(
+            downloadUrl: 'https://example.com/app.apk',
+            partialFilePath: '${destDir.path}/nonexistent.apk',
+            expectedSha256: 'a' * 64,
+          );
+
+          expect(result.isError, isTrue);
+          expect(result.errorType, UpdateErrorType.downloadError);
+          expect(result.error, contains('no longer exists'));
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'resumeFile() returns success immediately when partial file is already complete',
+      () async {
+        const fullContent = 'already-fully-downloaded';
+        final correctSha = sha256Of(fullContent);
+
+        final destDir = await Directory.systemTemp.createTemp('uds_resumefile_');
+        final completeFile = File('${destDir.path}/complete.apk');
+        await completeFile.writeAsString(fullContent);
+
+        // Client should never be called if checksum passes before range request.
+        int callCount = 0;
+        final service = UpdateDownloadService(
+          client: MockClient((_) async {
+            callCount++;
+            return http.Response('should not reach here', 200);
+          }),
+        );
+
+        try {
+          final result = await service.resumeFile(
+            downloadUrl: 'https://example.com/app.apk',
+            partialFilePath: completeFile.path,
+            expectedSha256: correctSha,
+          );
+
+          expect(result.isSuccess, isTrue,
+              reason: 'Should fast-path to success if file is already complete');
+          expect(callCount, 0,
+              reason: 'No HTTP call should be made when the file is already verified');
+          expect(result.filePath, completeFile.path);
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'resumeFile() returns downloadError when server responds 200 instead of 206',
+      () async {
+        final destDir = await Directory.systemTemp.createTemp('uds_resumefile_');
+        final partialFile = File('${destDir.path}/partial.apk');
+        await partialFile.writeAsString('partial');
+
+        final service = UpdateDownloadService(
+          client: MockClient((_) async => http.Response('full body', 200)),
+        );
+
+        try {
+          final result = await service.resumeFile(
+            downloadUrl: 'https://example.com/app.apk',
+            partialFilePath: partialFile.path,
+            expectedSha256: 'a' * 64,
+          );
+
+          expect(result.isError, isTrue);
+          expect(result.errorType, UpdateErrorType.downloadError);
+          expect(result.error, contains('does not support resumable downloads'));
+          // Partial file and state record must be cleaned up.
+          expect(await partialFile.exists(), isFalse);
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+
+    test(
+      'resumeFile() keeps partial file on isCancelledResumable result',
+      () async {
+        const existing = 'kept-partial-';
+        const remaining = 'more';
+        final destDir = await Directory.systemTemp.createTemp('uds_resumefile_');
+        final partialFile = File('${destDir.path}/kept.apk');
+        await partialFile.writeAsString(existing);
+
+        final cancelToken = CancelToken()..cancel(); // pre-cancel
+
+        final service = UpdateDownloadService(
+          client: _StreamedResponseClient(
+            onRequest: (_) => http.StreamedResponse(
+              Stream.fromIterable([utf8.encode(remaining)]),
+              206,
+              contentLength: utf8.encode(remaining).length,
+            ),
+          ),
+        );
+
+        try {
+          final result = await service.resumeFile(
+            downloadUrl: 'https://example.com/app.apk',
+            partialFilePath: partialFile.path,
+            expectedSha256: sha256Of('$existing$remaining'),
+            cancelToken: cancelToken,
+          );
+
+          // With keepOnCancel=true in resumeFile, a cancelled mid-resume
+          // returns isCancelledResumable and keeps the partial file.
+          expect(result.isCancelledResumable, isTrue,
+              reason:
+                  'Cancelling a resumeFile call must return isCancelledResumable '
+                  'so StartupGateScreen can re-offer the dialog on next launch');
+          expect(await partialFile.exists(), isTrue,
+              reason:
+                  'Partial file must be kept when cancel is resumable '
+                  'so the user can retry on next launch');
+        } finally {
+          await destDir.delete(recursive: true);
+        }
+      },
+    );
+  });
+
+  // -------------------------------------------------------------------------
+  // UpdateDownloadResult — paused and cancelledResumable factories (FEAT-006/007)
+  // -------------------------------------------------------------------------
+
+  group('UpdateDownloadResult — FEAT-006/007 factories', () {
+    test('paused() sets isPaused=true, filePath, bytesReceived', () {
+      final result = UpdateDownloadResult.paused('/tmp/app.apk', bytesReceived: 1024);
+      expect(result.isPaused, isTrue);
+      expect(result.isSuccess, isFalse);
+      expect(result.isError, isFalse);
+      expect(result.isCancelledResumable, isFalse);
+      expect(result.filePath, '/tmp/app.apk');
+      expect(result.partialFilePath, '/tmp/app.apk');
+      expect(result.bytesReceived, 1024);
+    });
+
+    test('cancelledResumable() sets isCancelledResumable=true', () {
+      final result = UpdateDownloadResult.cancelledResumable('/tmp/app.apk', bytesReceived: 512);
+      expect(result.isCancelledResumable, isTrue);
+      expect(result.isSuccess, isFalse);
+      expect(result.isError, isFalse);
+      expect(result.isPaused, isFalse);
+      expect(result.filePath, '/tmp/app.apk');
+      expect(result.partialFilePath, '/tmp/app.apk');
+      expect(result.bytesReceived, 512);
+    });
+
+    test('partialFilePath is null when result is success', () {
+      final result = UpdateDownloadResult.success('/tmp/app.apk');
+      expect(result.partialFilePath, isNull);
+    });
+
+    test('partialFilePath is null when result is failure', () {
+      final result = UpdateDownloadResult.failure('oops');
+      expect(result.partialFilePath, isNull);
+    });
+
+    test('cancelledResumable toString includes correct labels', () {
+      final result = UpdateDownloadResult.cancelledResumable('/path/to/file', bytesReceived: 256);
+      expect(result.toString(), contains('cancelledResumable'));
+      expect(result.toString(), contains('/path/to/file'));
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1029,4 +1683,28 @@ class _NullContentLengthClient extends http.BaseClient {
       contentLength: null, // ← key: forces progress to be indeterminate
     );
   }
+}
+
+// ---------------------------------------------------------------------------
+// _StreamedResponseClient
+// ---------------------------------------------------------------------------
+
+/// A fake [http.Client] that returns whatever [http.StreamedResponse] the
+/// [onRequest] callback produces.
+///
+/// [MockClient] only accepts callbacks that return [Future<http.Response>], so
+/// it cannot produce a [http.StreamedResponse] directly.  Tests that need to
+/// simulate 206 Partial Content responses (which carry a content-range header
+/// and a streamed body) must use this client instead.
+class _StreamedResponseClient extends http.BaseClient {
+  _StreamedResponseClient({required this.onRequest});
+
+  /// Called for every request.  Return the [http.StreamedResponse] to send
+  /// back to the caller.  The callback is synchronous so that test bodies
+  /// can use simple closures without async overhead.
+  final http.StreamedResponse Function(http.BaseRequest request) onRequest;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) async =>
+      onRequest(request);
 }

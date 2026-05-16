@@ -25,8 +25,14 @@ class ImportTemplateService {
 
   /// The 12 canonical import column names, in order.
   ///
-  /// These match the headers produced by [CsvExportService], so the template
-  /// stays in sync with the export format automatically.
+  /// These are the user-facing columns accepted by [ImportService] for a
+  /// weekly record import.  They are a strict subset of the columns produced
+  /// by [CsvExportService] (which exports 19 columns including system fields
+  /// such as `id`, `church_id`, `total_attendance`, `created_at`, etc.).
+  ///
+  /// System-assigned fields are intentionally excluded from the import
+  /// template — the app assigns them on import and the user should never need
+  /// to supply them manually.
   static const List<String> templateColumns = [
     'week_start_date',
     'men',
