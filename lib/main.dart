@@ -1,10 +1,12 @@
 import 'dart:async';
 
+import 'package:connectivity_plus/connectivity_plus.dart'; // FEAT-018
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'services/background_update_service.dart'; // FEAT-018
 import 'services/log_service.dart';
 import 'services/settings_service.dart';
 import 'services/theme_service.dart';
@@ -94,11 +96,67 @@ void main() async {
   );
 }
 
-class ChurchAnalyticsApp extends ConsumerWidget {
+// ---------------------------------------------------------------------------
+// FEAT-018: ChurchAnalyticsApp converted from ConsumerWidget to
+// ConsumerStatefulWidget so that the connectivity stream subscription has a
+// proper lifecycle (initState / dispose).
+//
+// The subscription lives here — at the app root — so it persists for the
+// entire session regardless of which screen is currently active.  Placing it
+// in StartupGateScreen would cancel it the moment the gate navigates away.
+// ---------------------------------------------------------------------------
+
+class ChurchAnalyticsApp extends ConsumerStatefulWidget {
   const ChurchAnalyticsApp({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<ChurchAnalyticsApp> createState() => _ChurchAnalyticsAppState();
+}
+
+class _ChurchAnalyticsAppState extends ConsumerState<ChurchAnalyticsApp> {
+  /// FEAT-018: Subscription to the connectivity change stream.
+  ///
+  /// Cancelled in [dispose] to prevent listener leaks.
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // FEAT-018: Subscribe to connectivity changes so that an update check is
+    // triggered whenever the device transitions from offline to online.
+    //
+    // The subscription is set up once here at the app root and lives for the
+    // entire session.  Each emission from the stream is a List because
+    // connectivity_plus v6+ supports multiple simultaneous interfaces (e.g.
+    // Wi-Fi + VPN).  We consider the device online if any result is not
+    // ConnectivityResult.none.
+    //
+    // The provider is invalidated before re-reading so that it runs a fresh
+    // cooldown + connectivity check rather than returning a prior cached value.
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen(
+      (List<ConnectivityResult> results) {
+        final isOnline = results.any((r) => r != ConnectivityResult.none);
+        if (isOnline) {
+          // Connectivity restored — attempt a background update check if the
+          // 24-hour cooldown has elapsed.  The provider handles both guards
+          // internally; this call is always safe to make unconditionally.
+          ref.invalidate(backgroundUpdateCheckProvider);
+          unawaited(ref.read(backgroundUpdateCheckProvider.future));
+        }
+      },
+    );
+  }
+
+  @override
+  void dispose() {
+    // FEAT-018: Cancel the connectivity stream to avoid leaked listeners.
+    _connectivitySubscription?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final theme = ref.watch(themeProvider);
     final darkTheme = ref.watch(darkThemeProvider);
     final themeMode = ref.watch(themeModeProvider);
@@ -299,20 +357,37 @@ class ChurchAnalyticsApp extends ConsumerWidget {
               builder: (context) => const HomeChurchScreen(),
             );
           case '/home-church-analytics':
+            if (churchId == null) {
+              return MaterialPageRoute(
+                builder: (context) => const StartupGateScreen(),
+              );
+            }
             return MaterialPageRoute(
-              builder: (context) => const HomeChurchAnalyticsScreen(),
+              builder: (context) =>
+                  HomeChurchAnalyticsScreen(churchId: churchId),
             );
           case '/board-meeting':
+            if (churchId == null) {
+              return MaterialPageRoute(
+                builder: (context) => const StartupGateScreen(),
+              );
+            }
             return MaterialPageRoute(
-              builder: (context) => const BoardMeetingAnalyticsScreen(),
+              builder: (context) =>
+                  BoardMeetingAnalyticsScreen(churchId: churchId),
             );
           case '/board-meeting/entry':
             return MaterialPageRoute(
               builder: (context) => const BoardMeetingEntryScreen(),
             );
           case '/special-events':
+            if (churchId == null) {
+              return MaterialPageRoute(
+                builder: (context) => const StartupGateScreen(),
+              );
+            }
             return MaterialPageRoute(
-              builder: (context) => const SpecialEventsScreen(),
+              builder: (context) => SpecialEventsScreen(churchId: churchId),
             );
           case '/holy-communion/entry':
             return MaterialPageRoute(

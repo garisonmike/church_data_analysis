@@ -5,21 +5,17 @@ import 'package:syncfusion_flutter_charts/charts.dart';
 
 import '../../models/models.dart';
 import '../../services/analytics_service.dart';
-import '../../services/settings_service.dart';
 import '../../services/weekly_records_provider.dart';
 import '../widgets/charts/ctrl_scroll_zoom_wrapper.dart';
 import 'board_meeting_entry_screen.dart';
 
 class BoardMeetingAnalyticsScreen extends ConsumerWidget {
-  const BoardMeetingAnalyticsScreen({super.key});
+  final int churchId;
+
+  const BoardMeetingAnalyticsScreen({super.key, required this.churchId});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final settings = ref.watch(appSettingsProvider);
-    final churchId = settings.selectedChurchId;
-    if (churchId == null) {
-      return const Scaffold(body: Center(child: Text('No church selected.')));
-    }
     final recordsAsync = ref.watch(boardMeetingRecordsProvider(churchId));
 
     return Scaffold(

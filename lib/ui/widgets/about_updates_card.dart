@@ -412,6 +412,15 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
     final manifest = _manifest;
     if (paused == null || manifest == null) return;
 
+    // FEAT-002: Re-check install permission before resuming — the permission
+    // may have been revoked while the download was paused (e.g. app restart,
+    // OS settings change).  Mirrors the check in _onDownloadUpdate so the
+    // user is never surprised by a permission failure at install time.
+    if (!kIsWeb && Platform.isAndroid) {
+      final hasPermission = await ensureInstallPermissionGranted(context);
+      if (!mounted || !hasPermission) return;
+    }
+
     final cancelToken = CancelToken();
     final pauseToken = PauseToken(); // fresh token for this segment
 

@@ -62,6 +62,9 @@ dependencies:
   intl: ^0.19.0
   excel: ^2.1.0
 
+  # Connectivity status — used by background update checker (FEAT-018)
+  connectivity_plus: ^6.0.5
+
   # URL / folder launcher
   url_launcher: ^6.3.1
 

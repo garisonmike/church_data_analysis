@@ -4,7 +4,7 @@
 **Scope:** Missing screen crash bugs, target analysis card copy, update system improvements, tutorial opt-in, Excel import & template download, background update checker connectivity, onboarding copy  
 **Codebase Version:** As at commit `HEAD` on 2026-05-12  
 **Author:** garisonmike  
-**Report Version:** 3.3 (supersedes v3.2 — removes completed items and reorders remaining plan)
+**Report Version:** 3.4 (supersedes v3.3 — adds BUG-001 navigation guard fix; aligns FEAT-006 streaming correctness; adds FEAT-008 architecture alignment note, `flutter_foreground_task` v8 init requirements, and resolved minSdk decision)
 
 ---
 
@@ -18,6 +18,7 @@ Items are classified as **BUG** (something broken) or **FEAT** (new behaviour re
 
 ## Table of Contents
 
+- [BUG-001 — `_navigationInProgress` guard suppresses crash recovery and onboarding indefinitely](#bug-001)
 - [BUG-003 — Tapping SpecialEvents / HomeChurchAnalytics / BoardMeeting / FinancialGlossary crashes (missing screen classes)](#bug-003)
 - [BUG-004 — Target Analysis card description misleads users into thinking the screen is empty](#bug-004)
 - [FEAT-001 — Tutorial: ask user before showing onboarding](#feat-001)
@@ -34,6 +35,78 @@ Items are classified as **BUG** (something broken) or **FEAT** (new behaviour re
 - [FEAT-019 — Onboarding slide 4: add Chart Center hint](#feat-019)
 - [Testing Checklist](#testing-checklist)
 - [Risk Summary](#risk-summary)
+
+---
+
+<a name="bug-001"></a>
+## BUG-001 — `_navigationInProgress` guard suppresses crash recovery and onboarding indefinitely
+
+> **Added in Review — High severity. Fix before any FEAT work is merged.**
+
+### Severity
+High. As written, the `_navigationInProgress` flag in `startup_gate_screen.dart` is set to `true` before the first `await` in the post-frame callback. Because the flag is **never reset to `false` on the success path**, any subsequent post-frame callback (re-entry from the OS, a hot-restart in debug, or a deferred route trigger) hits the early-return guard and does nothing. The practical effect is that crash recovery and onboarding are silently suppressed after the first call — the user sees a blank or frozen startup screen with no forward route being pushed.
+
+### Root Cause
+
+```dart
+// startup_gate_screen.dart — current (broken)
+WidgetsBinding.instance.addPostFrameCallback((_) async {
+  if (_navigationInProgress) return;   // <— guard checked here
+  _navigationInProgress = true;        // <— set before await, never cleared on success
+  await _routeFromState();
+  // _navigationInProgress remains true forever — next callback always returns early
+});
+```
+
+The guard was written to prevent concurrent re-entrant calls, but it conflates "in progress right now" with "ever attempted". A flag that is set and never cleared behaves like a one-shot latch rather than a mutex.
+
+### Fix — Two options (choose one)
+
+**Option A — Reset the flag after `_routeFromState()` completes (minimal change):**
+
+```dart
+WidgetsBinding.instance.addPostFrameCallback((_) async {
+  if (_navigationInProgress) return;
+  _navigationInProgress = true;
+  try {
+    await _routeFromState();
+  } finally {
+    _navigationInProgress = false;  // always reset, even on exception
+  }
+});
+```
+
+This is the lowest-risk fix. The `finally` block ensures the flag is always cleared — even if `_routeFromState()` throws — so a subsequent callback can retry.
+
+**Option B — Serialize the entire startup flow in a single async chain (preferred for new code):**
+
+Remove the `_navigationInProgress` flag entirely. Instead, ensure `addPostFrameCallback` is only registered once (e.g. in `initState`), and make `_routeFromState()` itself idempotent using a `Completer` or `mounted` checks at each `await` boundary:
+
+```dart
+@override
+void initState() {
+  super.initState();
+  WidgetsBinding.instance.addPostFrameCallback((_) => _startup());
+  // Only one registration — no flag needed.
+}
+
+Future<void> _startup() async {
+  await showCrashRecoveryDialogIfNeeded();
+  if (!mounted) return;
+  await _routeFromState();
+}
+```
+
+If `_routeFromState()` is only ever called from this single chain, there is no re-entrancy to guard against.
+
+### Affected Files
+
+| File | Change |
+|---|---|
+| `lib/ui/screens/startup_gate_screen.dart` | Apply Option A or Option B above |
+
+### Risk
+Low. The fix is surgical — it changes flag lifecycle only. The routing logic inside `_routeFromState()` and all downstream navigation calls are untouched. Test by simulating a crash-recovery path on first launch to confirm the dialog appears.
 
 ---
 
@@ -484,23 +557,40 @@ User should be able to pause the download (stop network transfer), resume it lat
 
 1. **New download strategy — stream to file, not to `BytesBuilder`:**
    
-   Change `update_download_service.dart` so that each chunk is appended to the destination file immediately:
+   Change `update_download_service.dart` so that each chunk is appended to the destination file immediately. Two important corrections versus the naïve approach:
+
+   - **Use `sink.add(chunk)` directly, not `await sink.addStream(Stream.value(chunk))`.**  
+     Wrapping each chunk in `Stream.value()` and calling `addStream` creates a new single-element stream object per iteration and internally awaits the stream's `done` future before returning. This unnecessary overhead can stall throughput on fast connections. `sink.add()` is synchronous and buffers the write immediately — use it instead.
+
+   - **Track resume progress correctly using `existingLength + received`.**  
+     If the download is resumed after a pause or crash (FEAT-007), the partial file already contains `existingLength` bytes on disk. Progress must be `(existingLength + received) / totalContentLength`. Using `received / totalContentLength` alone restarts the progress bar from 0% regardless of how much was already downloaded.
+
+   - **Use `Content-Range` / 206 handling for resume.**  
+     When resuming via `Range: bytes=<existingLength>-`, the server responds with HTTP 206. The `Content-Length` header in a 206 response is the *remaining* bytes, not the full file size. Store the total file size from the manifest (or the initial 200 `Content-Length`) and use it as the denominator for all progress calculations.
+
    ```dart
    final sink = file.openWrite(mode: FileMode.append); // append, not overwrite
    int received = 0;
-   await for (final chunk in streamedResponse.stream) {
-     if (cancelToken?.isCancelled == true) { ... }
-     if (pauseToken?.isPaused == true) {
-       await sink.flush();
-       await sink.close();
-       return UpdateDownloadResult.paused(file.path, bytesReceived: received);
+   final existingLength = await file.length(); // 0 for fresh download, >0 on resume
+
+   try {
+     await for (final chunk in streamedResponse.stream) {
+       if (cancelToken?.isCancelled == true) { ... }
+       if (pauseToken?.isPaused == true) {
+         await sink.flush();
+         await sink.close();
+         return UpdateDownloadResult.paused(file.path, bytesReceived: existingLength + received);
+       }
+       sink.add(chunk);                                          // NOT addStream(Stream.value(chunk))
+       received += chunk.length;
+       onProgress?.call((existingLength + received) / totalContentLength); // full-file denominator
      }
-     await sink.addStream(Stream.value(chunk));
-     received += chunk.length;
-     onProgress?.call(received / responseContentLength!);
+     await sink.flush();
+     await sink.close();
+   } catch (e) {
+     await sink.close();
+     rethrow;
    }
-   await sink.flush();
-   await sink.close();
    ```
 
 2. **New `PauseToken` class (sibling of `CancelToken`):**
@@ -592,6 +682,13 @@ FEAT-007's `DownloadStateService.persist()` writes a crash-recovery record to Sh
 
 ---
 
+> **Review note — Medium (architectural alignment required before implementation):**  
+> The architecture described in this section (download stays in the main isolate; Foreground Service is a process anchor only) **conflicts with `PLATFORM_PARITY.md` §100**, which specifies moving the download into a `TaskHandler` isolate. These two documents must be reconciled before any FEAT-008 code is written. Building from either spec in isolation will produce the wrong architecture and require a rework.  
+>  
+> **Recommended resolution:** Hold a brief alignment review. The main-isolate approach described here is technically sounder (eliminates the three isolate-boundary errors documented above), but if the parity doc's TaskHandler model has already been agreed with stakeholders, that decision takes precedence and the error analysis above must be addressed first. Update whichever document loses so both specs agree before implementation starts.
+
+---
+
 ### Chosen Architecture: Main Isolate + Foreground Service as a Process Anchor
 
 The simplest correct architecture is:
@@ -620,7 +717,21 @@ Before writing any code, confirm:
 
 - [ ] `flutter pub add flutter_foreground_task:^8.0.0` resolves without conflicts.
 - [ ] `flutter --version` is ≥ 3.22 (required for `PopScope`, also needed here for compatibility with the package's Kotlin plugin).
-- [ ] The `minSdk` value in `android/app/build.gradle.kts` resolves to at least **21** (Android 5). Foreground Services are available from API 21+. The current build config uses `flutter.minSdkVersion` which defaults to 16 — this must be raised. If your device target is Android 8+ only, raise to 26 to simplify testing.
+- [ ] **Confirm the exact v8 API for service startup.** Earlier versions of `flutter_foreground_task` (v4–v7) required a `startCallback` top-level function annotated with `@pragma('vm:entry-point')` and a `setTaskHandler(MyHandler())` call before `startService()` could succeed. If v8 retains this requirement, `DownloadForegroundService.start()` as written in Step 1 will **fail silently at runtime** — `startService()` returns without starting the service and no notification appears. Check the v8 migration guide and the package's own example app to verify whether `@pragma('vm:entry-point')` + `setTaskHandler` are still mandatory. If they are, add the minimal no-op handler:
+  ```dart
+  @pragma('vm:entry-point')
+  void startCallback() {
+    FlutterForegroundTask.setTaskHandler(_DownloadAnchorHandler());
+  }
+  
+  class _DownloadAnchorHandler extends TaskHandler {
+    @override Future<void> onStart(DateTime timestamp, SendPort? sendPort) async {}
+    @override Future<void> onRepeatEvent(DateTime timestamp, SendPort? sendPort) async {}
+    @override Future<void> onDestroy(DateTime timestamp, SendPort? sendPort) async {}
+  }
+  ```
+  Pass `startCallback` to `FlutterForegroundTask.init()` if required. **Confirm or rule this out before coding Step 1.**
+- [ ] The `minSdk` is resolved to **21** in `android/app/build.gradle.kts` per the minSdk Decision section below — confirm the explicit value is committed before building.
 - [ ] Confirm the production APK download URL returns `Accept-Ranges: bytes` in a `HEAD` response (needed for FEAT-006 pause/resume; also confirms the CDN allows sustained connections).
 
 ---
@@ -666,7 +777,15 @@ No other new dependencies. `http`, `shared_preferences`, and `path_provider` are
 
 ---
 
-### minSdk Change
+### minSdk Decision — Resolved
+
+> **Review note:** The pre-implementation checklist originally said "confirm the resolved value before locking this approach." Here is that decision.
+
+`flutter.minSdkVersion` is a Gradle property injected by the Flutter toolchain. Its value is **not fixed** — it is the minimum SDK floor for the Flutter version currently in use. As of Flutter 3.22 (the version required by `flutter_foreground_task ^8.0.0`), `flutter.minSdkVersion` resolves to **16** (Android 4.1). Foreground Services require API 21+. At minSdk 16, any device running Android 4.1–4.4 would receive an APK that references a service class the OS cannot start — resulting in a runtime crash on those devices.
+
+**Decision: set minSdk explicitly to 21.**
+
+The global Android 4.x install base is below 0.1% and dropping. Church Analytics already depends on packages that implicitly require API 21+ (Kotlin coroutines, `flutter_local_notifications`, and the Material 3 theme engine all have practical API 21 floors). Keeping minSdk at 16 provides no real-world benefit and risks confusing the build system.
 
 In `android/app/build.gradle.kts`, replace:
 
@@ -677,10 +796,12 @@ minSdk = flutter.minSdkVersion
 with:
 
 ```kotlin
-minSdk = 21  // Raised from flutter default (16) to support ForegroundService
+minSdk = 21  // Raised: ForegroundService requires API 21+; flutter default (16) is insufficient
 ```
 
-If the project has explicitly confirmed it targets Android 8+ only, you may raise this to 26 and simplify the API-level gating below.
+**If your confirmed device targets are Android 8+ only:** raise to **26** instead of 21. This lets you drop the API-level runtime guards in `DownloadForegroundService` (the `if (Build.VERSION.SDK_INT >= 26)` branches) and simplifies testing. Only do this if you have confirmed that no supported device runs Android 5 or 6.
+
+No other Gradle changes are needed. This does not affect Windows or Linux builds.
 
 ---
 
@@ -1422,6 +1543,14 @@ See the dedicated testing checklist in the [FEAT-008 section](#feat-008) above.
 - [ ] On Windows/Linux: file is saved to the expected documents path; snackbar path is correct
 - [ ] Failure to write (e.g. no storage permission) shows an error snackbar; no crash
 
+### BUG-001 — Navigation guard fix
+
+- [ ] Cold launch with no crash-recovery state: startup routes normally to Dashboard, no freeze or blank screen
+- [ ] Cold launch with crash-recovery SharedPreferences key set: crash-recovery dialog appears (confirms the post-frame callback runs past the guard)
+- [ ] First launch (onboarding incomplete): onboarding dialog (FEAT-001) appears after Dashboard loads
+- [ ] Hot-restart in debug mode: startup flow re-runs cleanly without hanging on the guard
+- [ ] `_navigationInProgress` is `false` after `_routeFromState()` completes (add a debug assertion to confirm during development)
+
 ### BUG-003 — Missing screen classes
 
 - [ ] `flutter analyze` passes with zero warnings after all four placeholder files are created
@@ -1466,6 +1595,7 @@ See the dedicated testing checklist in the [FEAT-008 section](#feat-008) above.
 
 | Item | Risk | Reason |
 |---|---|---|
+| BUG-001 `_navigationInProgress` flag never cleared | High | Fix immediately — suppresses all startup routing after first call; Option A is one `finally` block |
 | BUG-003 Missing screen class placeholders | None | Four new files only; `graph_center_screen.dart` unchanged |
 | BUG-004 Target Analysis card description | None | String change only |
 | FEAT-001 Tutorial opt-in dialog | Low | Move onboarding gate to Dashboard; remove StartupGate guard issue |
@@ -1473,25 +1603,26 @@ See the dedicated testing checklist in the [FEAT-008 section](#feat-008) above.
 | FEAT-003 Backup before update | Low | New dialog + new file; existing install flow unchanged |
 | FEAT-004 Auto-delete installer | Low | Startup-only cleanup; avoids install-time race |
 | FEAT-005 Already-downloaded package check | None | Additive file-exists check before network call |
-| FEAT-006 Pause/resume download | Medium | Core change to download streaming strategy; requires thorough testing |
+| FEAT-006 Pause/resume download | Medium | Core change to download streaming strategy; `sink.add()` replaces `addStream`; resume progress uses `existingLength + received`; requires thorough testing |
 | FEAT-007 Resume after closure | Low | Depends on FEAT-006; persistence is SharedPreferences only |
-| FEAT-008 Background download (Android) | Medium | Foreground Service as process anchor only; download stays in main isolate; no isolate communication, no token redesign |
+| FEAT-008 Background download (Android) | Medium | Foreground Service as process anchor only; confirm `flutter_foreground_task` v8 `TaskHandler` requirements and architecture alignment with PLATFORM_PARITY.md before starting |
 | FEAT-016 Excel import support | Low | Service swap + parse-method rename; XLSX parsing already implemented |
 | FEAT-017 Downloadable import template | Low | Additive template generation + export; no impact on import flow |
 | FEAT-018 Update checker connectivity + launch/restore | Low | Additive guard + stream subscription; cooldown logic untouched |
 | FEAT-019 Onboarding slide 4 Chart Center hint | None | Single string addition in widget data |
 
 **Recommended implementation order:**
-1. BUG-003 (placeholder screens — fixes live crash, fastest win)
-2. BUG-004 (Target Analysis card copy — quick UX win)
-3. FEAT-019 (onboarding copy — trivial)
-4. FEAT-001 (tutorial opt-in flow)
-5. FEAT-016 (Excel import support)
-6. FEAT-017 (downloadable import template)
-7. FEAT-002 (install permission prompt)
-8. FEAT-003 (backup before update)
-9. FEAT-005 (already-downloaded package check)
-10. FEAT-004 (auto-delete installer cleanup)
-11. FEAT-018 (update checker connectivity + launch/restore)
-12. FEAT-006 + FEAT-007 (pause/resume + resume after closure)
-13. FEAT-008 (background download — complete pre-implementation checklist first)
+1. BUG-001 (navigation guard fix — fix this before anything else; active startup regression)
+2. BUG-003 (placeholder screens — fixes live crash, fastest win)
+3. BUG-004 (Target Analysis card copy — quick UX win)
+4. FEAT-019 (onboarding copy — trivial)
+5. FEAT-001 (tutorial opt-in flow)
+6. FEAT-016 (Excel import support)
+7. FEAT-017 (downloadable import template)
+8. FEAT-002 (install permission prompt)
+9. FEAT-003 (backup before update)
+10. FEAT-005 (already-downloaded package check)
+11. FEAT-004 (auto-delete installer cleanup)
+12. FEAT-018 (update checker connectivity + launch/restore)
+13. FEAT-006 + FEAT-007 (pause/resume + resume after closure)
+14. FEAT-008 (background download — complete pre-implementation checklist first)

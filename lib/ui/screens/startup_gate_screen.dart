@@ -5,6 +5,7 @@ import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:church_analytics/platform/platform_installer_launch_service.dart';
+import 'package:church_analytics/services/background_update_service.dart'; // FEAT-018
 import 'package:church_analytics/services/download_state_service.dart'; // FEAT-007
 import 'package:church_analytics/models/update_error_type.dart'; // FEAT-007
 import 'package:church_analytics/services/update_download_service.dart'; // FEAT-007
@@ -28,18 +29,40 @@ class StartupGateScreen extends ConsumerStatefulWidget {
 
 class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
   Object? _error;
-  bool _navigationInProgress = false;
+
+  // BUG-001 fix: _navigationInProgress has been removed.
+  //
+  // The old flag was set to true inside _routeFromState() on every navigation
+  // path but never reset. The postFrameCallback for crash recovery checked it
+  // and returned early, so crash recovery was permanently suppressed after the
+  // very first call — even on hot-restart, OS resume, or a retry from the
+  // error UI.
+  //
+  // Fix: addPostFrameCallback is registered once in initState and runs a
+  // single sequential async chain (_startup). Crash recovery always runs
+  // before _routeFromState, with a mounted check between them. The flag is no
+  // longer needed because the callback is only ever registered once.
 
   @override
   void initState() {
     super.initState();
-    _routeFromState();
-    // After first frame: check for crash recovery.
-    WidgetsBinding.instance.addPostFrameCallback((_) async {
-      if (!mounted) return;
-      if (_navigationInProgress) return;
-      await showCrashRecoveryDialogIfNeeded(context);
-    });
+    // Registered exactly once — no re-entrancy is possible, so no flag needed.
+    WidgetsBinding.instance.addPostFrameCallback((_) => _startup());
+  }
+
+  /// Single sequential startup chain.
+  ///
+  /// Step 1 — crash recovery dialog (must run before routing so the user sees
+  /// it on a blank screen rather than over the dashboard).
+  /// Step 2 — route to the correct initial screen.
+  ///
+  /// Each await boundary is followed by a mounted check so that widget
+  /// disposal mid-flight is handled safely.
+  Future<void> _startup() async {
+    if (!mounted) return;
+    await showCrashRecoveryDialogIfNeeded(context);
+    if (!mounted) return;
+    await _routeFromState();
   }
 
   Future<void> _routeFromState() async {
@@ -57,7 +80,6 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
         await churchService.clearCurrentChurch();
         await profileService.clearCurrentProfile();
         if (!mounted) return;
-        _navigationInProgress = true;
         Navigator.of(context).pushReplacementNamed('/select-church');
         return;
       }
@@ -67,7 +89,6 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
         await churchService.clearCurrentChurch();
         await profileService.clearCurrentProfile();
         if (!mounted) return;
-        _navigationInProgress = true;
         Navigator.of(context).pushReplacementNamed('/select-church');
         return;
       }
@@ -77,7 +98,6 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
         await churchService.clearCurrentChurch();
         await profileService.clearCurrentProfile();
         if (!mounted) return;
-        _navigationInProgress = true;
         Navigator.of(context).pushReplacementNamed('/select-church');
         return;
       }
@@ -88,7 +108,6 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
       final currentProfileId = profileService.getCurrentProfileId();
       if (currentProfileId == null) {
         if (!mounted) return;
-        _navigationInProgress = true;
         Navigator.of(
           context,
         ).pushReplacementNamed('/select-profile', arguments: churchId);
@@ -104,7 +123,6 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
       if (!validProfile) {
         await profileService.clearCurrentProfile();
         if (!mounted) return;
-        _navigationInProgress = true;
         Navigator.of(
           context,
         ).pushReplacementNamed('/select-profile', arguments: churchId);
@@ -122,10 +140,24 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
       unawaited(_cleanUpStaleApks());
 
       if (!mounted) return;
-      _navigationInProgress = true;
       Navigator.of(
         context,
       ).pushReplacementNamed('/dashboard', arguments: churchId);
+
+      // FEAT-018: Fire a background update check on cold launch.
+      //
+      // Runs fire-and-forget immediately after the dashboard route is pushed.
+      // The provider handles both the 24-hour cooldown gate and the
+      // connectivity pre-check internally, so this call is always safe to
+      // make unconditionally here.
+      //
+      // The provider is invalidated before reading so that it re-evaluates
+      // on every cold launch rather than returning a cached value from a
+      // previous session.  Without invalidation, a FutureProvider that
+      // completed in a prior session would return its cached result
+      // immediately and skip the cooldown/connectivity logic entirely.
+      ref.invalidate(backgroundUpdateCheckProvider);
+      unawaited(ref.read(backgroundUpdateCheckProvider.future));
     } catch (e) {
       if (!mounted) return;
       setState(() {
@@ -382,7 +414,7 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
                 ElevatedButton(
                   onPressed: () {
                     setState(() => _error = null);
-                    _routeFromState();
+                    _startup();
                   },
                   child: const Text('Retry'),
                 ),
