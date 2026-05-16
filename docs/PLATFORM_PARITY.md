@@ -32,7 +32,7 @@ fails on another.
 | Update download | ✅ | ✅ | ✅ | ✅ (browser) | Web opens GitHub Releases in browser tab |
 | Update install | ✅ APK intent | ⚠️ Manual copy | ⚠️ Manual copy | N/A | See [Update install](#update-install) |
 | Install permission (proactive) | ✅ FEAT-002 | N/A | N/A | N/A | `permission_handler` → `REQUEST_INSTALL_PACKAGES` |
-| Background download | ❌ FEAT-008 | ✅ | ✅ | N/A | See [Background download](#background-download) |
+| Background download | ✅ FEAT-008 | ✅ | ✅ | N/A | See [Background download](#background-download) |
 | Log export | ✅ BUG-002 fixed | ✅ | ✅ | ❌ | Android uses `getExternalStorageDirectory()` |
 | Backup (create) | ✅ | ✅ | ✅ | ✅ | JSON export via `file_picker` |
 | Restore (import) | ✅ | ✅ | ✅ | ✅ | JSON import via `file_picker` |
@@ -79,25 +79,37 @@ browser; there is nothing to install programmatically.
 ### Background download
 
 **Code location:** `lib/services/update_download_service.dart`,
+`lib/services/download_foreground_service.dart` (FEAT-008),
 called from `lib/ui/widgets/about_updates_card.dart`
 
 The download runs in the Flutter main isolate. On **Windows and Linux** this is
 fine — desktop OSes do not throttle background work.
 
-On **Android**, when the user sends the app to the background, Android may
-throttle or kill the main isolate after a few minutes, cancelling the download.
-The only reliable fix is a Foreground Service (see FEAT-008). This has not yet
-been implemented.
+On **Android**, a **Foreground Service** (via `flutter_foreground_task ^8.0.0`)
+is started for the duration of the download.  The service acts as a process
+anchor: it posts the mandatory persistent notification and prevents Android from
+killing the process when the app is backgrounded.  The download itself remains
+in the main Dart isolate — no isolate boundary is crossed.
 
-**Current mitigation:** none (FEAT-008 open). A lower-risk stopgap would be
-`wakelock_plus` (keep the screen on during download) with an explicit warning
-in the progress dialog not to leave the app. This was noted in the report but
-not yet implemented.
+**Architecture decision (FEAT-008 v3.1):** An earlier draft of FEAT-008
+(v3.0) proposed moving the download into a `TaskHandler` isolate.  That
+approach was discarded because `http.Client` cannot cross an isolate boundary,
+and `CancelToken`/`PauseToken` mutations from the UI would be invisible to a
+separate isolate heap.  The main-isolate + Foreground Service anchor model
+eliminates all three architectural errors from v3.0.  **This section
+supersedes the TaskHandler-isolate model previously referenced in §100.**
 
-**FEAT-008 scope:** Add `flutter_foreground_task`, declare a `<service>` in
-`AndroidManifest.xml` with `FOREGROUND_SERVICE` and
-`FOREGROUND_SERVICE_DATA_SYNC` (required Android 14+), and move the download
-into a `TaskHandler` isolate that reports progress back to the UI.
+**Package:** `flutter_foreground_task: ^8.0.0` (pinned — breaking API changes
+between v4, v5, and v8).
+
+**Manifest additions (Android):**
+- `FOREGROUND_SERVICE` permission
+- `FOREGROUND_SERVICE_DATA_SYNC` permission (Android 14+)
+- `POST_NOTIFICATIONS` permission (Android 13+, requested at runtime)
+- `<service android:name="com.pravera.flutter_foreground_task.service.ForegroundService" android:foregroundServiceType="dataSync" />`
+
+**minSdk:** raised to 21 in `android/app/build.gradle.kts` (Foreground
+Services require API 21+; the previous `flutter.minSdkVersion` resolved to 16).
 
 ---
 
@@ -145,7 +157,6 @@ FEAT-002.
 | Limitation | Platforms | Tracking |
 |---|---|---|
 | Update install requires manual file copy | Windows, Linux | Future work (helper launcher) — no issue filed |
-| Background download can be interrupted | Android | FEAT-008 (not yet implemented) |
 | Web: no installer pipeline | Web | By design — browser handles downloads |
 
 ---

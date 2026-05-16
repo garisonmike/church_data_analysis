@@ -77,6 +77,11 @@ dependencies:
   # Runtime permission checks — used by install_permission_service.dart
   # to proactively request REQUEST_INSTALL_PACKAGES on Android 8+ (FEAT-002)
   permission_handler: ^11.3.1
+
+  # Android Foreground Service anchor for background downloads (FEAT-008).
+  # Pinned to ^8.0.0 — the package has had breaking API changes between
+  # v4, v5, and v8.  Do not unpin without reviewing the migration guide.
+  flutter_foreground_task: ^8.0.0
   
   # File sharing
   share_plus: ^10.1.3

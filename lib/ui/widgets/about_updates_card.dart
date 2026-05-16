@@ -5,6 +5,8 @@ import 'package:church_analytics/models/update_error_messages.dart';
 import 'package:church_analytics/models/update_error_type.dart';
 import 'package:church_analytics/models/update_manifest.dart';
 import 'package:church_analytics/platform/install_permission_service.dart'; // FEAT-002
+import 'package:church_analytics/services/download_foreground_service.dart'; // FEAT-008
+import 'package:permission_handler/permission_handler.dart'; // FEAT-008 (POST_NOTIFICATIONS)
 import 'package:church_analytics/services/activity_log_service.dart';
 import 'package:church_analytics/services/installer_launch_service.dart';
 import 'package:church_analytics/services/update_download_result.dart';
@@ -18,7 +20,6 @@ import 'package:church_analytics/ui/widgets/update_install_failure_dialog.dart';
 import 'package:flutter/foundation.dart' show kDebugMode, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -156,6 +157,9 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
   void initState() {
     super.initState();
     _loadCurrentVersion();
+    // FEAT-008: initialise foreground service config once per widget lifecycle.
+    // No-op on non-Android platforms. Safe to call multiple times.
+    DownloadForegroundService.init();
   }
 
   Future<void> _loadCurrentVersion() async {
@@ -289,56 +293,78 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
       return;
     }
 
+    // FEAT-008: Request POST_NOTIFICATIONS permission on Android 13+ before
+    // starting the foreground service.  The download proceeds even if denied —
+    // the notification is just suppressed.  Never block the download on this.
+    if (!kIsWeb && Platform.isAndroid) {
+      final notifStatus = await Permission.notification.status;
+      if (!notifStatus.isGranted) {
+        await Permission.notification.request();
+      }
+    }
+
     // FEAT-006: clear any previous paused result — this is a fresh download.
     setState(() => _pausedResult = null);
 
     final cancelToken = CancelToken();
     final pauseToken = PauseToken(); // FEAT-006
     final progressNotifier = ValueNotifier<double>(0.0);
+    var dialogShown = false;
     var dialogPopped = false;
 
     void popDialog() {
-      if (!dialogPopped && mounted) {
+      if (dialogShown && !dialogPopped && mounted) {
         dialogPopped = true;
         Navigator.of(context, rootNavigator: true).pop();
       }
     }
 
-    // Show the progress dialog.  Fire-and-forget: the dialog is dismissed
-    // imperatively via Navigator.pop rather than by awaiting this future.
-    // ignore: unawaited_futures
-    UpdateDownloadProgressDialog.show(
-      context,
-      progress: progressNotifier,
-      onCancel: () {
-        cancelToken.cancel();
-        popDialog();
-      },
-      // FEAT-006: Pause button — only shown when the server confirmed it
-      // supports range requests (Accept-Ranges: bytes).  Never offer a
-      // feature that silently degrades on the user.
-      onPause: _supportsResume ? () => pauseToken.pause() : null,
-    );
-
     try {
+      // FEAT-008: start the Android Foreground Service to anchor the process
+      // against backgrounding.  The download itself stays in the main isolate.
+      // This is a no-op on Windows, Linux, and all other non-Android platforms.
+      // start() is inside the try block so that ForegroundServiceStartException
+      // is caught below and surfaced as a snackbar rather than escaping as an
+      // unhandled async exception with no user-facing feedback.
+      await DownloadForegroundService.start(cancelToken: cancelToken);
+      // start() is async — guard against widget disposal before using context.
+      if (!mounted) return;
+
+      // Show the progress dialog.  Fire-and-forget: the dialog is dismissed
+      // imperatively via Navigator.pop rather than by awaiting this future.
+      dialogShown = true;
+      // ignore: unawaited_futures
+      UpdateDownloadProgressDialog.show(
+        context,
+        progress: progressNotifier,
+        onCancel: () {
+          cancelToken.cancel();
+          popDialog();
+        },
+        // FEAT-006: Pause button — only shown when the server confirmed it
+        // supports range requests (Accept-Ranges: bytes).  Never offer a
+        // feature that silently degrades on the user.
+        onPause: _supportsResume ? () => pauseToken.pause() : null,
+      );
+
       final destDir =
           await (widget.destDirResolver ?? _resolveDownloadDirectory)();
       final service = widget.downloadService ?? UpdateDownloadService();
       final result = await service.download(
         manifest: manifest,
         destDir: destDir,
-        onProgress: (p) => progressNotifier.value = p,
+        onProgress: (p) {
+          progressNotifier.value = p;
+          // FEAT-008: update the foreground service notification.
+          // DownloadForegroundService throttles internally (2 s or 5% delta)
+          // so this is safe to call on every chunk.
+          DownloadForegroundService.updateProgress(p);
+        },
         cancelToken: cancelToken,
         pauseToken: pauseToken, // FEAT-006
       );
 
       popDialog();
-      // Defer dispose until after the current frame so the dialog widget is
-      // fully torn down before the notifier is gone (avoids a rebuild cycle
-      // hitting a disposed ValueNotifier).
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => progressNotifier.dispose(),
-      );
 
       if (!mounted) return;
 
@@ -364,7 +390,35 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
         );
       }
     } catch (e) {
+      // popDialog() is safe even if the dialog was never shown (it checks
+      // dialogShown, dialogPopped, and mounted before acting).
       popDialog();
+      // Surface foreground-service start failures as a visible snackbar.
+      // Other exceptions (e.g. from download or destDir resolution) are
+      // swallowed here; they will already have been logged by the service.
+      if (e is ForegroundServiceStartException && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Could not start the background download service. '
+              'Try again or restart the app.',
+            ),
+            action: SnackBarAction(
+              label: 'Try Again',
+              onPressed: _onDownloadUpdate,
+            ),
+          ),
+        );
+      }
+    } finally {
+      // FEAT-008: always stop the foreground service, whatever the outcome
+      // (success, cancel, pause, error, or unmount after start()).
+      // No-op on non-Android platforms.
+      await DownloadForegroundService.stop();
+      // Dispose the notifier here — in finally — so it is always released
+      // regardless of exit path: normal completion, exception, or the
+      // if (!mounted) return inside the try block.  Deferring to the next
+      // frame keeps the dispose after any in-flight dialog rebuild.
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => progressNotifier.dispose(),
       );
@@ -436,41 +490,53 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
       return 0.0;
     }();
     final progressNotifier = ValueNotifier<double>(seedFraction);
+    var dialogShown = false;
     var dialogPopped = false;
 
     void popDialog() {
-      if (!dialogPopped && mounted) {
+      if (dialogShown && !dialogPopped && mounted) {
         dialogPopped = true;
         Navigator.of(context, rootNavigator: true).pop();
       }
     }
 
-    // ignore: unawaited_futures
-    UpdateDownloadProgressDialog.show(
-      context,
-      progress: progressNotifier,
-      onCancel: () {
-        cancelToken.cancel();
-        popDialog();
-      },
-      // Gate Pause on server capability, same as the initial download.
-      onPause: _supportsResume ? () => pauseToken.pause() : null,
-    );
-
     try {
+      // FEAT-008: start the foreground service INSIDE the try block so that
+      // ForegroundServiceStartException is caught below and surfaced as a
+      // snackbar.  Mirrors the pattern in _onDownloadUpdate.
+      await DownloadForegroundService.start(cancelToken: cancelToken);
+      // start() is async — guard against widget disposal before using context.
+      if (!mounted) return;
+
+      // Show the progress dialog only after the service has started
+      // successfully.  Fire-and-forget: dismissed imperatively via popDialog().
+      dialogShown = true;
+      // ignore: unawaited_futures
+      UpdateDownloadProgressDialog.show(
+        context,
+        progress: progressNotifier,
+        onCancel: () {
+          cancelToken.cancel();
+          popDialog();
+        },
+        // Gate Pause on server capability, same as the initial download.
+        onPause: _supportsResume ? () => pauseToken.pause() : null,
+      );
+
       final service = widget.downloadService ?? UpdateDownloadService();
       final result = await service.resume(
         manifest: manifest,
         partialFilePath: paused.partialFilePath!,
-        onProgress: (p) => progressNotifier.value = p,
+        onProgress: (p) {
+          progressNotifier.value = p;
+          // FEAT-008: mirror progress to the foreground notification.
+          DownloadForegroundService.updateProgress(p);
+        },
         cancelToken: cancelToken,
         pauseToken: pauseToken,
       );
 
       popDialog();
-      WidgetsBinding.instance.addPostFrameCallback(
-        (_) => progressNotifier.dispose(),
-      );
 
       if (!mounted) return;
 
@@ -479,7 +545,14 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
         await _doInstall(result.filePath!);
       } else if (result.isPaused) {
         setState(() => _pausedResult = result);
-      } else if (result.errorType != UpdateErrorType.downloadCancelled) {
+      } else if (result.errorType == UpdateErrorType.downloadCancelled) {
+        // FEAT-006 fix: cancelling a resumed download leaves the service in a
+        // terminal state — the partial file has been deleted.  Clear
+        // _pausedResult so the "Resume Download" button disappears and does not
+        // point at a dead file path.  See field comment at line 139 and
+        // about_updates_card.dart#L139 in the original report.
+        setState(() => _pausedResult = null);
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
@@ -495,7 +568,30 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
         );
       }
     } catch (e) {
+      // popDialog() is safe even if the dialog was never shown (it checks
+      // dialogShown, dialogPopped, and mounted before acting).
       popDialog();
+      // Surface foreground-service start failures as a visible snackbar.
+      if (e is ForegroundServiceStartException && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Text(
+              'Could not start the background download service. '
+              'Try again or restart the app.',
+            ),
+            action: SnackBarAction(
+              label: 'Try Again',
+              onPressed: _onResumeDownload,
+            ),
+          ),
+        );
+      }
+    } finally {
+      // FEAT-008: always stop the foreground service on completion/error/cancel.
+      await DownloadForegroundService.stop();
+      // Dispose the notifier here — in finally — so it is always released
+      // regardless of exit path: normal completion, exception, or the
+      // if (!mounted) return inside the try block.
       WidgetsBinding.instance.addPostFrameCallback(
         (_) => progressNotifier.dispose(),
       );
@@ -534,25 +630,20 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
     // download URL and check for `Accept-Ranges: bytes` in the response
     // headers.  Only show the Pause button when the server confirms it
     // supports range requests — never offer a feature that silently degrades.
+    //
+    // Uses service.checkAcceptRanges() which routes through the injected HTTP
+    // client.  This means widget tests that inject a mock downloadService also
+    // control the HEAD response — no real network call is made in tests.
     if (result.isUpdateAvailable && result.manifest != null) {
       _supportsResume = false; // reset before check
       try {
         final manifest = result.manifest!;
-        // Resolve the asset URL for the current platform using the download service.
         final service = widget.downloadService ?? UpdateDownloadService();
         final assetUrl = service.resolveDownloadUrl(manifest);
         if (assetUrl != null && !kIsWeb) {
-          final headClient = http.Client();
-          try {
-            final response = await headClient.head(Uri.parse(assetUrl));
-            final acceptRanges = response.headers['accept-ranges'] ?? '';
-            if (mounted) {
-              setState(() {
-                _supportsResume = acceptRanges.toLowerCase().contains('bytes');
-              });
-            }
-          } finally {
-            headClient.close();
+          final supportsRanges = await service.checkAcceptRanges(assetUrl);
+          if (mounted) {
+            setState(() => _supportsResume = supportsRanges);
           }
         }
       } catch (_) {

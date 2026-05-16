@@ -152,8 +152,17 @@ final backgroundUpdateCheckProvider = FutureProvider<UpdateCheckResult?>((
     return null;
   }
 
-  // Perform the network check.  UpdateService already handles all error paths
-  // and never throws, so the result is always a valid UpdateCheckResult.
+  // Perform the network check.  Reset the in-memory session cache first so
+  // that this background check always makes a real HTTP request rather than
+  // returning a cached result from a prior manual or launch-triggered check.
+  //
+  // Without this reset, UpdateService.checkForUpdate() short-circuits at
+  // line 190 (`if (_cachedResult != null) return _cachedResult!`) and returns
+  // immediately without fetching.  recordCheck() then fires at the line below,
+  // burning the 24-hour cooldown window against what was effectively a no-op
+  // network call — violating the FEAT-018 invariant that lastChecked is only
+  // updated when the HTTP call actually fires.
+  ref.read(updateServiceProvider).resetCache();
   final result = await ref.read(updateServiceProvider).checkForUpdate();
 
   // Record the check time so the cooldown resets regardless of outcome.

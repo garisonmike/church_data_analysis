@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:connectivity_plus/connectivity_plus.dart'; // FEAT-018
 import 'package:flutter/material.dart';
+import 'package:flutter_foreground_task/flutter_foreground_task.dart'; // FEAT-008
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -58,6 +59,13 @@ void main() async {
     );
     FlutterError.presentError(details); // still show red screen in debug
   };
+
+  // FEAT-008: Open the port that lets the task isolate send data to the main
+  // isolate.  Must be called before any addTaskDataCallback registration
+  // (which happens in DownloadForegroundService.init()) so the 'stop' signal
+  // from onNotificationDismissed / OS-kill can actually reach the main isolate
+  // and cancel the active download.
+  FlutterForegroundTask.initCommunicationPort();
 
   // Initialize date formatting.
   try {

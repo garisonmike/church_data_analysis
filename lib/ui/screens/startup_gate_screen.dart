@@ -6,6 +6,7 @@ import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:church_analytics/platform/platform_installer_launch_service.dart';
 import 'package:church_analytics/services/background_update_service.dart'; // FEAT-018
+import 'package:church_analytics/services/download_foreground_service.dart'; // FEAT-008
 import 'package:church_analytics/services/download_state_service.dart'; // FEAT-007
 import 'package:church_analytics/models/update_error_type.dart'; // FEAT-007
 import 'package:church_analytics/services/update_download_service.dart'; // FEAT-007
@@ -264,42 +265,95 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
       final existingBytes = await partialFile.length();
       if (existingBytes > 0) seedValue = 0.05; // approximate non-zero seed
     } catch (_) {}
+    // Guard: partialFile.length() is async — widget may have been disposed.
+    if (!mounted) return;
+
     final progressNotifier = ValueNotifier<double>(seedValue);
+    var dialogShown = false;
     var dialogPopped = false;
 
     void popDialog() {
-      if (!dialogPopped && mounted) {
+      if (dialogShown && !dialogPopped && mounted) {
         dialogPopped = true;
         Navigator.of(context, rootNavigator: true).pop();
       }
     }
 
-    // ignore: unawaited_futures
-    UpdateDownloadProgressDialog.show(
-      context,
-      progress: progressNotifier,
-      filename: record.destPath.split('/').last,
-      onCancel: () {
-        cancelToken.cancel();
-        popDialog();
-      },
-      onPause: () => pauseToken.pause(),
-    );
+    // FEAT-008: initialise and start the foreground service BEFORE showing the
+    // progress dialog so that any start failure is caught by the try/finally
+    // below — which stops the service and disposes the notifier — rather than
+    // leaving the modal stuck open or leaking resources.
+    // init() is idempotent — safe to call here even if AboutUpdatesCard has
+    // already called it in a prior session.
+    DownloadForegroundService.init();
 
-    final service = UpdateDownloadService();
-    final result = await service.resumeFile(
-      downloadUrl: record.url,
-      partialFilePath: record.destPath,
-      expectedSha256: record.sha256,
-      onProgress: (p) => progressNotifier.value = p,
-      cancelToken: cancelToken,
-      pauseToken: pauseToken,
-    );
+    late UpdateDownloadResult result;
+    try {
+      await DownloadForegroundService.start(cancelToken: cancelToken);
+      // start() is async — re-check mounted before touching context.
+      if (!mounted) return;
 
-    popDialog();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => progressNotifier.dispose(),
-    );
+      // Show the progress dialog only after the service has started
+      // successfully.  Fire-and-forget: dismissed imperatively via popDialog().
+      dialogShown = true;
+      // ignore: unawaited_futures
+      UpdateDownloadProgressDialog.show(
+        context,
+        progress: progressNotifier,
+        filename: record.destPath.split('/').last,
+        onCancel: () {
+          cancelToken.cancel();
+          popDialog();
+        },
+        onPause: () => pauseToken.pause(),
+      );
+
+      final service = UpdateDownloadService();
+      result = await service.resumeFile(
+        downloadUrl: record.url,
+        partialFilePath: record.destPath,
+        expectedSha256: record.sha256,
+        onProgress: (p) {
+          progressNotifier.value = p;
+          // Mirror progress to the foreground service notification (throttled
+          // internally by DownloadForegroundService).
+          DownloadForegroundService.updateProgress(p);
+        },
+        cancelToken: cancelToken,
+        pauseToken: pauseToken,
+      );
+    } on ForegroundServiceStartException {
+      // The foreground service failed to start (e.g. not initialised, Android
+      // timeout).  This is not a fatal startup error — the user can still use
+      // the app normally.
+      //
+      // Clear the interrupted-download record so this prompt does not recur on
+      // future launches.  AboutUpdatesCard does not read DownloadStateService,
+      // so the record cannot be resumed from Settings → Updates; leaving it
+      // would re-prompt the user on every launch until it was manually cleared.
+      // The partial file is left on disk — the OS will eventually reclaim it.
+      await DownloadStateService.clear();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Could not resume the interrupted download. '
+              'Start a fresh download from Settings → Updates.',
+            ),
+            duration: Duration(seconds: 6),
+          ),
+        );
+      }
+      return;
+    } finally {
+      // FEAT-008: always stop the foreground service, whatever the outcome
+      // (success, cancel, error, start failure, or unexpected exception).
+      await DownloadForegroundService.stop();
+      popDialog();
+      WidgetsBinding.instance.addPostFrameCallback(
+        (_) => progressNotifier.dispose(),
+      );
+    }
 
     if (!mounted) return;
 

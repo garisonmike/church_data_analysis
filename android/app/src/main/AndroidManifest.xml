@@ -6,6 +6,20 @@
         android:maxSdkVersion="28" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
+
+    <!-- FEAT-008: Background download via Foreground Service -->
+    <!-- Required for Foreground Service on all Android versions (API 9+) -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <!-- Required on Android 14+ (API 34+) for a Foreground Service that
+         performs network I/O.  Without this permission AND the matching
+         foregroundServiceType attribute on the <service> element, Android 14
+         crashes the service at startup. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
+    <!-- Required on Android 13+ (API 33+) to post the mandatory download
+         progress notification.  Requested at runtime in AboutUpdatesCard
+         before starting the download — the download proceeds even if denied. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <application
         android:label="church_analytics"
         android:name="${applicationName}"
@@ -38,6 +52,15 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+
+        <!-- FEAT-008: Foreground Service declaration for flutter_foreground_task.
+             android:foregroundServiceType="dataSync" is mandatory on Android 14+
+             (API 34+).  The matching FOREGROUND_SERVICE_DATA_SYNC permission above
+             is equally required — either alone causes a runtime crash on API 34+. -->
+        <service
+            android:name="com.pravera.flutter_foreground_task.service.ForegroundService"
+            android:foregroundServiceType="dataSync"
+            android:exported="false" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
