@@ -59,6 +59,7 @@ flutterAnalyze.txt
 *.env
 *.jks
 *.keystore
+/terminalVersion/data/
 /keystore_b64.txt
 android/keystore.jks
 android/key.properties
