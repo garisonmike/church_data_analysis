@@ -196,6 +196,6 @@ including:
 
 ---
 
-## Legacy Reference
+## Terminal Reference
 
-The `data.py` file contains the original Python CLI prototype and serves as a reference for business logic and analytics calculations.
+The `terminalVersion/data.py` file contains the Python CLI companion and serves as a reference for business logic and analytics calculations.

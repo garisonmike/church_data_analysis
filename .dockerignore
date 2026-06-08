@@ -36,8 +36,8 @@ docs/
 # Test files
 test/
 
-# Python legacy
-data.py
+# Terminal analysis tool
+terminalVersion/
 
 # Scripts
 scripts/

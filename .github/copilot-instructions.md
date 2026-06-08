@@ -10,7 +10,7 @@ GitHub Copilot must follow these rules when generating or modifying code.
 The application contains an **analytics chart system implemented in Flutter**.
 
 Charts must replicate the analytics produced in:
-data.py
+terminalVersion/data.py
 
 
 The Python file is the **reference implementation for graph logic only**.
@@ -41,7 +41,7 @@ lib/services/analytics_service.dart
 
 Responsibilities:
 
-- replicate analytics logic found in `data.py`
+- replicate analytics logic found in `terminalVersion/data.py`
 - transform raw app data into chart datasets
 - perform aggregations and calculations
 
@@ -95,7 +95,7 @@ These widgets:
 
 When implementing analytics:
 
-1. Study the transformations in `data.py`.
+1. Study the transformations in `terminalVersion/data.py`.
 2. Replicate the **same calculations in Dart**.
 3. Return structured datasets for charts.
 
@@ -151,7 +151,7 @@ When implementing a new chart:
 
 The goal of this repository is to:
 
-- replicate analytics from `data.py`
+- replicate analytics from `terminalVersion/data.py`
 - build a reusable Flutter chart system
 - maintain a clean separation between analytics and UI
 - ensure charts remain performant and maintainable
