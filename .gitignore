@@ -60,6 +60,11 @@ flutterAnalyze.txt
 *.jks
 *.keystore
 /terminalVersion/data/
+/terminalVersion/church_analysis/
+/terminalVersion/*.csv
+/terminalVersion/*.xls
+/terminalVersion/*.xlsx
+/terminalVersion/*.xslx
 /keystore_b64.txt
 android/keystore.jks
 android/key.properties
