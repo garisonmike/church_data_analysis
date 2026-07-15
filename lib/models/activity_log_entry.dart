@@ -6,7 +6,7 @@ enum ActivityLogEntryType {
   /// A file import (CSV or backup) from the filesystem.
   import,
 
-  /// An attempt to launch a downloaded installer binary (UPDATE-011).
+  /// An attempt to launch a downloaded installer binary.
   installerLaunch;
 
   /// Short human-readable label shown in the Settings "Recent Activity" list.

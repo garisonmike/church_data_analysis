@@ -113,7 +113,7 @@ class _BoardMeetingEntryScreenState
     }
   }
 
-  // FEAT-015 fix: delete this record from the edit screen.
+  // Delete this record from the edit screen.
   Future<void> _delete() async {
     if (widget.existing == null) return;
 
@@ -181,7 +181,7 @@ class _BoardMeetingEntryScreenState
                   child: CircularProgressIndicator(strokeWidth: 2)),
             )
           else ...[
-            // FEAT-015 fix: delete only shown when editing an existing record
+            // Delete only shown when editing an existing record
             if (widget.existing != null)
               IconButton(
                 icon: Icon(Icons.delete_outline,

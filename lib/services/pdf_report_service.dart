@@ -283,7 +283,7 @@ class PdfReportService {
     required String churchName,
     required List<models.WeeklyRecord> records,
     List<PdfGraphId> selectedGraphs = const [], // 2.5-C
-    List<models.HolyCommunionEvent> communionEvents = const [], // FEAT-010
+    List<models.HolyCommunionEvent> communionEvents = const [],
     DateTime? reportDate,
     bool includeGraphs = true,
     bool includeKpi = true,
@@ -339,7 +339,7 @@ class PdfReportService {
             ...selectedGraphs.map((id) => buildGraph(
                   id: id,
                   records: records,
-                  communionEvents: communionEvents, // FEAT-010
+                  communionEvents: communionEvents,
                   currencySymbol: currencySymbol ?? r'$',
                 )),
             pw.SizedBox(height: 20),

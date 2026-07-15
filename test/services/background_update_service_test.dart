@@ -150,7 +150,7 @@ void main() {
   });
 
   // =========================================================================
-  // FEAT-018: Connectivity guard — offline must not consume the cooldown
+  // Connectivity guard — offline must not consume the cooldown
   // =========================================================================
   //
   // These tests verify the invariant stated in the technical report:
@@ -163,7 +163,7 @@ void main() {
   // contract and verify that shouldCheck() remains true after a skipped check,
   // which is the observable symptom of a correctly implemented guard.
 
-  group('FEAT-018 — offline guard: lastChecked must not advance on skip', () {
+  group('offline guard: lastChecked must not advance on skip', () {
     test(
       'shouldCheck() remains true when recordCheck() is not called (simulates offline skip)',
       () async {
@@ -237,7 +237,7 @@ void main() {
   });
 
   // =========================================================================
-  // FEAT-018: Connectivity-restore trigger — provider re-runs after reconnect
+  // Connectivity-restore trigger — provider re-runs after reconnect
   // =========================================================================
   //
   // The connectivity-restore trigger lives in ChurchAnalyticsApp (main.dart)
@@ -250,7 +250,7 @@ void main() {
   // encounter after invalidation: if the cooldown has not elapsed, the
   // restore trigger must be a no-op from the user's perspective (no banner).
 
-  group('FEAT-018 — restore trigger respects cooldown gate', () {
+  group('restore trigger respects cooldown gate', () {
     test(
       'shouldCheck() is false when cooldown has not elapsed — restore trigger is a no-op',
       () async {

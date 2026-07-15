@@ -210,14 +210,14 @@ class WeeklyRecordsNotifier extends StateNotifier<WeeklyRecordsState> {
 
 /// Provides a [WeeklyRecordRepository] backed by the local Drift database.
 ///
-/// Used by [ImportedDataScreen] for the FEAT-015 delete flow on the Weekly
+/// Used by [ImportedDataScreen] for the delete flow on the Weekly
 /// Records tab. The other tab repositories already have their own named
 /// providers below.
 final weeklyRecordRepositoryProvider = Provider<WeeklyRecordRepository>((ref) {
   return WeeklyRecordRepository(ref.read(databaseProvider));
 });
 
-/// FEAT-014 fix: full list of weekly records, not capped by chartTimeRangeProvider.
+/// Full list of weekly records, not capped by chartTimeRangeProvider.
 ///
 /// [weeklyRecordsForChurchProvider] is tied to [chartTimeRangeProvider] (default
 /// 12 weeks) so it is not suitable for the ImportedDataScreen "full list" tab.
@@ -303,7 +303,7 @@ final businessMeetingEventsProvider =
 
 // ── Dashboard refresh signal ──────────────────────────────────────────────────
 
-/// FEAT-015 fix: a simple incrementing counter that the dashboard watches.
+/// A simple incrementing counter that the dashboard watches.
 ///
 /// After any delete in [ImportedDataScreen], invalidating this provider
 /// signals [DashboardScreen] (which watches it) to call [_loadData()] again,

@@ -524,10 +524,10 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // Cache invalidation (UPDATE-012)
+  // Cache invalidation
   // ---------------------------------------------------------------------------
 
-  group('UpdateService — cache-busting (UPDATE-012)', () {
+  group('UpdateService — cache-busting', () {
     test('outgoing request URL contains ?cb= query parameter', () async {
       Uri? capturedUri;
 

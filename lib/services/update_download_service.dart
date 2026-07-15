@@ -29,10 +29,10 @@ class CancelToken {
 }
 
 // ---------------------------------------------------------------------------
-// PauseToken (FEAT-006)
+// PauseToken
 // ---------------------------------------------------------------------------
 
-/// A cooperative pause token for [UpdateDownloadService] (FEAT-006).
+/// A cooperative pause token for [UpdateDownloadService].
 ///
 /// Pass an instance to [UpdateDownloadService.download] or
 /// [UpdateDownloadService.resume] and call [pause] at any time to request
@@ -141,20 +141,20 @@ Future<int?> defaultFreeSpaceResolver(String directoryPath) async {
 
 /// Downloads the installer file described by an [UpdateManifest].
 ///
-/// ## Streaming to disk (FEAT-006)
+/// ## Streaming to disk
 /// Each received chunk is written directly to the destination file via an
 /// [IOSink].  This avoids holding the entire installer in RAM during the
 /// download (previously a [BytesBuilder] was used).  The SHA-256 checksum is
 /// verified by streaming the completed file from disk after all chunks arrive.
 ///
-/// ## Pause and resume (FEAT-006)
+/// ## Pause and resume
 /// Pass a [PauseToken] to [download] or [resume].  When [PauseToken.pause] is
 /// called, the chunk loop flushes and closes the file sink at the next chunk
 /// boundary and returns [UpdateDownloadResult.paused] with the partial file
 /// path and byte offset.  Call [resume] with that path to issue a
 /// `Range: bytes=<offset>-` HTTP request and append the remaining bytes.
 ///
-/// ## Pre-download disk space check (UPDATE-010)
+/// ## Pre-download disk space check
 /// Before issuing the full GET request, the service sends a HEAD request to
 /// obtain the installer's `Content-Length`.  When both the content length and
 /// the available disk space in [destDir]'s filesystem are determinable, and
@@ -172,7 +172,7 @@ Future<int?> defaultFreeSpaceResolver(String directoryPath) async {
 /// files on error.  A [UpdateDownloadResult.paused] result intentionally
 /// retains the partial file.
 ///
-/// ## Checksum verification (UPDATE-006)
+/// ## Checksum verification
 /// SHA-256 of the completed file is streamed from disk and compared against
 /// [PlatformAsset.sha256].  A mismatch deletes the file and returns
 /// [UpdateErrorType.checksumMismatch].
@@ -217,13 +217,13 @@ class UpdateDownloadService {
   /// chunk boundary.  The partial file is deleted and
   /// [UpdateErrorType.downloadCancelled] is returned.
   ///
-  /// ### Pause (FEAT-006)
+  /// ### Pause
   /// Pass a [PauseToken] and call [PauseToken.pause] to suspend the download
   /// at the next chunk boundary.  The partial file is **kept** on disk and
   /// [UpdateDownloadResult.paused] is returned with its path and byte count.
   /// Call [resume] to continue from that offset.
   ///
-  /// ### SHA-256 verification (UPDATE-006)
+  /// ### SHA-256 verification
   /// After all bytes arrive the checksum is computed by streaming the file from
   /// disk.  A mismatch deletes the file and returns
   /// [UpdateErrorType.checksumMismatch].
@@ -245,7 +245,7 @@ class UpdateDownloadService {
     final filename = asset.downloadUrl.split('/').last;
     final file = File('${destDir.path}/$filename');
 
-    // FEAT-005: if the file already exists verify its SHA-256 before
+    // If the file already exists verify its SHA-256 before
     // issuing any network request.
     //   Match    → skip the download, return success immediately.
     //   Mismatch → stale/corrupt file; delete and start fresh.
@@ -267,7 +267,7 @@ class UpdateDownloadService {
 
       final uri = Uri.parse(asset.downloadUrl);
 
-      // Pre-download disk-space check (UPDATE-010, fail-open).
+      // Pre-download disk-space check (fail-open).
       final contentLength = await _fetchContentLength(uri);
       if (contentLength != null && contentLength > 0) {
         final freeBytes = await _freeSpaceResolver(destDir.path);
@@ -293,8 +293,8 @@ class UpdateDownloadService {
         );
       }
 
-      // Stream chunks directly to disk (FEAT-006: no BytesBuilder in RAM).
-      // FEAT-007: persist download state so an interrupted download is
+      // Stream chunks directly to disk (no BytesBuilder in RAM).
+      // Persist download state so an interrupted download is
       // detectable on the next app launch via StartupGateScreen.
       await DownloadStateService.persist(
         url: asset.downloadUrl,
@@ -314,7 +314,7 @@ class UpdateDownloadService {
         mode: FileMode.write,
       );
 
-      // FEAT-007: clear the state record for any terminal result.
+      // Clear the state record for any terminal result.
       // A paused result keeps the record so the partial file is discoverable
       // on the next launch.
       if (!result.isPaused) await DownloadStateService.clear();
@@ -335,12 +335,12 @@ class UpdateDownloadService {
   }
 
   // -------------------------------------------------------------------------
-  // Public API — resume (FEAT-006)
+  // Public API — resume
   // -------------------------------------------------------------------------
 
   /// Resumes a previously paused download by issuing a `Range: bytes=N-`
   /// HTTP request and appending the remaining bytes to [partialFilePath]
-  /// (FEAT-006).
+  ///.
   ///
   /// ### When to call
   /// Call this after [download] (or a previous [resume]) returns
@@ -397,7 +397,7 @@ class UpdateDownloadService {
       try {
         final existingHash = await _sha256HexOfFile(file);
         if (existingHash == asset.sha256.toLowerCase()) {
-          // FEAT-007: clear the persisted state record so the next launch does
+          // Clear the persisted state record so the next launch does
           // not show a false "Download Interrupted" dialog for a file that is
           // already complete.
           await DownloadStateService.clear();
@@ -426,12 +426,12 @@ class UpdateDownloadService {
         // it passes; otherwise delete and report an error.
         final computed = await _sha256HexOfFile(file);
         if (computed == asset.sha256.toLowerCase()) {
-          // FEAT-007: clear persisted state — file is complete.
+          // Clear persisted state — file is complete.
           await DownloadStateService.clear();
           onProgress?.call(1.0);
           return UpdateDownloadResult.success(file.path);
         }
-        // FEAT-007 fix: clear persisted state on checksum mismatch after 416
+        // Clear persisted state on checksum mismatch after 416
         // so the next launch does not surface a phantom resume dialog pointing
         // at a partial file that has now been deleted.
         await _deletePartial(file);
@@ -446,7 +446,7 @@ class UpdateDownloadService {
       if (streamedResponse.statusCode != 206) {
         // Server returned 200 (no range support) or an error.
         // Delete the partial file so the caller can restart cleanly.
-        // FEAT-007 fix: clear persisted state so the next launch does not
+        // Clear persisted state so the next launch does not
         // surface a phantom "Resume interrupted download?" dialog.
         await _deletePartial(file);
         await DownloadStateService.clear();
@@ -475,11 +475,11 @@ class UpdateDownloadService {
         mode: FileMode.append,
       );
 
-      // FEAT-007: clear the state record for any terminal result.
+      // Clear the state record for any terminal result.
       if (!result.isPaused) await DownloadStateService.clear();
       return result;
     } on UpdateSecurityException catch (e) {
-      // FEAT-007 fix: clear persisted state on every non-paused terminal result,
+      // Clear persisted state on every non-paused terminal result,
       // including security errors caught before _streamToDisk is reached.
       await _deletePartial(file);
       await DownloadStateService.clear();
@@ -488,8 +488,8 @@ class UpdateDownloadService {
         errorType: UpdateErrorType.securityError,
       );
     } catch (e) {
-      // FEAT-007 fix: clear persisted state on unexpected errors so stale
-      // FEAT-007 state cannot accumulate across failed resume attempts.
+      // Clear persisted state on unexpected errors so stale
+      // crash-resume state cannot accumulate across failed resume attempts.
       await _deletePartial(file);
       await DownloadStateService.clear();
       return UpdateDownloadResult.failure(
@@ -500,7 +500,7 @@ class UpdateDownloadService {
   }
 
   // -------------------------------------------------------------------------
-  // Public API — resumeFile (FEAT-007)
+  // Public API — resumeFile
   // -------------------------------------------------------------------------
 
   /// Resumes an interrupted download using raw values from [DownloadStateRecord],
@@ -608,7 +608,7 @@ class UpdateDownloadService {
         cancelToken: cancelToken,
         pauseToken: pauseToken,
         mode: FileMode.append,
-        // FEAT-007: cancel in crash-resume context keeps the file.
+        // Cancel in crash-resume context keeps the file.
         keepOnCancel: true,
       );
 
@@ -634,7 +634,7 @@ class UpdateDownloadService {
   }
 
   // -------------------------------------------------------------------------
-  // Core streaming helper (FEAT-006)
+  // Core streaming helper
   // -------------------------------------------------------------------------
 
   /// Writes [stream] to [file] chunk by chunk, honouring [cancelToken] and
@@ -663,7 +663,7 @@ class UpdateDownloadService {
     required Stream<List<int>> stream,
     required int? totalBytes,
     required int startOffset,
-    required String expectedSha256, // FEAT-007: raw digest instead of PlatformAsset
+    required String expectedSha256, // Raw digest instead of PlatformAsset
     required FileMode mode,
     bool keepOnCancel = false,
     void Function(double progress)? onProgress,
@@ -695,7 +695,7 @@ class UpdateDownloadService {
           );
         }
 
-        // Pause (FEAT-006): flush, keep partial file, return paused result.
+        // Pause: flush, keep partial file, return paused result.
         if (pauseToken?.isPaused == true) {
           await sink.flush();
           await sink.close();
@@ -726,7 +726,7 @@ class UpdateDownloadService {
       );
     }
 
-    // SHA-256 checksum verification (UPDATE-006).
+    // SHA-256 checksum verification.
     // Computed by streaming the completed file from disk — no RAM spike.
     final computed = await _sha256HexOfFile(file);
     if (computed != expectedSha256.toLowerCase()) {
@@ -750,7 +750,7 @@ class UpdateDownloadService {
   /// returns `true` when the server advertises `Accept-Ranges: bytes`.
   ///
   /// Used by [AboutUpdatesCard._checkForUpdates] to decide whether to show
-  /// the Pause button (FEAT-006).  By using the injected [_client] instead of
+  /// the Pause button.  By using the injected [_client] instead of
   /// creating a raw `http.Client()`, widget tests can inject a mock client and
   /// control the HEAD response without making real network requests.
   ///

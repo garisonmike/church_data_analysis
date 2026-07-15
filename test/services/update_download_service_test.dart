@@ -278,7 +278,7 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  // UpdateDownloadService — disk space validation (UPDATE-010)
+  // UpdateDownloadService — disk space validation
   // -------------------------------------------------------------------------
 
   group('UpdateDownloadService — disk space validation', () {
@@ -586,7 +586,7 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  // UpdateDownloadService — SHA-256 checksum verification (UPDATE-006)
+  // UpdateDownloadService — SHA-256 checksum verification
   // -------------------------------------------------------------------------
 
   group('UpdateDownloadService — SHA-256 checksum verification', () {
@@ -668,7 +668,7 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  // UpdateDownloadService — cancellation (UPDATE-006)
+  // UpdateDownloadService — cancellation
   // -------------------------------------------------------------------------
 
   group('UpdateDownloadService — cancellation', () {
@@ -731,10 +731,10 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  // UpdateDownloadService — cached-file reuse (FEAT-005)
+  // UpdateDownloadService — cached-file reuse
   // -------------------------------------------------------------------------
 
-  group('UpdateDownloadService — cached-file reuse (FEAT-005)', () {
+  group('UpdateDownloadService — cached-file reuse', () {
     test(
       'returns success immediately when existing file matches manifest sha256',
       () async {
@@ -918,7 +918,7 @@ void main() {
 
 
   // -------------------------------------------------------------------------
-  // UpdateDownloadService — progress callback (UPDATE-006)
+  // UpdateDownloadService — progress callback
   // -------------------------------------------------------------------------
 
   group('UpdateDownloadService — progress callback', () {
@@ -996,10 +996,10 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  // UpdateDownloadService — pause and resume (FEAT-006)
+  // UpdateDownloadService — pause and resume
   // -------------------------------------------------------------------------
 
-  group('UpdateDownloadService — pause mid-download (FEAT-006)', () {
+  group('UpdateDownloadService — pause mid-download', () {
     test(
       'returns paused result when PauseToken is signalled before first chunk',
       () async {
@@ -1150,10 +1150,10 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  // UpdateDownloadService — resume (FEAT-006)
+  // UpdateDownloadService — resume
   // -------------------------------------------------------------------------
 
-  group('UpdateDownloadService — resume paused download (FEAT-006)', () {
+  group('UpdateDownloadService — resume paused download', () {
     test(
       'resume() completes the download and returns success',
       () async {
@@ -1427,10 +1427,10 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  // UpdateDownloadService — resumeFile (FEAT-007)
+  // UpdateDownloadService — resumeFile
   // -------------------------------------------------------------------------
 
-  group('UpdateDownloadService — resumeFile crash-recovery (FEAT-007)', () {
+  group('UpdateDownloadService — resumeFile crash-recovery', () {
     test(
       'resumeFile() succeeds when partial file is valid and server supports 206',
       () async {
@@ -1606,10 +1606,10 @@ void main() {
   });
 
   // -------------------------------------------------------------------------
-  // UpdateDownloadResult — paused and cancelledResumable factories (FEAT-006/007)
+  // UpdateDownloadResult — paused and cancelledResumable factories
   // -------------------------------------------------------------------------
 
-  group('UpdateDownloadResult — FEAT-006/007 factories', () {
+  group('UpdateDownloadResult — paused/cancelledResumable factories', () {
     test('paused() sets isPaused=true, filePath, bytesReceived', () {
       final result = UpdateDownloadResult.paused('/tmp/app.apk', bytesReceived: 1024);
       expect(result.isPaused, isTrue);

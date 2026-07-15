@@ -130,7 +130,7 @@ class _BusinessMeetingEntryScreenState
     }
   }
 
-  // FEAT-015 fix: delete this event from the edit screen.
+  // Delete this event from the edit screen.
   Future<void> _delete() async {
     if (widget.existing == null) return;
 
@@ -193,7 +193,7 @@ class _BusinessMeetingEntryScreenState
             const Padding(padding: EdgeInsets.all(16),
                 child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)))
           else ...[
-            // FEAT-015 fix: delete only shown when editing an existing event
+            // Delete only shown when editing an existing event
             if (widget.existing != null)
               IconButton(
                 icon: Icon(Icons.delete_outline,

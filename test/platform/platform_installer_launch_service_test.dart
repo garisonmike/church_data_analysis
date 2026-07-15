@@ -137,7 +137,7 @@ void main() {
       expect(receivedPath, kFakePath);
     });
 
-    test('calls popFn after successful APK handoff (AC6)', () async {
+    test('calls popFn after successful APK handoff', () async {
       var popCalled = false;
       final service = makeService(
         platform: 'android',
@@ -295,7 +295,7 @@ void main() {
     });
 
     test(
-      'success result carries extraction path and copy instructions (AC3)',
+      'success result carries extraction path and copy instructions',
       () async {
         final service = makeService(
           platform: 'linux',

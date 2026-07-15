@@ -139,7 +139,7 @@ class BusinessMeetingRepository {
     });
   }
 
-  // ── FEAT-015 — delete ─────────────────────────────────────────────────────
+  // ── Delete ─────────────────────────────────────────────────────
 
   /// Permanently deletes a Business Meeting event and all of its child
   /// attendance rows, wrapped in a transaction.

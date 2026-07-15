@@ -464,7 +464,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
     });
   }
 
-  // ── Template download (FEAT-017) ────────────────────────────────────────────
+  // ── Template download ────────────────────────────────────────────
 
   /// Shows a bottom sheet so the user can pick between XLSX and CSV formats,
   /// then saves the chosen template and shows a snackbar with the saved path.
@@ -679,7 +679,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                 ),
               ),
               const SizedBox(height: 12),
-              // FEAT-017: Download Template button
+              // Download Template button
               Center(
                 child: OutlinedButton.icon(
                   onPressed: _downloadTemplate,

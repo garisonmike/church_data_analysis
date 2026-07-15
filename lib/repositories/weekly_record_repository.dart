@@ -277,7 +277,7 @@ class WeeklyRecordRepository {
     return true;
   }
 
-  // ── FEAT-015 — delete ─────────────────────────────────────────────────────
+  // ── Delete ─────────────────────────────────────────────────────
 
   /// Permanently deletes a single weekly record by [id].
   Future<void> deleteRecord(int id) async {

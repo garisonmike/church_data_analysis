@@ -61,7 +61,7 @@ class UpdateDownloadProgressDialog extends StatelessWidget {
   /// this callback.
   final VoidCallback onCancel;
 
-  /// Called when the user taps **Pause** (FEAT-006).
+  /// Called when the user taps **Pause**.
   ///
   /// When non-null, a Pause button is shown alongside Cancel.  The caller is
   /// responsible for setting [PauseToken.pause] and allowing the download loop
@@ -93,7 +93,7 @@ class UpdateDownloadProgressDialog extends StatelessWidget {
     required ValueListenable<double> progress,
     required VoidCallback onCancel,
     String? filename,
-    VoidCallback? onPause, // FEAT-006
+    VoidCallback? onPause,
   }) {
     return showDialog<void>(
       context: context,
@@ -172,7 +172,7 @@ class UpdateDownloadProgressDialog extends StatelessWidget {
           onPressed: onCancel,
           child: const Text('Cancel'),
         ),
-        // FEAT-006: Pause button — only shown when the caller supports pausing.
+        // Pause button — only shown when the caller supports pausing.
         if (onPause != null)
           TextButton(
             key: const ValueKey('pause_download_button'),

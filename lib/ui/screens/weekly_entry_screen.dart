@@ -92,7 +92,7 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
 
     // If not editing existing record, get current church
     if (widget.existingRecord == null) {
-      // Prefer route-provided churchId (BUG-03 fix)
+      // Prefer route-provided churchId
       final resolvedChurchId = widget.churchId ?? _churchService!.getCurrentChurchId();
       if (resolvedChurchId != null) {
         setState(() {
@@ -406,7 +406,7 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
     }
   }
 
-  // FEAT-015 fix: delete this weekly record from the entry/edit screen.
+  // Delete this weekly record from the entry/edit screen.
   Future<void> _deleteRecord() async {
     final record = widget.existingRecord;
     if (record == null) return;
@@ -479,7 +479,7 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
               : 'Edit Weekly Entry',
         ),
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        // FEAT-015 fix: show delete only when editing an existing record
+        // Show delete only when editing an existing record
         actions: [
           if (widget.existingRecord != null)
             IconButton(

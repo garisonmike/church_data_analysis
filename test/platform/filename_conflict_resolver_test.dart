@@ -15,9 +15,9 @@ void main() {
   }
 
   // ---------------------------------------------------------------------------
-  // AC1: Duplicate detection
+  // Duplicate detection
   // ---------------------------------------------------------------------------
-  group('AC1 — duplicate detection', () {
+  group('duplicate detection', () {
     test('returns path unchanged when file does not exist', () async {
       final resolver = resolverWith({});
       final result = await resolver.resolve('/exports/report.csv');
@@ -51,9 +51,9 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // AC2: Auto-rename logic
+  // Auto-rename logic
   // ---------------------------------------------------------------------------
-  group('AC2 — auto-rename incremental logic', () {
+  group('auto-rename incremental logic', () {
     test('skips (1) if already taken and uses (2)', () async {
       final resolver = resolverWith({'/out/file.csv', '/out/file (1).csv'});
       final result = await resolver.resolve('/out/file.csv');
@@ -97,9 +97,9 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // AC3: No silent overwrites
+  // No silent overwrites
   // ---------------------------------------------------------------------------
-  group('AC3 — no silent overwrites', () {
+  group('no silent overwrites', () {
     test('never returns a path that is in the existing set', () async {
       final existing = {
         '/exports/data.pdf',
@@ -125,7 +125,7 @@ void main() {
   });
 
   // ---------------------------------------------------------------------------
-  // AC4: Behaviour documented (edge cases)
+  // Behaviour documented (edge cases)
   // ---------------------------------------------------------------------------
   group('edge cases', () {
     test('path without directory component is handled', () async {

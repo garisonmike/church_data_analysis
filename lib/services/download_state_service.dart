@@ -8,11 +8,11 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 /// Snapshot of an in-progress download, persisted to [SharedPreferences] by
 /// [DownloadStateService] so that incomplete downloads can be detected on the
-/// next app launch (FEAT-007).
+/// next app launch.
 ///
 /// A record is written when [UpdateDownloadService.download] begins streaming
 /// chunks to disk and cleared when the download finishes (success, error, or
-/// user cancel).  A voluntarily paused download (FEAT-006) keeps the record so
+/// user cancel).  A voluntarily paused download keeps the record so
 /// that an interrupted-resume is also recoverable on next launch.
 class DownloadStateRecord {
   /// The full HTTPS URL of the installer asset being downloaded.
@@ -77,7 +77,7 @@ class DownloadStateRecord {
 /// |---|---|
 /// | `UpdateDownloadService.download()` begins streaming | [persist] |
 /// | Download completes (success, error, or cancel) | [clear] |
-/// | Download paused (FEAT-006) | record **kept** for crash recovery |
+/// | Download paused | record **kept** for crash recovery |
 /// | `UpdateDownloadService.resume()` completes non-paused | [clear] |
 /// | App launches and detects partial file | [read], then [clear] after handling |
 ///

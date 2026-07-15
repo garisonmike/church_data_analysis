@@ -17,7 +17,7 @@ enum _DialogState { initial, backing, success, error }
 // PreUpdateBackupDialog
 // ---------------------------------------------------------------------------
 
-/// Dialog shown before an update download starts (FEAT-003).
+/// Dialog shown before an update download starts.
 ///
 /// Gives the user three options:
 /// - **Back Up Now** — runs [BackupService.createBackup] synchronously in the

@@ -1,6 +1,6 @@
 import 'package:church_analytics/services/update_service.dart';
-import 'package:connectivity_plus/connectivity_plus.dart'; // FEAT-018
-import 'package:flutter/foundation.dart'; // FEAT-018 (debugPrint)
+import 'package:connectivity_plus/connectivity_plus.dart';
+import 'package:flutter/foundation.dart'; // debugPrint
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -17,7 +17,7 @@ const String kBackgroundUpdateLastCheckKey = 'background_update_last_check_ms';
 const Duration kBackgroundCheckInterval = Duration(hours: 24);
 
 // ---------------------------------------------------------------------------
-// FEAT-018: Connectivity helper
+// Connectivity helper
 // ---------------------------------------------------------------------------
 
 /// Returns `true` when the device has at least one active network interface.
@@ -39,7 +39,7 @@ Future<bool> _isConnected() async {
 // BackgroundUpdateService
 // ---------------------------------------------------------------------------
 
-/// Manages the 24-hour cooldown for the background update check (UPDATE-013).
+/// Manages the 24-hour cooldown for the background update check.
 ///
 /// Uses [SharedPreferences] to persist the timestamp of the last check so that
 /// the cooldown survives hot-restarts and cold starts.
@@ -105,21 +105,20 @@ final backgroundUpdateServiceProvider = Provider<BackgroundUpdateService>((
   return BackgroundUpdateService(prefs);
 });
 
-/// Silently checks for an available update at most once per 24 hours
-/// (AC1 — UPDATE-013).
+/// Silently checks for an available update at most once per 24 hours.
 ///
 /// Returns:
 /// - `null`   — cooldown has not elapsed, or device is offline; no network
 ///              call was made.
 /// - non-null — an [UpdateCheckResult] from a fresh network check.
 ///
-/// ## FEAT-018: Connectivity guard
+/// ## Connectivity guard
 /// If the device is offline when this provider runs, it returns `null`
 /// **without** updating the `lastChecked` timestamp.  This preserves the
 /// user's daily check window: an offline launch does not consume the 24-hour
 /// slot.
 ///
-/// ## FEAT-018: Trigger points
+/// ## Trigger points
 /// This provider is consumed in two ways:
 ///
 /// 1. **Launch trigger** — read fire-and-forget in
@@ -144,7 +143,7 @@ final backgroundUpdateCheckProvider = FutureProvider<UpdateCheckResult?>((
   // Cooldown gate — unchanged from original implementation.
   if (!bgService.shouldCheck()) return null;
 
-  // FEAT-018: Connectivity pre-check.
+  // Connectivity pre-check.
   // Skip without consuming the cooldown so that an offline launch does not
   // push the next real check 24 hours into the future.
   if (!await _isConnected()) {
@@ -160,7 +159,7 @@ final backgroundUpdateCheckProvider = FutureProvider<UpdateCheckResult?>((
   // line 190 (`if (_cachedResult != null) return _cachedResult!`) and returns
   // immediately without fetching.  recordCheck() then fires at the line below,
   // burning the 24-hour cooldown window against what was effectively a no-op
-  // network call — violating the FEAT-018 invariant that lastChecked is only
+  // network call — violating the invariant that lastChecked is only
   // updated when the HTTP call actually fires.
   ref.read(updateServiceProvider).resetCache();
   final result = await ref.read(updateServiceProvider).checkForUpdate();

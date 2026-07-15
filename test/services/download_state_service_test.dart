@@ -200,18 +200,18 @@ void main() {
   });
 
   // =========================================================================
-  // FEAT-007: Lifecycle contract — the invariant that matters for crash recovery
+  // Lifecycle contract — the invariant that matters for crash recovery
   // =========================================================================
   //
   // The crash-recovery guarantee depends on a strict ordering:
   //   1. persist() is called BEFORE any bytes are written to disk.
   //   2. clear() is called ONLY on terminal outcomes (success, error, cancel).
-  //   3. A voluntary pause (FEAT-006) does NOT call clear() — the record
+  //   3. A voluntary pause does NOT call clear() — the record
   //      survives so StartupGateScreen can detect the partial file on next launch.
   //
   // These tests document and verify the observable contract at the service level.
 
-  group('FEAT-007 — crash-recovery lifecycle contract', () {
+  group('crash-recovery lifecycle contract', () {
     test(
       'read() returns non-null after persist() and before clear() — simulates in-flight download',
       () async {

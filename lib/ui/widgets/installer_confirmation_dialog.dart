@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 // ---------------------------------------------------------------------------
 
 /// Non-dismissable confirmation dialog shown before the app hands off to the
-/// OS installer (UPDATE-007).
+/// OS installer.
 ///
 /// Informs the user that the app will close to complete the update and
 /// prompts them to save unsaved work.  Returns `true` when the user confirms

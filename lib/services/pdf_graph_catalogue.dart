@@ -151,7 +151,7 @@ const List<PdfGraphOption> kPdfGraphCatalogue = [
     category: PdfGraphCategory.ratios,
   ),
 
-  // ── Baptisms (Attendance category per FEAT-010 spec) ─────────────────────
+  // ── Baptisms (Attendance category) ─────────────────────
   PdfGraphOption(
     id: PdfGraphId.baptismsTrend,
     label: 'Baptisms Trend',

@@ -43,7 +43,7 @@ typedef PopFn = void Function();
 /// | Android  | [OpenFile.open] — triggers APK install intent via `open_file` |
 /// | Windows  | PowerShell `Expand-Archive` of the `.zip` release; user copies files & restarts |
 /// | Linux    | `tar -xzf` extraction to the same directory; user restarts app |
-/// | Web      | No-op — browser handled the download in UPDATE-006 |
+/// | Web      | No-op — the browser already handled the download |
 /// | Other    | Returns a descriptive failure with manual-install instructions |
 ///
 /// ## Android permissions (Android 8+)
@@ -51,7 +51,7 @@ typedef PopFn = void Function();
 /// When the permission is denied at runtime, [launch] returns a
 /// [InstallerLaunchResult.failure] with step-by-step instructions for the
 /// user to grant the permission manually; [AboutUpdatesCard] then shows
-/// [UpdateInstallFailureDialog] (UPDATE-011).
+/// [UpdateInstallFailureDialog].
 ///
 /// ## Linux
 /// The Linux installer is a `.tar.gz` archive.  After extraction succeeds,
@@ -100,7 +100,7 @@ class PlatformInstallerLaunchService implements InstallerLaunchService {
         case 'linux':
           return await _launchLinux(installerPath);
         case 'web':
-          // Web: the browser handled the download in UPDATE-006; no-op here.
+          // Web: the the browser already handled the download; no-op here.
           return const InstallerLaunchResult.success();
         default:
           return InstallerLaunchResult.failure(
@@ -125,10 +125,10 @@ class PlatformInstallerLaunchService implements InstallerLaunchService {
     final result = await _openFileFn(installerPath);
     switch (result.type) {
       case ResultType.done:
-        // AC6 (UPDATE-007): exit the host app so the APK installer can run
+        // Exit the host app so the APK installer can run
         // without the app remaining in the foreground.
         //
-        // FEAT-004: do NOT delete the APK here. OpenFile.open returning
+        // Do NOT delete the APK here. OpenFile.open returning
         // ResultType.done only means the intent was dispatched — the system
         // installer process may not have opened the file yet. Deleting it
         // immediately races the installer and can cause the install to fail

@@ -134,7 +134,7 @@ class HolyCommunionRepository {
     });
   }
 
-  // ── FEAT-015 — delete ─────────────────────────────────────────────────────
+  // ── Delete ─────────────────────────────────────────────────────
 
   /// Permanently deletes a Holy Communion event and all of its child
   /// attendance rows, wrapped in a transaction.

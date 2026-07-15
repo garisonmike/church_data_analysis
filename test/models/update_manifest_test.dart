@@ -1,4 +1,4 @@
-// Tests for UpdateManifest and PlatformAsset — UPDATE-001
+// Tests for UpdateManifest and PlatformAsset.
 // Covers: valid JSON, unknown fields ignored, missing required fields,
 // type errors, format validation, PlatformAsset validation, edge cases.
 

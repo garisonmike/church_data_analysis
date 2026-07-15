@@ -2,17 +2,17 @@ import 'package:church_analytics/services/installer_launch_result.dart';
 
 /// Launches a downloaded installer file on the current platform.
 ///
-/// ## Platform behaviour (implemented by UPDATE-007)
+/// ## Platform behaviour
 /// | Platform | Mechanism |
 /// |----------|-----------|
 /// | Android  | `ACTION_VIEW` intent with APK MIME type |
 /// | Windows  | `Process.start` with the `.exe` installer |
 /// | Linux    | Tarball extraction + manual-restart prompt |
-/// | Web      | No-op — browser handled the download in UPDATE-006 |
+/// | Web      | No-op — the browser already handled the download |
 ///
 /// Failure is always surfaced as an [InstallerLaunchResult.failure] with a
 /// human-readable [error] string so callers can show recovery UI without
-/// crashing (UPDATE-011).
+/// crashing.
 ///
 /// ## Usage
 /// ```dart
@@ -33,12 +33,12 @@ abstract class InstallerLaunchService {
   Future<InstallerLaunchResult> launch(String installerPath);
 }
 
-/// No-operation implementation used until UPDATE-007 provides platform-aware
-/// subclasses.
+/// No-operation implementation used until platform-aware subclasses are
+/// provided.
 ///
 /// Always returns a [InstallerLaunchResult.failure] indicating that the launch
 /// has not been implemented yet for the current platform.  This ensures the
-/// failure-recovery path (UPDATE-011) is exercised end-to-end before the real
+/// failure-recovery path is exercised end-to-end before the real
 /// launch logic lands.
 class NoOpInstallerLaunchService implements InstallerLaunchService {
   const NoOpInstallerLaunchService();

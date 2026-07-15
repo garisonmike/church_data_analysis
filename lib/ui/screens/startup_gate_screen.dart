@@ -5,12 +5,12 @@ import 'package:church_analytics/database/app_database.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:church_analytics/platform/platform_installer_launch_service.dart';
-import 'package:church_analytics/services/download_foreground_service.dart'; // FEAT-008
-import 'package:church_analytics/services/download_state_service.dart'; // FEAT-007
-import 'package:church_analytics/models/update_error_type.dart'; // FEAT-007
+import 'package:church_analytics/services/download_foreground_service.dart';
+import 'package:church_analytics/services/download_state_service.dart';
+import 'package:church_analytics/models/update_error_type.dart';
 import 'package:church_analytics/ui/screens/log_viewer_screen.dart';
-import 'package:church_analytics/ui/widgets/installer_confirmation_dialog.dart'; // FEAT-007
-import 'package:church_analytics/ui/widgets/update_download_progress_dialog.dart'; // FEAT-007
+import 'package:church_analytics/ui/widgets/installer_confirmation_dialog.dart';
+import 'package:church_analytics/ui/widgets/update_download_progress_dialog.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -29,7 +29,7 @@ class StartupGateScreen extends ConsumerStatefulWidget {
 class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
   Object? _error;
 
-  // BUG-001 fix: _navigationInProgress has been removed.
+  // _navigationInProgress has been removed.
   //
   // The old flag was set to true inside _routeFromState() on every navigation
   // path but never reset. The postFrameCallback for crash recovery checked it
@@ -128,14 +128,14 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
         return;
       }
 
-      // FEAT-007: Check for a download interrupted by a crash or unexpected
+      // Check for a download interrupted by a crash or unexpected
       // app closure.  Must run BEFORE _cleanUpStaleApks so that the partial
       // file is not deleted before the user has a chance to resume it.
       await _checkInterruptedDownload();
 
-      // FEAT-004: belt-and-suspenders APK cleanup on every successful startup.
+      // Belt-and-suspenders APK cleanup on every successful startup.
       // Runs fire-and-forget so it never delays routing.
-      // FEAT-007: _cleanUpStaleApks skips the tracked partial file if any.
+      // _cleanUpStaleApks skips the tracked partial file if any.
       unawaited(_cleanUpStaleApks());
 
       if (!mounted) return;
@@ -143,7 +143,7 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
         context,
       ).pushReplacementNamed('/dashboard', arguments: churchId);
 
-      // FEAT-018: Fire a background update check on cold launch.
+      // Fire a background update check on cold launch.
       //
       // Runs fire-and-forget immediately after the dashboard route is pushed.
       // The provider handles both the 24-hour cooldown gate and the
@@ -166,7 +166,7 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
   }
 
   // -------------------------------------------------------------------------
-  // FEAT-007: Interrupted download recovery
+  // Interrupted download recovery
   // -------------------------------------------------------------------------
 
   /// Checks [SharedPreferences] for a download that was interrupted by a
@@ -277,7 +277,7 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
       }
     }
 
-    // FEAT-008: initialise and start the foreground service BEFORE showing the
+    // Initialise and start the foreground service BEFORE showing the
     // progress dialog so that any start failure is caught by the try/finally
     // below — which stops the service and disposes the notifier — rather than
     // leaving the modal stuck open or leaking resources.
@@ -344,7 +344,7 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
       }
       return;
     } finally {
-      // FEAT-008: always stop the foreground service, whatever the outcome
+      // Always stop the foreground service, whatever the outcome
       // (success, cancel, error, start failure, or unexpected exception).
       await DownloadForegroundService.stop();
       popDialog();
@@ -391,7 +391,7 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
     // Cancelled: record and partial file kept — user can resume on next launch.
   }
 
-  /// FEAT-004: Deletes any leftover `.apk` files from the directories where
+  /// Deletes any leftover `.apk` files from the directories where
   /// the download service may have saved them.
   ///
   /// On Android the download can land in either the app's external-storage
@@ -421,7 +421,7 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
       return;
     }
 
-    // FEAT-007: read the tracked partial file path (if any) and skip it
+    // Read the tracked partial file path (if any) and skip it
     // during cleanup — the user may want to resume it on this launch.
     final trackedRecord = await DownloadStateService.read();
     final trackedPath = trackedRecord?.destPath;
@@ -430,7 +430,7 @@ class _StartupGateScreenState extends ConsumerState<StartupGateScreen> {
       try {
         for (final entity in dir.listSync()) {
           if (entity is File && entity.path.endsWith('.apk')) {
-            // FEAT-007: never delete the partial file we intend to resume.
+            // Never delete the partial file we intend to resume.
             if (trackedPath != null && entity.path == trackedPath) continue;
             try {
               await entity.delete();

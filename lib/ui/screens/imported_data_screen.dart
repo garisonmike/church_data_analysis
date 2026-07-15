@@ -11,9 +11,9 @@ import 'package:church_analytics/ui/screens/business_meeting_entry_screen.dart';
 // ─────────────────────────────────────────────────────────────────────────────
 // ImportedDataScreen
 //
-// FEAT-014 — surfaces a full, filterable list of every imported record for
+// Surfaces a full, filterable list of every imported record for
 //             the current church, grouped into four tabs.
-// FEAT-015 — adds per-tab multi-select with a confirmation-guarded delete
+// Adds per-tab multi-select with a confirmation-guarded delete
 //             action and immediate provider invalidation.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -162,7 +162,7 @@ class _ImportedDataScreenState extends ConsumerState<ImportedDataScreen>
 
       if (!mounted) return;
       _clearSelection();
-      // FEAT-015 fix: signal the dashboard to reload its imperative _loadData()
+      // Signal the dashboard to reload its imperative _loadData()
       // because it reads WeeklyRecordRepository directly rather than watching a
       // provider. Incrementing the counter causes DashboardScreen's listener to
       // call _loadData(), refreshing KPI cards and the Recent Weeks list.
@@ -388,7 +388,7 @@ class _ImportedDataScreenState extends ConsumerState<ImportedDataScreen>
 
   // ── navigation to existing detail screens ────────────────────────────────
 
-  // FEAT-014 fix: fetch the full record object and push entry screens with it,
+  // Fetch the full record object and push entry screens with it,
   // so tapping a list item opens the *existing* record for editing rather than
   // constructing a blank new-entry screen.
 
@@ -517,7 +517,7 @@ class _WeeklyRecordsTab extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // FEAT-014 fix: use allWeeklyRecordsForChurchProvider (not capped by
+    // Use allWeeklyRecordsForChurchProvider (not capped by
     // chartTimeRangeProvider) so the list shows every record ever imported.
     final asyncRecords = ref.watch(allWeeklyRecordsForChurchProvider(churchId));
     final dateFmt = DateFormat('EEE, d MMM yyyy');

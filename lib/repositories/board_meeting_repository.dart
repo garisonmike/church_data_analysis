@@ -121,7 +121,7 @@ class BoardMeetingRepository {
     // Nothing to upsert.
   }
 
-  // ── FEAT-015 — delete ─────────────────────────────────────────────────────
+  // ── Delete ─────────────────────────────────────────────────────
 
   /// Permanently deletes a single board meeting record by [id].
   ///

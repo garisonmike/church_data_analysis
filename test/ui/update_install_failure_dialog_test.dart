@@ -340,7 +340,7 @@ void main() {
   // AboutUpdatesCard — failure recovery integration
   // -------------------------------------------------------------------------
 
-  group('AboutUpdatesCard — install failure recovery (UPDATE-011)', () {
+  group('AboutUpdatesCard — install failure recovery', () {
     Future<void> reachUpdateAvailableState(WidgetTester tester) async {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const ValueKey('check_updates_button')));

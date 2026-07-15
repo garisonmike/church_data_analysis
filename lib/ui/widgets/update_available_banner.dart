@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 // ---------------------------------------------------------------------------
 
 /// Non-blocking notification banner displayed at the top of the dashboard
-/// body when a background update check finds a newer version (UPDATE-013).
+/// body when a background update check finds a newer version.
 ///
 /// The banner is intentionally lightweight — it contains a short message,
 /// a **Go to Settings** action button, and a dismiss ×.  It does not block

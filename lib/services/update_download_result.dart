@@ -6,7 +6,7 @@ import 'package:church_analytics/models/update_error_type.dart';
 /// file, a typed [UpdateErrorType] describing the failure, or — when the user
 /// paused mid-stream — the path to the partial file and the byte offset so
 /// that [UpdateDownloadService.resume] can continue from where it left off
-/// (FEAT-006).
+///.
 ///
 /// Partial files are **always** deleted before a failure result is returned by
 /// [UpdateDownloadService] — callers never need to clean up on error.  A
@@ -17,14 +17,14 @@ class UpdateDownloadResult {
   final bool isSuccess;
 
   /// Whether the download was cancelled mid-resume but the partial file was
-  /// kept on disk so the operation is resumable on the next launch (FEAT-007).
+  /// kept on disk so the operation is resumable on the next launch.
   ///
   /// When `true`, [filePath] and [bytesReceived] are non-null (same semantics
   /// as [isPaused]).  The [DownloadStateService] record is intentionally kept
   /// so that [StartupGateScreen] can detect and offer the file again.
   final bool isCancelledResumable;
 
-  /// Whether the download was paused by the user before completion (FEAT-006).
+  /// Whether the download was paused by the user before completion.
   ///
   /// When `true`, [filePath] and [bytesReceived] are non-null.  The
   /// caller should offer a "Resume" action that passes these values to
@@ -92,7 +92,7 @@ class UpdateDownloadResult {
     errorType: errorType,
   );
 
-  /// The download was paused by the user at [bytesReceived] bytes (FEAT-006).
+  /// The download was paused by the user at [bytesReceived] bytes.
   ///
   /// [partialFilePath] points to the partially written file on disk.  The
   /// file is valid up to [bytesReceived] bytes and can be resumed by passing
@@ -109,7 +109,7 @@ class UpdateDownloadResult {
   );
 
   /// The download was cancelled mid-resume but the partial file was kept on
-  /// disk (FEAT-007).
+  /// disk.
   ///
   /// Used exclusively by [UpdateDownloadService.resumeFile] when the user
   /// cancels during a resume-from-crash flow.  The [DownloadStateService]

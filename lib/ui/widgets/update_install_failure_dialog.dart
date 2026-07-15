@@ -19,7 +19,7 @@ import 'package:url_launcher/url_launcher.dart';
 ///
 /// The dialog is dismissed only by an explicit user action ("Dismiss" or
 /// "Open GitHub Releases"), never by tapping outside — matching the
-/// UPDATE-007 requirement for a non-dismissable confirmation dialog.
+/// requirement for a non-dismissable confirmation dialog.
 class UpdateInstallFailureDialog extends StatelessWidget {
   /// Optional detail describing why the launch failed.
   ///

@@ -1,13 +1,13 @@
 import 'dart:async';
 
-import 'package:connectivity_plus/connectivity_plus.dart'; // FEAT-018
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_foreground_task/flutter_foreground_task.dart'; // FEAT-008
+import 'package:flutter_foreground_task/flutter_foreground_task.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import 'services/background_update_service.dart'; // FEAT-018
+import 'services/background_update_service.dart';
 import 'services/log_service.dart';
 import 'services/settings_service.dart';
 import 'services/theme_service.dart';
@@ -60,7 +60,7 @@ void main() async {
     FlutterError.presentError(details); // still show red screen in debug
   };
 
-  // FEAT-008: Open the port that lets the task isolate send data to the main
+  // Open the port that lets the task isolate send data to the main
   // isolate.  Must be called before any addTaskDataCallback registration
   // (which happens in DownloadForegroundService.init()) so the 'stop' signal
   // from onNotificationDismissed / OS-kill can actually reach the main isolate
@@ -105,7 +105,7 @@ void main() async {
 }
 
 // ---------------------------------------------------------------------------
-// FEAT-018: ChurchAnalyticsApp converted from ConsumerWidget to
+// ChurchAnalyticsApp converted from ConsumerWidget to
 // ConsumerStatefulWidget so that the connectivity stream subscription has a
 // proper lifecycle (initState / dispose).
 //
@@ -161,7 +161,7 @@ final Map<String, Widget Function(int churchId)> _churchRoutes =
 };
 
 class _ChurchAnalyticsAppState extends ConsumerState<ChurchAnalyticsApp> {
-  /// FEAT-018: Subscription to the connectivity change stream.
+  /// Subscription to the connectivity change stream.
   ///
   /// Cancelled in [dispose] to prevent listener leaks.
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
@@ -170,7 +170,7 @@ class _ChurchAnalyticsAppState extends ConsumerState<ChurchAnalyticsApp> {
   void initState() {
     super.initState();
 
-    // FEAT-018: Subscribe to connectivity changes so that an update check is
+    // Subscribe to connectivity changes so that an update check is
     // triggered whenever the device transitions from offline to online.
     //
     // The subscription is set up once here at the app root and lives for the
@@ -197,7 +197,7 @@ class _ChurchAnalyticsAppState extends ConsumerState<ChurchAnalyticsApp> {
 
   @override
   void dispose() {
-    // FEAT-018: Cancel the connectivity stream to avoid leaked listeners.
+    // Cancel the connectivity stream to avoid leaked listeners.
     _connectivitySubscription?.cancel();
     super.dispose();
   }
@@ -223,7 +223,7 @@ class _ChurchAnalyticsAppState extends ConsumerState<ChurchAnalyticsApp> {
           return MaterialPageRoute(builder: plain);
         }
 
-        // FEAT-003 behaviour preserved: /app-settings accepts a missing
+        // /app-settings accepts a missing
         // churchId (e.g. from a test or a deep link) and falls back to 0.
         if (settings.name == '/app-settings') {
           return MaterialPageRoute(

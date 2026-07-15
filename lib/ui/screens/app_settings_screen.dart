@@ -22,7 +22,7 @@ class AppSettingsScreen extends ConsumerWidget {
   ///
   /// Passed through from [DashboardScreen] via route arguments so that
   /// [AboutUpdatesCard] can offer a pre-update backup scoped to this church
-  /// (FEAT-003).
+  ///.
   final int churchId;
 
   const AppSettingsScreen({super.key, required this.churchId});
@@ -326,7 +326,7 @@ class AppSettingsScreen extends ConsumerWidget {
           // About & Updates Card
           AboutUpdatesCard(
               launchService: PlatformInstallerLaunchService(),
-              churchId: churchId, // FEAT-003
+              churchId: churchId,
             ),
 
           const SizedBox(height: 16),

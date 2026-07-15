@@ -4,9 +4,9 @@ import 'package:flutter_test/flutter_test.dart';
 void main() {
   group('FilenameSanitizer.sanitize —', () {
     // -----------------------------------------------------------------------
-    // AC1: Invalid characters removed
+    // Invalid characters removed
     // -----------------------------------------------------------------------
-    group('AC1 — invalid characters stripped', () {
+    group('invalid characters stripped', () {
       test('removes Windows-invalid chars: < > : " | ? *', () {
         expect(
           FilenameSanitizer.sanitize('my<>:"|?*file.txt'),
@@ -61,9 +61,9 @@ void main() {
     });
 
     // -----------------------------------------------------------------------
-    // AC2: Reserved names blocked
+    // Reserved names blocked
     // -----------------------------------------------------------------------
-    group('AC2 — Windows reserved names prefixed with underscore', () {
+    group('Windows reserved names prefixed with underscore', () {
       test('CON.csv → _CON.csv', () {
         expect(FilenameSanitizer.sanitize('CON.csv'), equals('_CON.csv'));
       });
@@ -116,9 +116,9 @@ void main() {
     });
 
     // -----------------------------------------------------------------------
-    // AC3: Whitespace normalised
+    // Whitespace normalised
     // -----------------------------------------------------------------------
-    group('AC3 — whitespace normalised', () {
+    group('whitespace normalised', () {
       test('leading and trailing spaces trimmed', () {
         expect(
           FilenameSanitizer.sanitize('  report  .pdf'),
@@ -156,9 +156,9 @@ void main() {
     });
 
     // -----------------------------------------------------------------------
-    // AC4: Filename length capped
+    // Filename length capped
     // -----------------------------------------------------------------------
-    group('AC4 — stem length capped at maxStemLength', () {
+    group('stem length capped at maxStemLength', () {
       test('stem longer than maxStemLength is truncated', () {
         final longStem = 'a' * 250;
         final result = FilenameSanitizer.sanitize('$longStem.csv');

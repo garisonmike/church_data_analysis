@@ -6,7 +6,7 @@ import 'package:church_analytics/services/services.dart';
 import 'package:church_analytics/ui/screens/screens.dart';
 import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // BUG-001: SystemNavigator.pop()
+import 'package:flutter/services.dart'; // SystemNavigator.pop()
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -32,7 +32,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // FEAT-015 fix: react to deletions from ImportedDataScreen.
+    // React to deletions from ImportedDataScreen.
     // dashboardRefreshProvider is incremented after any successful delete so
     // that this screen reloads its imperatively-fetched data even though it
     // does not watch any list provider directly.
@@ -47,7 +47,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (mounted) _loadData();
     });
 
-    // FEAT-018 fix: listen to backgroundUpdateCheckProvider for the lifetime
+    // Listen to backgroundUpdateCheckProvider for the lifetime
     // of the dashboard — not just once at init — so that a result produced by
     // the connectivity-restore trigger in main.dart also surfaces the banner.
     //
@@ -94,7 +94,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     });
   }
 
-  /// FEAT-001: Shows a dialog asking whether the user wants a quick tour.
+  /// Shows a dialog asking whether the user wants a quick tour.
   ///
   /// Returns `true` if the user tapped "Show me around", `false` or `null`
   /// if they tapped "Skip for now" or dismissed the dialog.
@@ -174,7 +174,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       // Time the database query
       perfMonitor.startTiming('dashboard_db_query');
 
-      // Get recent records (last 12 weeks) — always show all church records (BUG-05)
+      // Get recent records (last 12 weeks) — always show all church records
       final records = await repository.getRecentRecords(widget.churchId, 12);
 
       perfMonitor.stopTiming('dashboard_db_query');
@@ -221,7 +221,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final isMedium = width >= 600 && width < 840;
     final isWide = width >= 840;
 
-    // BUG-001 fix (Problem B): PopScope prevents back-navigation from the root
+    // PopScope prevents back-navigation from the root
     // dashboard to a ghost StartupGateScreen entry.  canPop: false also hides
     // the AppBar back arrow automatically.  onPopInvokedWithResult exits the
     // app cleanly when the user presses the system back button.
@@ -411,7 +411,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               label: const Text('Reports & Backup'),
             ),
             const SizedBox(height: 8),
-            // FEAT-014 fix: entry point available even when _recentRecords is empty
+            // Entry point available even when _recentRecords is empty
             TextButton.icon(
               onPressed: () {
                 Navigator.of(context).push(
@@ -768,7 +768,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ],
                   ),
                   const SizedBox(height: 8),
-                  // FEAT-014 fix: always-visible entry point independent of
+                  // Always-visible entry point independent of
                   // whether the Recent Weeks section is shown or has data.
                   _buildActionButton(
                     'View All Data',
@@ -870,7 +870,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  // FEAT-014 fix: always-visible entry point independent of
+                  // Always-visible entry point independent of
                   // whether the Recent Weeks section is shown or has data.
                   _buildActionButton(
                     'View All Data',
@@ -920,7 +920,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             Text('Recent Weeks', style: Theme.of(context).textTheme.titleLarge),
             TextButton(
               onPressed: () {
-                // FEAT-014: navigate to the full imported-data list
+                // Navigate to the full imported-data list
                 Navigator.of(context).push(
                   MaterialPageRoute(
                     builder: (_) =>
@@ -1024,7 +1024,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             }
             break;
           case 'app':
-            Navigator.pushNamed(context, '/app-settings', arguments: widget.churchId); // FEAT-003
+            Navigator.pushNamed(context, '/app-settings', arguments: widget.churchId);
             break;
         }
       },

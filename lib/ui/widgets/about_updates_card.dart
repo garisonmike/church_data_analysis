@@ -4,16 +4,16 @@ import 'package:church_analytics/database/app_database.dart' as db;
 import 'package:church_analytics/models/update_error_messages.dart';
 import 'package:church_analytics/models/update_error_type.dart';
 import 'package:church_analytics/models/update_manifest.dart';
-import 'package:church_analytics/platform/install_permission_service.dart'; // FEAT-002
-import 'package:church_analytics/services/download_foreground_service.dart'; // FEAT-008
-import 'package:permission_handler/permission_handler.dart'; // FEAT-008 (POST_NOTIFICATIONS)
+import 'package:church_analytics/platform/install_permission_service.dart';
+import 'package:church_analytics/services/download_foreground_service.dart';
+import 'package:permission_handler/permission_handler.dart'; // POST_NOTIFICATIONS
 import 'package:church_analytics/services/activity_log_service.dart';
 import 'package:church_analytics/services/installer_launch_service.dart';
 import 'package:church_analytics/services/update_download_result.dart';
 import 'package:church_analytics/services/update_download_service.dart';
 import 'package:church_analytics/services/update_service.dart';
 import 'package:church_analytics/ui/widgets/installer_confirmation_dialog.dart';
-import 'package:church_analytics/ui/widgets/pre_update_backup_dialog.dart'; // FEAT-003
+import 'package:church_analytics/ui/widgets/pre_update_backup_dialog.dart';
 import 'package:church_analytics/ui/widgets/release_notes_dialog.dart';
 import 'package:church_analytics/ui/widgets/update_download_progress_dialog.dart';
 import 'package:church_analytics/ui/widgets/update_install_failure_dialog.dart';
@@ -64,9 +64,9 @@ enum _CheckState {
 /// delegates the remote check to [updateServiceProvider].
 ///
 /// ### Stub actions
-/// The "View Release Notes" action is a stub wired up by UPDATE-005.
+/// The "View Release Notes" action opens the release-notes dialog.
 /// The "Download Update" button triggers the install flow and handles
-/// launcher failures via [UpdateInstallFailureDialog] (UPDATE-011).
+/// launcher failures via [UpdateInstallFailureDialog].
 class AboutUpdatesCard extends ConsumerStatefulWidget {
   /// Installer launch service injected for testability.
   ///
@@ -98,7 +98,7 @@ class AboutUpdatesCard extends ConsumerStatefulWidget {
   final Future<bool?> Function(BuildContext)? confirmInstall;
 
   /// Church ID used by [PreUpdateBackupDialog] to load the correct records
-  /// when the user chooses to back up before updating (FEAT-003).
+  /// when the user chooses to back up before updating.
   ///
   /// Passed in from [AppSettingsScreen], which receives it via route arguments
   /// from [DashboardScreen].  Defaults to `0` so that existing tests that do
@@ -112,7 +112,7 @@ class AboutUpdatesCard extends ConsumerStatefulWidget {
     this.downloadService,
     this.destDirResolver,
     this.confirmInstall,
-    this.churchId = 0, // FEAT-003
+    this.churchId = 0,
   });
 
   @override
@@ -131,7 +131,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
   /// [_CheckState.updateAvailable] state.
   UpdateManifest? _manifest;
 
-  /// The paused download result (FEAT-006).
+  /// The paused download result.
   ///
   /// Non-null when the user paused a download mid-stream.  Holds the path to
   /// the partial file on disk and the number of bytes received so far.  The
@@ -139,7 +139,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
   /// Set back to `null` when the resumed download succeeds or is cancelled.
   UpdateDownloadResult? _pausedResult;
 
-  /// Whether the download server supports HTTP range requests (FEAT-006).
+  /// Whether the download server supports HTTP range requests.
   ///
   /// Set after a HEAD request to the manifest download URL when an update is
   /// found.  `true` → Pause button is shown in the progress dialog.  `false`
@@ -157,7 +157,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
   void initState() {
     super.initState();
     _loadCurrentVersion();
-    // FEAT-008: initialise foreground service config once per widget lifecycle.
+    // Initialise foreground service config once per widget lifecycle.
     // No-op on non-Android platforms. Safe to call multiple times.
     DownloadForegroundService.init();
   }
@@ -177,7 +177,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
   // -------------------------------------------------------------------------
 
   // -------------------------------------------------------------------------
-  // Install flow (UPDATE-011 failure recovery)
+  // Install flow (failure recovery)
   // -------------------------------------------------------------------------
 
   /// Passes [installerPath] to the platform installer-launch service.
@@ -189,7 +189,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
   /// On confirmation, delegates to the launch service, logs the outcome,
   /// and shows [UpdateInstallFailureDialog] on failure.
   Future<void> _doInstall(String installerPath) async {
-    // FEAT-003: Offer the user a chance to back up before the update installs.
+    // Offer the user a chance to back up before the update installs.
     // PreUpdateBackupDialog returns true whether they backed up or skipped,
     // and false if they explicitly cancelled the update.
     if (widget.churchId != 0) {
@@ -202,7 +202,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
       if (!mounted || proceed != true) return;
     }
 
-    // Show pre-install confirmation (AC5 — UPDATE-007).
+    // Show pre-install confirmation.
     final confirmed =
         await (widget.confirmInstall ?? InstallerConfirmationDialog.show)(
           context,
@@ -225,7 +225,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
       );
     } else if (result.hint != null && mounted) {
       // Linux (and any future platform) where the user must take a follow-up
-      // action after extraction (AC3 / AC6 — UPDATE-007).
+      // action after extraction.
       await showDialog<void>(
         context: context,
         builder: (_) => AlertDialog(
@@ -243,7 +243,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
   }
 
   // -------------------------------------------------------------------------
-  // Download + install flow (UPDATE-006)
+  // Download + install flow
   // -------------------------------------------------------------------------
 
   /// Orchestrates the full download-and-install flow.
@@ -265,7 +265,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
     final manifest = _manifest;
     if (manifest == null) return;
 
-    // FEAT-002: Proactively check install-unknown-apps permission on Android
+    // Proactively check install-unknown-apps permission on Android
     // before starting the download.  This prevents the user waiting for a large
     // download to complete only to discover at install time that the permission
     // is missing.  The check is a no-op on all non-Android platforms.
@@ -293,7 +293,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
       return;
     }
 
-    // FEAT-008: Request POST_NOTIFICATIONS permission on Android 13+ before
+    // Request POST_NOTIFICATIONS permission on Android 13+ before
     // starting the foreground service.  The download proceeds even if denied —
     // the notification is just suppressed.  Never block the download on this.
     if (!kIsWeb && Platform.isAndroid) {
@@ -303,11 +303,11 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
       }
     }
 
-    // FEAT-006: clear any previous paused result — this is a fresh download.
+    // Clear any previous paused result — this is a fresh download.
     setState(() => _pausedResult = null);
 
     final cancelToken = CancelToken();
-    final pauseToken = PauseToken(); // FEAT-006
+    final pauseToken = PauseToken();
     final progressNotifier = ValueNotifier<double>(0.0);
     var dialogShown = false;
     var dialogPopped = false;
@@ -320,7 +320,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
     }
 
     try {
-      // FEAT-008: start the Android Foreground Service to anchor the process
+      // Start the Android Foreground Service to anchor the process
       // against backgrounding.  The download itself stays in the main isolate.
       // This is a no-op on Windows, Linux, and all other non-Android platforms.
       // start() is inside the try block so that ForegroundServiceStartException
@@ -341,7 +341,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
           cancelToken.cancel();
           popDialog();
         },
-        // FEAT-006: Pause button — only shown when the server confirmed it
+        // Pause button — only shown when the server confirmed it
         // supports range requests (Accept-Ranges: bytes).  Never offer a
         // feature that silently degrades on the user.
         onPause: _supportsResume ? () => pauseToken.pause() : null,
@@ -355,13 +355,13 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
         destDir: destDir,
         onProgress: (p) {
           progressNotifier.value = p;
-          // FEAT-008: update the foreground service notification.
+          // Update the foreground service notification.
           // DownloadForegroundService throttles internally (2 s or 5% delta)
           // so this is safe to call on every chunk.
           DownloadForegroundService.updateProgress(p);
         },
         cancelToken: cancelToken,
-        pauseToken: pauseToken, // FEAT-006
+        pauseToken: pauseToken,
       );
 
       popDialog();
@@ -371,7 +371,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
       if (result.isSuccess) {
         await _doInstall(result.filePath!);
       } else if (result.isPaused) {
-        // FEAT-006: download was paused — store the partial result so the
+        // Download was paused — store the partial result so the
         // "Resume Download" button appears in the card UI.
         setState(() => _pausedResult = result);
       } else if (result.errorType != UpdateErrorType.downloadCancelled) {
@@ -411,7 +411,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
         );
       }
     } finally {
-      // FEAT-008: always stop the foreground service, whatever the outcome
+      // Always stop the foreground service, whatever the outcome
       // (success, cancel, pause, error, or unmount after start()).
       // No-op on non-Android platforms.
       await DownloadForegroundService.stop();
@@ -448,7 +448,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
   }
 
   // -------------------------------------------------------------------------
-  // Resume download flow (FEAT-006)
+  // Resume download flow
   // -------------------------------------------------------------------------
 
   /// Resumes a previously paused download.
@@ -466,7 +466,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
     final manifest = _manifest;
     if (paused == null || manifest == null) return;
 
-    // FEAT-002: Re-check install permission before resuming — the permission
+    // Re-check install permission before resuming — the permission
     // may have been revoked while the download was paused (e.g. app restart,
     // OS settings change).  Mirrors the check in _onDownloadUpdate so the
     // user is never surprised by a permission failure at install time.
@@ -501,7 +501,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
     }
 
     try {
-      // FEAT-008: start the foreground service INSIDE the try block so that
+      // Start the foreground service INSIDE the try block so that
       // ForegroundServiceStartException is caught below and surfaced as a
       // snackbar.  Mirrors the pattern in _onDownloadUpdate.
       await DownloadForegroundService.start(cancelToken: cancelToken);
@@ -529,7 +529,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
         partialFilePath: paused.partialFilePath!,
         onProgress: (p) {
           progressNotifier.value = p;
-          // FEAT-008: mirror progress to the foreground notification.
+          // Mirror progress to the foreground notification.
           DownloadForegroundService.updateProgress(p);
         },
         cancelToken: cancelToken,
@@ -546,7 +546,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
       } else if (result.isPaused) {
         setState(() => _pausedResult = result);
       } else if (result.errorType == UpdateErrorType.downloadCancelled) {
-        // FEAT-006 fix: cancelling a resumed download leaves the service in a
+        // Cancelling a resumed download leaves the service in a
         // terminal state — the partial file has been deleted.  Clear
         // _pausedResult so the "Resume Download" button disappears and does not
         // point at a dead file path.  See field comment at line 139 and
@@ -587,7 +587,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
         );
       }
     } finally {
-      // FEAT-008: always stop the foreground service on completion/error/cancel.
+      // Always stop the foreground service on completion/error/cancel.
       await DownloadForegroundService.stop();
       // Dispose the notifier here — in finally — so it is always released
       // regardless of exit path: normal completion, exception, or the
@@ -626,7 +626,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
       }
     });
 
-    // Accept-Ranges pre-validation (FEAT-006): issue a HEAD request to the
+    // Accept-Ranges pre-validation: issue a HEAD request to the
     // download URL and check for `Accept-Ranges: bytes` in the response
     // headers.  Only show the Pause button when the server confirms it
     // supports range requests — never offer a feature that silently degrades.
@@ -819,7 +819,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
               spacing: 8,
               runSpacing: 4,
               children: [
-                // Release notes dialog (UPDATE-005).
+                // Release notes dialog.
                 OutlinedButton.icon(
                   key: const ValueKey('view_release_notes_button'),
                   onPressed: () => ReleaseNotesDialog.show(
@@ -831,7 +831,7 @@ class _AboutUpdatesCardState extends ConsumerState<AboutUpdatesCard> {
                   icon: const Icon(Icons.article_outlined, size: 16),
                   label: const Text('View Release Notes'),
                 ),
-                // FEAT-006: Resume button — only shown after a paused download.
+                // Resume button — only shown after a paused download.
                 if (_pausedResult != null)
                   FilledButton.icon(
                     key: const ValueKey('resume_download_button'),

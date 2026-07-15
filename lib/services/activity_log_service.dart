@@ -32,7 +32,7 @@ abstract class ActivityLogService {
     String? error,
   });
 
-  /// Records the result of an installer-launch attempt (UPDATE-011).
+  /// Records the result of an installer-launch attempt.
   ///
   /// [platform] is the current platform identifier (e.g. `'android'`).
   /// [error] is the human-readable failure reason; `null` on success.

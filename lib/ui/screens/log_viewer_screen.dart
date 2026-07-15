@@ -92,7 +92,7 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
           final dir = await _getExportsDir();
           destPath = '${dir.path}/$suggestedName';
         } else if (Platform.isAndroid) {
-          // BUG-002 fix: resolve an Android-specific exports directory.
+          // Resolve an Android-specific exports directory.
           // path_provider is already a dependency (^2.1.5 in pubspec.yaml).
           final dir = await _getAndroidExportsDir();
           if (dir != null) destPath = '${dir.path}/$suggestedName';
@@ -131,7 +131,7 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
     return Directory.systemTemp;
   }
 
-  // BUG-002 fix: Android-specific export directory resolver.
+  // Android-specific export directory resolver.
   // Uses the app-scoped external storage directory (no manifest permission
   // required on Android 10+) with a fallback to internal documents storage
   // which is always accessible on all Android versions.

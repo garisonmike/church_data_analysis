@@ -12,7 +12,7 @@ import '../../repositories/church_repository.dart';
 import '../../services/services.dart';
 // 2.6-A: removed four dead chart-screen imports (advanced, attendance, correlation, financial)
 import '../../services/pdf_graph_catalogue.dart'; // 2.6-B
-// FEAT-010: holyCommunionEventsProvider
+// HolyCommunionEventsProvider
 import '../widgets/export_result_snack_bar.dart';
 
 /// Normalizes a raw export file-system path by trimming whitespace.
@@ -138,7 +138,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
       final formatCurrency = ref.read(currencyFormatterProvider);
       final formatCurrencyPrecise = ref.read(currencyFormatterPreciseProvider);
 
-      // FEAT-010: fetch communion events so Holy Communion graphs render correctly
+      // Fetch communion events so Holy Communion graphs render correctly
       final communionEvents =
           await ref.read(holyCommunionEventsProvider(widget.churchId).future);
 
@@ -148,7 +148,7 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
         churchName: churchName,
         records: records,
         selectedGraphs: _selectedGraphs.toList(),
-        communionEvents: communionEvents, // FEAT-010
+        communionEvents: communionEvents,
         includeGraphs: _reportOptions.includeGraphs,
         includeKpi: _reportOptions.includeKpi,
         includeTable: _reportOptions.includeTable,
