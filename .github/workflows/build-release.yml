@@ -7,6 +7,10 @@ on:
       - main
     tags:
       - 'v*'
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -35,6 +39,7 @@ jobs:
 
   build-android:
     needs: quality
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
 
     steps:
@@ -78,6 +83,7 @@ jobs:
 
   build-windows:
     needs: quality
+    if: github.event_name != 'pull_request'
     runs-on: windows-latest
 
     steps:
@@ -100,6 +106,7 @@ jobs:
 
   build-web-docker:
     needs: quality
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-latest
 
     permissions:
