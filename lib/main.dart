@@ -39,6 +39,7 @@ import 'ui/screens/not_found_screen.dart';
 import 'ui/screens/profile_selection_screen.dart';
 import 'ui/screens/reports_screen.dart';
 import 'ui/screens/special_events_screen.dart';
+import 'ui/screens/spiritual_life_screen.dart';
 import 'ui/screens/startup_gate_screen.dart';
 import 'ui/screens/target_analysis_screen.dart';
 import 'ui/screens/weekly_entry_screen.dart';
@@ -158,6 +159,7 @@ final Map<String, Widget Function(int churchId)> _churchRoutes =
   '/home-church-analytics': (id) => HomeChurchAnalyticsScreen(churchId: id),
   '/board-meeting': (id) => BoardMeetingAnalyticsScreen(churchId: id),
   '/special-events': (id) => SpecialEventsScreen(churchId: id),
+  '/charts/spiritual-life': (id) => SpiritualLifeScreen(churchId: id),
 };
 
 class _ChurchAnalyticsAppState extends ConsumerState<ChurchAnalyticsApp> {

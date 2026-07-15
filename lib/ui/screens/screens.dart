@@ -28,6 +28,7 @@ export 'not_found_screen.dart'; // Was missing from barrel
 export 'profile_selection_screen.dart'; // Was missing from barrel
 export 'reports_screen.dart'; // Was missing from barrel
 export 'special_events_screen.dart';
+export 'spiritual_life_screen.dart';
 export 'startup_gate_screen.dart'; // Was missing from barrel
 export 'target_analysis_screen.dart';
 export 'weekly_entry_screen.dart';

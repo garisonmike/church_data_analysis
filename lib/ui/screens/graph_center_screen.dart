@@ -152,6 +152,15 @@ class _GraphCenterScreenState extends ConsumerState<GraphCenterScreen> {
         route: '/special-events',
       ),
       ChartItem(
+        title: 'Spiritual Life & Outreach',
+        description: 'Baptisms, Holy Communion, Sabbath School, mission offering, and visitor trends',
+        icon: Icons.volunteer_activism,
+        color: Colors.deepPurple,
+        category: ChartCategory.attendance,
+        screenBuilder: (churchId) => SpiritualLifeScreen(churchId: churchId),
+        route: '/charts/spiritual-life',
+      ),
+      ChartItem(
         title: 'Home Church Analytics',
         description: 'Membership breakdown, categories, and attendance rates per home church',
         icon: Icons.home_work,

@@ -8,3 +8,4 @@ export 'finance/finance_graphs.dart';
 export 'forecast/forecast_graphs.dart';
 export 'graph_definition.dart';
 export 'graph_list_view.dart';
+export 'spiritual_life/spiritual_life_graphs.dart';

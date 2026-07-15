@@ -18,6 +18,9 @@ WeeklyRecord _record(int week) => WeeklyRecord(
   offerings: 20000.0 + week * 500,
   emergencyCollection: 2000.0,
   plannedCollection: 6000.0,
+  sabbathSchoolAttendance: 80 + week,
+  visitorsCount: week % 4,
+  missionOffering: 3000.0 + week * 100,
   createdAt: DateTime(2026, 1, 3),
   updatedAt: DateTime(2026, 1, 3),
 );
@@ -30,6 +33,7 @@ void main() {
     'FinanceGraphsModule': FinanceGraphsModule.build,
     'CorrelationGraphsModule': CorrelationGraphsModule.build,
     'ForecastGraphsModule': ForecastGraphsModule.build,
+    'SpiritualLifeGraphsModule': SpiritualLifeGraphsModule.build,
   };
 
   final expectedCounts = <String, int>{
@@ -37,6 +41,7 @@ void main() {
     'FinanceGraphsModule': 11,
     'CorrelationGraphsModule': 6,
     'ForecastGraphsModule': 5,
+    'SpiritualLifeGraphsModule': 5,
   };
 
   for (final entry in modules.entries) {
@@ -96,5 +101,32 @@ void main() {
     );
     await tester.pump();
     expect(find.text('Attendance vs Funds Heatmap'), findsOneWidget);
+  });
+
+  group('SpiritualLifeGraphsModule', () {
+    test('covers every SDA metric recorded weekly', () {
+      final ids = SpiritualLifeGraphsModule.build(records).map((g) => g.id);
+      expect(ids, containsAll(<String>[
+        'baptisms_trend',
+        'holy_communion_trend',
+        'sabbath_school_trend',
+        'mission_offering_trend',
+        'visitors_trend',
+      ]));
+    });
+
+    testWidgets('renders the first spiritual-life graph', (tester) async {
+      final graphs = SpiritualLifeGraphsModule.build(records);
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: GraphListView(graphs: graphs, captureKey: GlobalKey()),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('Baptisms Per Week'), findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
+    });
   });
 }

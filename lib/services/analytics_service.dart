@@ -1702,4 +1702,16 @@ class AnalyticsService {
         .toList();
   }
 
+  /// Weekly visitor-count trend from weekly records.
+  /// Weeks that did not record a visitor count are omitted.
+  List<TimeSeriesPoint> visitorsTrend(List<WeeklyRecord> records) {
+    return records
+        .where((r) => r.visitorsCount != null)
+        .map((r) => TimeSeriesPoint(
+              x: r.weekStartDate,
+              y: (r.visitorsCount ?? 0).toDouble(),
+            ))
+        .toList();
+  }
+
 }
