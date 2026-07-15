@@ -198,4 +198,4 @@ including:
 
 ## Terminal Reference
 
-The `terminalVersion/data.py` file contains the Python CLI companion and serves as a reference for business logic and analytics calculations.
+The `terminalVersion/church_reports` package contains the Python CLI companion and serves as a reference for business logic and analytics calculations (`data.py` remains as a thin compatibility shim).

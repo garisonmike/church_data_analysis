@@ -1,18 +1,21 @@
-# Python Graph Reference - `terminalVersion/data.py`
+# Python Graph Reference - `terminalVersion/church_reports`
 
-`terminalVersion/data.py` is the terminal companion for the app analytics
-workflow. It imports CSV/XLSX weekly church records, normalizes app-style
-columns, derives core metrics, and exports selected graphs as PNG files with an
-optional multi-page PDF.
+The `church_reports` package in `terminalVersion/` is the terminal companion
+for the app analytics workflow. It imports CSV/XLSX weekly church records,
+normalizes app-style columns, derives core metrics, and exports selected
+graphs as PNG files with an optional multi-page PDF. Graph builders live in
+`church_reports/plots.py`; metric derivations in `church_reports/metrics.py`.
+`data.py` remains as a thin compatibility shim.
 
 ## Common Commands
 
 ```bash
 cd terminalVersion
-python data.py --list-graphs
-python data.py --input data/netFinalData.csv --graphs all --pdf --export-clean
-python data.py --input data --group attendance
-python data.py --input weekly.xlsx --graphs total_attendance_trend,income_distribution
+export CHURCH_DATA_DIR=~/church-data   # directory holding your data files
+python -m church_reports --list-graphs
+python -m church_reports --graphs all --pdf --export-clean
+python -m church_reports --group attendance
+python -m church_reports --input weekly.xlsx --graphs total_attendance_trend,income_distribution
 ```
 
 ## Inputs
@@ -85,7 +88,7 @@ graphs.
 | `advanced` | Histograms, moving average, simple forecast, summary dashboard |
 | `all` | Every registered graph |
 
-From terminalVersion/, run `python data.py --list-graphs` for the exact graph IDs.
+From terminalVersion/, run `python -m church_reports --list-graphs` for the exact graph IDs.
 
 ## Outputs
 
