@@ -7,10 +7,12 @@
 # NEVER commit key.properties or your .jks file to version control.
 #
 # ---------------------------------------------------------------------------
-# How to generate a new keystore (run once, keep the file safe):
+# How to generate a new keystore (run once, keep the file safe and OUTSIDE
+# the repo checkout so it can never be committed by accident):
 #
+#   mkdir -p ~/.android-keys && chmod 700 ~/.android-keys
 #   keytool -genkey -v \
-#           -keystore android/keystore.jks \
+#           -keystore ~/.android-keys/keystore.jks \
 #           -storetype JKS \
 #           -keyalg RSA -keysize 2048 -validity 10000 \
 #           -alias church_analytics
@@ -24,4 +26,7 @@
 storePassword=<your-keystore-password>
 keyPassword=<your-key-password>
 keyAlias=church_analytics
-storeFile=../android/keystore.jks
+# Absolute path to the keystore. Gradle resolves relative paths against the
+# android/app module directory, so an absolute path is the least surprising.
+# (~ is not expanded here — write the full path.)
+storeFile=/home/<you>/.android-keys/keystore.jks

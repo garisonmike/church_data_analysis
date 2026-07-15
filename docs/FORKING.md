@@ -131,28 +131,33 @@ all platform icon sizes. Full instructions are in `docs/CUSTOMISATION.md`.
 
 Generate a new keystore for your fork. Do not reuse the original keystore.
 
-Run this once from the project root. Use the alias `church_analytics` to match
+Keep the keystore **outside the repo checkout** so it can never be committed
+by accident. Run this once. Use the alias `church_analytics` to match
 `android/key.properties.template`:
 
 ```bash
+mkdir -p ~/.android-keys && chmod 700 ~/.android-keys
 keytool -genkey -v \
-  -keystore android/keystore.jks \
+  -keystore ~/.android-keys/keystore.jks \
   -storetype JKS \
   -keyalg RSA -keysize 2048 -validity 10000 \
   -alias church_analytics
 ```
 
-Do not commit `android/keystore.jks` to git. Verify your `.gitignore` contains:
+Never place the keystore (or a Base64 copy of it) inside the repo. As a
+second line of defence, verify your `.gitignore` still contains:
 
 ```
 android/keystore.jks
 android/key.properties
 ```
 
-Encode the keystore to Base64 so it can be stored as a GitHub Secret:
+Encode the keystore to Base64 so it can be stored as a GitHub Secret. Pipe it
+straight to your clipboard (or a file outside the repo) — do not write the
+output into the checkout:
 
 ```bash
-base64 -w 0 android/keystore.jks
+base64 -w 0 ~/.android-keys/keystore.jks
 ```
 
 Copy the full output string. That is your `KEYSTORE_BASE64` value.
