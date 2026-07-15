@@ -42,8 +42,12 @@ class _BusinessMeetingEntryScreenState
   @override
   void dispose() {
     _expectedKcc.dispose(); _notes.dispose();
-    for (final c in _actual.values) c.dispose();
-    for (final c in _expectedHc.values) c.dispose();
+    for (final c in _actual.values) {
+      c.dispose();
+    }
+    for (final c in _expectedHc.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -210,14 +214,14 @@ class _BusinessMeetingEntryScreenState
             const SizedBox(height: 12),
             Row(children: [
               Expanded(child: DropdownButtonFormField<int>(
-                value: _quarter,
+                initialValue: _quarter,
                 decoration: const InputDecoration(labelText: 'Quarter', border: OutlineInputBorder()),
                 items: [1, 2, 3, 4].map((q) => DropdownMenuItem(value: q, child: Text('Q$q'))).toList(),
                 onChanged: (v) => setState(() => _quarter = v!),
               )),
               const SizedBox(width: 10),
               Expanded(child: DropdownButtonFormField<int>(
-                value: _meetingNumber,
+                initialValue: _meetingNumber,
                 decoration: const InputDecoration(labelText: 'Meeting #', helperText: '1st, 2nd or 3rd', border: OutlineInputBorder()),
                 items: [1, 2, 3].map((n) {
                   final suffix = n == 1 ? 'st' : n == 2 ? 'nd' : 'rd';
@@ -227,7 +231,7 @@ class _BusinessMeetingEntryScreenState
               )),
               const SizedBox(width: 10),
               Expanded(child: DropdownButtonFormField<int>(
-                value: _year,
+                initialValue: _year,
                 decoration: const InputDecoration(labelText: 'Year', border: OutlineInputBorder()),
                 items: List.generate(10, (i) => DateTime.now().year - 2 + i)
                     .map((y) => DropdownMenuItem(value: y, child: Text('$y'))).toList(),

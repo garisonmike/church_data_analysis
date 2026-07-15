@@ -12,7 +12,7 @@ import '../../repositories/church_repository.dart';
 import '../../services/services.dart';
 // 2.6-A: removed four dead chart-screen imports (advanced, attendance, correlation, financial)
 import '../../services/pdf_graph_catalogue.dart'; // 2.6-B
-import '../../services/weekly_records_provider.dart'; // FEAT-010: holyCommunionEventsProvider
+// FEAT-010: holyCommunionEventsProvider
 import '../widgets/export_result_snack_bar.dart';
 
 /// Normalizes a raw export file-system path by trimming whitespace.

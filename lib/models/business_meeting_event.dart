@@ -88,7 +88,7 @@ class BusinessMeetingEvent extends Equatable {
 
   String get meetingLabel {
     final suffix = meetingNumber == 1 ? 'st' : meetingNumber == 2 ? 'nd' : 'rd';
-    return '${meetingNumber}$suffix Business Meeting — Q$quarter $year';
+    return '$meetingNumber$suffix Business Meeting — Q$quarter $year';
   }
 
   BusinessMeetingEvent copyWith({
@@ -135,8 +135,9 @@ class BusinessMeetingEvent extends Equatable {
 
   String? validate() {
     if (quarter < 1 || quarter > 4) return 'Quarter must be between 1 and 4';
-    if (meetingNumber < 1 || meetingNumber > 3)
+    if (meetingNumber < 1 || meetingNumber > 3) {
       return 'Meeting number must be between 1 and 3';
+    }
     if (year < 2000 || year > 2100) return 'Invalid year';
     if (totalExpectedAtKcc < 0) return 'Expected attendance cannot be negative';
     return null;

@@ -141,19 +141,19 @@ class BackupData {
   };
 
   factory BackupData.fromJson(Map<String, dynamic> json) {
-    List<Map<String, dynamic>> _castList(dynamic v) =>
+    List<Map<String, dynamic>> castList(dynamic v) =>
         v == null ? [] : (v as List).cast<Map<String, dynamic>>();
     return BackupData(
       metadata: BackupMetadata.fromJson(
         json['metadata'] as Map<String, dynamic>,
       ),
-      churches: _castList(json['churches']),
-      adminUsers: _castList(json['adminUsers']),
-      weeklyRecords: _castList(json['weeklyRecords']),
-      homeChurches: _castList(json['homeChurches']),
-      boardMeetingRecords: _castList(json['boardMeetingRecords']),
-      holyCommunionEvents: _castList(json['holyCommunionEvents']),
-      businessMeetingEvents: _castList(json['businessMeetingEvents']),
+      churches: castList(json['churches']),
+      adminUsers: castList(json['adminUsers']),
+      weeklyRecords: castList(json['weeklyRecords']),
+      homeChurches: castList(json['homeChurches']),
+      boardMeetingRecords: castList(json['boardMeetingRecords']),
+      holyCommunionEvents: castList(json['holyCommunionEvents']),
+      businessMeetingEvents: castList(json['businessMeetingEvents']),
     );
   }
 }

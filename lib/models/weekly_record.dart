@@ -149,17 +149,22 @@ class WeeklyRecord extends Equatable {
     if (offerings < 0) return 'Offerings cannot be negative';
     if (emergencyCollection < 0) return 'Emergency collection cannot be negative';
     if (plannedCollection < 0) return 'Planned collection cannot be negative';
-    if (sabbathSchoolAttendance != null && sabbathSchoolAttendance! < 0)
+    if (sabbathSchoolAttendance != null && sabbathSchoolAttendance! < 0) {
       return 'Sabbath school attendance cannot be negative';
-    if (visitorsCount != null && visitorsCount! < 0)
+    }
+    if (visitorsCount != null && visitorsCount! < 0) {
       return 'Visitors count cannot be negative';
-    if (missionOffering != null && missionOffering! < 0)
+    }
+    if (missionOffering != null && missionOffering! < 0) {
       return 'Mission offering cannot be negative';
-    if (localChurchBudget != null && localChurchBudget! < 0)
+    }
+    if (localChurchBudget != null && localChurchBudget! < 0) {
       return 'Local church budget cannot be negative';
+    }
     final allowedFuture = DateTime.now().add(const Duration(days: 2));
-    if (weekStartDate.isAfter(allowedFuture))
+    if (weekStartDate.isAfter(allowedFuture)) {
       return 'Week start date cannot be more than 2 days in the future';
+    }
     return null;
   }
 

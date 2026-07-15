@@ -218,7 +218,7 @@ class _HomeChurchDialogState extends State<_HomeChurchDialog> {
             ),
             const SizedBox(height: 12),
             DropdownButtonFormField<HomeChurchCategory>(
-              value: _category,
+              initialValue: _category,
               decoration: const InputDecoration(
                   labelText: 'Category', border: OutlineInputBorder()),
               items: HomeChurchCategory.values

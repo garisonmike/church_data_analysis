@@ -46,8 +46,12 @@ class _HolyCommunionEntryScreenState
   @override
   void dispose() {
     _expectedKcc.dispose(); _notes.dispose();
-    for (final c in _actualControllers.values) c.dispose();
-    for (final c in _expectedHcControllers.values) c.dispose();
+    for (final c in _actualControllers.values) {
+      c.dispose();
+    }
+    for (final c in _expectedHcControllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -235,7 +239,7 @@ class _HolyCommunionEntryScreenState
             Row(children: [
               Expanded(
                 child: DropdownButtonFormField<int>(
-                  value: _quarter,
+                  initialValue: _quarter,
                   decoration: const InputDecoration(
                       labelText: 'Quarter', border: OutlineInputBorder()),
                   items: [1, 2, 3, 4].map((q) =>
@@ -246,7 +250,7 @@ class _HolyCommunionEntryScreenState
               const SizedBox(width: 12),
               Expanded(
                 child: DropdownButtonFormField<int>(
-                  value: _year,
+                  initialValue: _year,
                   decoration: const InputDecoration(
                       labelText: 'Year', border: OutlineInputBorder()),
                   items: List.generate(10, (i) => DateTime.now().year - 2 + i)
