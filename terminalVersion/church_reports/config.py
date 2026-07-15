@@ -165,3 +165,41 @@ IGNORED_COLUMNS = {
     "126",
     "148",
 }
+
+ATTENDANCE_PARTS = ["men", "women", "youth", "children", "sunday_home_church"]
+
+SABBATH_ATTENDANCE_PARTS = ["men", "women", "youth", "children"]
+
+CORE_INCOME_PARTS = ["tithe", "offerings", "emergency_collection", "planned_collection"]
+
+OPTIONAL_INCOME_PARTS = ["mission_offering", "local_church_budget"]
+
+INCOME_PARTS = CORE_INCOME_PARTS + OPTIONAL_INCOME_PARTS
+
+NUMERIC_COLUMNS = {
+    "id",
+    "church_id",
+    "created_by_admin_id",
+    "men",
+    "women",
+    "youth",
+    "children",
+    "sunday_home_church",
+    "total_attendance",
+    "tithe",
+    "offerings",
+    "emergency_collection",
+    "planned_collection",
+    "mission_offering",
+    "local_church_budget",
+    "total_income",
+    "baptisms",
+    "holy_communion",
+    "holy_communion_expected",
+    "sabbath_school_attendance",
+    "visitors_count",
+    "board_business_meeting_attendance",
+    "board_business_meeting_expected",
+    "ambassadors_attendance",
+    "adult_attendance",
+}
