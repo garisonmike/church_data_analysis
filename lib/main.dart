@@ -121,6 +121,45 @@ class ChurchAnalyticsApp extends ConsumerStatefulWidget {
   ConsumerState<ChurchAnalyticsApp> createState() => _ChurchAnalyticsAppState();
 }
 
+/// Routes that stand alone — no churchId argument required.
+final Map<String, WidgetBuilder> _plainRoutes = <String, WidgetBuilder>{
+  '/': (context) => const StartupGateScreen(),
+  '/select-church': (context) => const ChurchSelectionScreen(),
+  '/restore-backup': (context) => const FirstLaunchBackupImportScreen(),
+  '/dashboard/layout': (context) => const DashboardLayoutEditorScreen(),
+  '/home-churches': (context) => const HomeChurchScreen(),
+  '/board-meeting/entry': (context) => const BoardMeetingEntryScreen(),
+  '/holy-communion/entry': (context) => const HolyCommunionEntryScreen(),
+  '/business-meeting/entry': (context) => const BusinessMeetingEntryScreen(),
+  '/financial-glossary': (context) => const FinancialGlossaryScreen(),
+};
+
+/// Routes that require a churchId argument. Navigating to one without a
+/// churchId falls back to the startup gate, which re-establishes context.
+final Map<String, Widget Function(int churchId)> _churchRoutes =
+    <String, Widget Function(int churchId)>{
+  '/dashboard': (id) => DashboardScreen(churchId: id),
+  '/select-profile': (id) => ProfileSelectionScreen(churchId: id),
+  '/entry': (id) => WeeklyEntryScreen(churchId: id),
+  '/import': (id) => ImportScreen(churchId: id),
+  '/settings': (id) => ChurchSettingsScreen(churchId: id),
+  '/charts': (id) => GraphCenterScreen(churchId: id),
+  '/analytics': (id) => AnalyticsDashboard(churchId: id),
+  '/charts/advanced': (id) => AdvancedChartsScreen(churchId: id),
+  '/charts/attendance': (id) => AttendanceChartsScreen(churchId: id),
+  '/charts/correlation': (id) => CorrelationChartsScreen(churchId: id),
+  '/charts/financial': (id) => FinancialChartsScreen(churchId: id),
+  '/charts/custom': (id) => CustomGraphBuilderScreen(churchId: id),
+  '/charts/detail': (id) => DetailedMetricsScreen(churchId: id),
+  '/charts/distribution': (id) => DistributionScreen(churchId: id),
+  '/charts/targets': (id) => TargetAnalysisScreen(churchId: id),
+  '/charts/cross': (id) => CrossDatasetScreen(churchId: id),
+  '/reports': (id) => ReportsScreen(churchId: id),
+  '/home-church-analytics': (id) => HomeChurchAnalyticsScreen(churchId: id),
+  '/board-meeting': (id) => BoardMeetingAnalyticsScreen(churchId: id),
+  '/special-events': (id) => SpecialEventsScreen(churchId: id),
+};
+
 class _ChurchAnalyticsAppState extends ConsumerState<ChurchAnalyticsApp> {
   /// FEAT-018: Subscription to the connectivity change stream.
   ///
@@ -179,242 +218,32 @@ class _ChurchAnalyticsAppState extends ConsumerState<ChurchAnalyticsApp> {
         final args = settings.arguments;
         final int? churchId = (args is int) ? args : null;
 
-        switch (settings.name) {
-          case '/':
+        final plain = _plainRoutes[settings.name];
+        if (plain != null) {
+          return MaterialPageRoute(builder: plain);
+        }
+
+        // FEAT-003 behaviour preserved: /app-settings accepts a missing
+        // churchId (e.g. from a test or a deep link) and falls back to 0.
+        if (settings.name == '/app-settings') {
+          return MaterialPageRoute(
+            builder: (context) => AppSettingsScreen(churchId: churchId ?? 0),
+          );
+        }
+
+        final church = _churchRoutes[settings.name];
+        if (church != null) {
+          if (churchId == null) {
             return MaterialPageRoute(
               builder: (context) => const StartupGateScreen(),
             );
-          case '/dashboard':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => DashboardScreen(churchId: churchId),
-            );
-          case '/select-church':
-            return MaterialPageRoute(
-              builder: (context) => const ChurchSelectionScreen(),
-            );
-          case '/select-profile':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => ProfileSelectionScreen(churchId: churchId),
-            );
-          case '/entry':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => WeeklyEntryScreen(churchId: churchId),
-            );
-          case '/import':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => ImportScreen(churchId: churchId),
-            );
-          case '/settings':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => ChurchSettingsScreen(churchId: churchId),
-            );
-          case '/charts':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => GraphCenterScreen(churchId: churchId),
-            );
-          case '/analytics':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => AnalyticsDashboard(churchId: churchId),
-            );
-          case '/charts/advanced':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => AdvancedChartsScreen(churchId: churchId),
-            );
-          case '/charts/attendance':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => AttendanceChartsScreen(churchId: churchId),
-            );
-          case '/charts/correlation':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => CorrelationChartsScreen(churchId: churchId),
-            );
-          case '/charts/financial':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => FinancialChartsScreen(churchId: churchId),
-            );
-          case '/charts/custom':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) =>
-                  CustomGraphBuilderScreen(churchId: churchId),
-            );
-          case '/app-settings':
-            // FEAT-003: churchId is passed as route arguments from DashboardScreen
-            // so that AboutUpdatesCard can offer a pre-update backup.
-            // Falls back to 0 when the route is reached without arguments
-            // (e.g. from a test or a deep link that does not carry a churchId).
-            return MaterialPageRoute(
-              builder: (context) => AppSettingsScreen(
-                churchId: churchId ?? 0,
-              ),
-            );
-          case '/restore-backup':
-            return MaterialPageRoute(
-              builder: (context) => const FirstLaunchBackupImportScreen(),
-            );
-          case '/charts/detail':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => DetailedMetricsScreen(churchId: churchId),
-            );
-          case '/charts/distribution':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => DistributionScreen(churchId: churchId),
-            );
-          case '/charts/targets':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => TargetAnalysisScreen(churchId: churchId),
-            );
-          case '/charts/cross':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => CrossDatasetScreen(churchId: churchId),
-            );
-          case '/reports':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => ReportsScreen(churchId: churchId),
-            );
-          case '/dashboard/layout':
-            return MaterialPageRoute(
-              builder: (context) => const DashboardLayoutEditorScreen(),
-            );
-          case '/home-churches':
-            return MaterialPageRoute(
-              builder: (context) => const HomeChurchScreen(),
-            );
-          case '/home-church-analytics':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) =>
-                  HomeChurchAnalyticsScreen(churchId: churchId),
-            );
-          case '/board-meeting':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) =>
-                  BoardMeetingAnalyticsScreen(churchId: churchId),
-            );
-          case '/board-meeting/entry':
-            return MaterialPageRoute(
-              builder: (context) => const BoardMeetingEntryScreen(),
-            );
-          case '/special-events':
-            if (churchId == null) {
-              return MaterialPageRoute(
-                builder: (context) => const StartupGateScreen(),
-              );
-            }
-            return MaterialPageRoute(
-              builder: (context) => SpecialEventsScreen(churchId: churchId),
-            );
-          case '/holy-communion/entry':
-            return MaterialPageRoute(
-              builder: (context) => const HolyCommunionEntryScreen(),
-            );
-          case '/business-meeting/entry':
-            return MaterialPageRoute(
-              builder: (context) => const BusinessMeetingEntryScreen(),
-            );
-          case '/financial-glossary':
-            return MaterialPageRoute(
-              builder: (context) => const FinancialGlossaryScreen(),
-            );
-          default:
-            return MaterialPageRoute(
-              builder: (context) =>
-                  NotFoundScreen(attemptedRoute: settings.name),
-            );
+          }
+          return MaterialPageRoute(builder: (context) => church(churchId));
         }
+
+        return MaterialPageRoute(
+          builder: (context) => NotFoundScreen(attemptedRoute: settings.name),
+        );
       },
       debugShowCheckedModeBanner: false,
     );
