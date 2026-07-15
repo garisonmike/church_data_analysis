@@ -45,6 +45,13 @@ function(APPLY_STANDARD_SETTINGS TARGET)
   target_compile_definitions(${TARGET} PRIVATE "$<$<CONFIG:Debug>:_DEBUG>")
 endfunction()
 
+# permission_handler_windows still includes <experimental/coroutine>, which
+# MSVC 14.51+ (VS 18.6, current windows-latest runners) rejects with a hard
+# C2338 error. Suppress the deprecation error until the plugin migrates to
+# C++20 <coroutine> (flutter/flutter#186452). Declared before the Flutter
+# subdirectory so it propagates to every plugin target.
+add_compile_definitions(_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS)
+
 # Flutter library and tool build rules.
 set(FLUTTER_MANAGED_DIR "${CMAKE_CURRENT_SOURCE_DIR}/flutter")
 add_subdirectory(${FLUTTER_MANAGED_DIR})
