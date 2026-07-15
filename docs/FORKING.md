@@ -1,4 +1,3 @@
-your `applicationId`.
 # Forking Church Analytics — Identity & Deployment
 
 This guide combines all steps needed to fork Church Analytics for another
