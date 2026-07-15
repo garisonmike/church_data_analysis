@@ -1,3 +1,4 @@
+import 'package:church_analytics/config/demo_config.dart';
 import 'package:church_analytics/database/connection/connection.dart';
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -325,12 +326,12 @@ class AppDatabase extends _$AppDatabase {
     final now = DateTime.now();
     final churchId = await into(churches).insert(
       ChurchesCompanion.insert(
-        name: 'Kisii Central SDA Church',
-        address: const Value('P.O. Box 2076, Kisii'),
-        contactEmail: const Value('info@kisiicentralsdachurch.org'),
-        contactPhone: const Value('+254700000000'),
-        currency: const Value('KES'),
-        website: const Value('kisiicentralsdachurch.org'),
+        name: kDemoChurchName,
+        address: const Value(kDemoChurchAddress),
+        contactEmail: const Value(kDemoChurchEmail),
+        contactPhone: const Value(kDemoChurchPhone),
+        currency: const Value(kDemoChurchCurrency),
+        website: const Value(kDemoChurchWebsite),
         boardMemberCount: const Value(56),
         totalMembership: const Value(1650),
         createdAt: now,
