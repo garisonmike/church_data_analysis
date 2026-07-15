@@ -1,8 +1,6 @@
-import 'package:church_analytics/models/charts/category_point.dart';
+import 'package:church_analytics/graph_modules/graph_modules.dart';
 import 'package:church_analytics/models/weekly_record.dart';
-import 'package:church_analytics/services/analytics_service.dart';
 import 'package:church_analytics/services/weekly_records_provider.dart';
-import 'package:church_analytics/ui/widgets/charts/charts.dart';
 import 'package:church_analytics/ui/widgets/widgets.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -65,133 +63,9 @@ class _CorrelationContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final analytics = AnalyticsService();
-    final sorted = List<WeeklyRecord>.from(records)
-      ..sort((a, b) => a.weekStartDate.compareTo(b.weekStartDate));
-
-    double avg(double Function(WeeklyRecord r) fn) => sorted.isEmpty
-        ? 0
-        : sorted.map(fn).reduce((a, b) => a + b) / sorted.length;
-
-    final demographicsData = {
-      'Average': [
-        CategoryPoint(label: 'Men', value: avg((r) => r.men.toDouble())),
-        CategoryPoint(label: 'Women', value: avg((r) => r.women.toDouble())),
-        CategoryPoint(label: 'Youth', value: avg((r) => r.youth.toDouble())),
-        CategoryPoint(
-          label: 'Children',
-          value: avg((r) => r.children.toDouble()),
-        ),
-        CategoryPoint(
-          label: 'Home Church',
-          value: avg((r) => r.sundayHomeChurch.toDouble()),
-        ),
-      ],
-    };
-
-    final incomeComponentsData = {
-      'Average': [
-        CategoryPoint(label: 'Tithe', value: avg((r) => r.tithe)),
-        CategoryPoint(label: 'Offerings', value: avg((r) => r.offerings)),
-        CategoryPoint(
-          label: 'Emergency',
-          value: avg((r) => r.emergencyCollection),
-        ),
-        CategoryPoint(label: 'Planned', value: avg((r) => r.plannedCollection)),
-      ],
-    };
-
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // 1. Attendance vs Income (dual axis)
-        ResponsiveChartContainer(
-          minHeight: 220,
-          maxHeight: 380,
-          aspectRatio: 16 / 9,
-          child: DualAxisChartWidget(
-            primarySeries: analytics.attendanceTrendSeries(sorted),
-            secondarySeries: analytics.incomeTrendSeries(sorted),
-            title: 'Attendance vs Income Over Time',
-            primaryAxisTitle: 'Attendance',
-            secondaryAxisTitle: 'Income',
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // 2. Average Demographics
-        ResponsiveLazyChart(
-          minHeight: 220,
-          maxHeight: 380,
-          aspectRatio: 16 / 9,
-          captureKey: CorrelationChartsScreenState.captureKey,
-          child: BarChartWidget(
-            seriesData: demographicsData,
-            title: 'Average Attendance by Demographic',
-            yAxisTitle: 'Attendance',
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // 3. Average Income Components
-        ResponsiveLazyChart(
-          minHeight: 220,
-          maxHeight: 380,
-          aspectRatio: 16 / 9,
-          child: BarChartWidget(
-            seriesData: incomeComponentsData,
-            title: 'Average Income by Component',
-            yAxisTitle: 'Amount',
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // 4. Scatter Correlation
-        ResponsiveLazyChart(
-          minHeight: 260,
-          maxHeight: 420,
-          aspectRatio: 16 / 10,
-          child: ScatterCorrelationChart(
-            data: analytics.attendanceVsIncomeScatter(sorted),
-            title: 'Attendance vs Income Correlation',
-            xAxisTitle: 'Total Attendance',
-            yAxisTitle: 'Total Income',
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // G-33: Men + Tithe Dual Axis
-        ResponsiveLazyChart(
-          minHeight: 220,
-          maxHeight: 380,
-          aspectRatio: 16 / 9,
-          child: DualAxisChartWidget(
-            primarySeries: {'Men': analytics.demographicTrend(sorted, 'MEN')},
-            secondarySeries: {'Tithe': analytics.titheTrend(sorted)},
-            title: 'Men vs Tithe Over Time',
-            primaryAxisTitle: 'Men Attendance',
-            secondaryAxisTitle: 'Tithe Amount',
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // G-34: Women + Offerings Dual Axis
-        ResponsiveLazyChart(
-          minHeight: 220,
-          maxHeight: 380,
-          aspectRatio: 16 / 9,
-          child: DualAxisChartWidget(
-            primarySeries: {
-              'Women': analytics.demographicTrend(sorted, 'WOMEN'),
-            },
-            secondarySeries: {'Offerings': analytics.offeringsTrend(sorted)},
-            title: 'Women vs Offerings Over Time',
-            primaryAxisTitle: 'Women Attendance',
-            secondaryAxisTitle: 'Offerings Amount',
-          ),
-        ),
-        const SizedBox(height: 32),
-      ],
+    return GraphListView(
+      graphs: CorrelationGraphsModule.build(records),
+      captureKey: CorrelationChartsScreenState.captureKey,
     );
   }
 }
