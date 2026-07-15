@@ -6,9 +6,17 @@ This is the terminal companion to the Flutter app's analytics screens. It reads
 weekly church records from CSV/XLSX files, normalizes app-compatible column names,
 derives the same core metrics used by the app, and exports selectable graphs.
 
+Data location:
+    Keep real congregation data outside the repo checkout. Set CHURCH_DATA_DIR
+    to the directory holding your CSV/XLSX files; default inputs, the XLSX
+    lookups used by the presentation graphs, and the default output directory
+    all resolve against it. A data/ folder next to this script still works as
+    a fallback for ad-hoc use.
+
 Quick examples (run from the terminalVersion/ folder):
-    python data.py --input data/netFinalData.csv --graphs all --pdf
-    python data.py --input data --group attendance --export-clean
+    export CHURCH_DATA_DIR=~/church-data
+    python data.py --graphs all --pdf
+    python data.py --input ~/church-data/netFinalData.csv --group attendance --export-clean
     python data.py --input weekly.xlsx --graphs total_attendance_trend,income_distribution
     python data.py --list-graphs
 
@@ -62,6 +70,21 @@ from matplotlib.backends.backend_pdf import PdfPages
 
 SUPPORTED_SUFFIXES = {".csv", ".xlsx", ".xls", ".xslx"}
 SCRIPT_DIR = Path(__file__).resolve().parent
+
+# Real congregation data must live outside the repo checkout. Point the
+# CHURCH_DATA_DIR environment variable at the directory holding your data
+# files; the legacy data/ folder next to this script remains a fallback.
+DATA_DIR_ENV = "CHURCH_DATA_DIR"
+
+
+def data_home() -> Optional[Path]:
+    """Return $CHURCH_DATA_DIR as a Path if it is set and exists, else None."""
+    raw = os.environ.get(DATA_DIR_ENV, "").strip()
+    if raw:
+        path = Path(raw).expanduser()
+        if path.is_dir():
+            return path
+    return None
 
 # ---------------------------------------------------------------------------
 # Church brand palette
@@ -720,8 +743,11 @@ def add_mean_line(ax: Axes, series: pd.Series, label: str = "Average") -> None:
 # ---------------------------------------------------------------------------
 
 def _data_dir() -> Path:
-    """Return the data/ folder next to this script, or cwd/data as fallback."""
-    for candidate in [SCRIPT_DIR / "data", Path.cwd() / "data"]:
+    """Return the data directory: $CHURCH_DATA_DIR if set, else the data/
+    folder next to this script, else cwd/data."""
+    home = data_home()
+    candidates = ([home] if home else []) + [SCRIPT_DIR / "data", Path.cwd() / "data"]
+    for candidate in candidates:
         if candidate.is_dir():
             return candidate
     return SCRIPT_DIR  # last resort: same folder
@@ -2955,11 +2981,24 @@ def save_figure(fig: Figure, spec: GraphSpec, out_dir: Path,
 
 
 def default_inputs() -> list[str]:
-    for candidate in ["data/netFinalData.csv", "data/finalData.csv", "data/church_data.csv"]:
-        path = SCRIPT_DIR / candidate
-        if path.exists():
-            return [str(path)]
+    names = ["netFinalData.csv", "finalData.csv", "church_data.csv"]
+    home = data_home()
+    bases = ([home] if home else []) + [SCRIPT_DIR / "data"]
+    for base in bases:
+        for name in names:
+            path = base / name
+            if path.exists():
+                return [str(path)]
     return []
+
+
+def default_output_dir() -> str:
+    """Default output directory: inside $CHURCH_DATA_DIR when configured, so
+    generated reports (which contain real data) also stay out of the repo."""
+    home = data_home()
+    if home:
+        return str(home / "church_analysis")
+    return "church_analysis"
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -2969,7 +3008,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--input", nargs="*", default=None,
                         help="CSV/XLSX files or directories.")
-    parser.add_argument("--output-dir", "--output", default="church_analysis",
+    parser.add_argument("--output-dir", "--output", default=default_output_dir(),
                         help="Directory for output files.")
     parser.add_argument("--graphs", nargs="*", default=None,
                         help="Graph IDs to generate (skips the menu).")
