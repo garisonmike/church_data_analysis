@@ -64,6 +64,17 @@ class ImportTemplateService {
     1,            // holy_communion        (count of services held; optional, defaults to 0)
   ];
 
+  /// [_exampleRow] as typed XLSX cell values (the excel 4.x API requires
+  /// CellValue objects rather than raw Dart values).
+  static List<CellValue> get _exampleRowCells => [
+    for (final value in _exampleRow)
+      switch (value) {
+        final int i => IntCellValue(i),
+        final double d => DoubleCellValue(d),
+        _ => TextCellValue(value.toString()),
+      },
+  ];
+
   /// One explanatory note per column, used to populate the Notes sheet.
   ///
   /// Each entry is [columnName, description, example].
@@ -148,7 +159,9 @@ class ImportTemplateService {
       excel.setDefaultSheet(dataSheetName);
 
       // Header row (bold)
-      dataSheet.appendRow(templateColumns.toList());
+      dataSheet.appendRow([
+        for (final column in templateColumns) TextCellValue(column),
+      ]);
       for (var col = 0; col < templateColumns.length; col++) {
         final cell = dataSheet.cell(
           CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 0),
@@ -157,13 +170,17 @@ class ImportTemplateService {
       }
 
       // Example data row
-      dataSheet.appendRow(_exampleRow.toList());
+      dataSheet.appendRow(_exampleRowCells);
 
       // Sheet 2: Notes
       const notesSheetName = 'Notes';
       final notesSheet = excel[notesSheetName];
 
-      notesSheet.appendRow(['Column', 'Description', 'Example']);
+      notesSheet.appendRow([
+        TextCellValue('Column'),
+        TextCellValue('Description'),
+        TextCellValue('Example'),
+      ]);
       for (var col = 0; col < 3; col++) {
         final cell = notesSheet.cell(
           CellIndex.indexByColumnRow(columnIndex: col, rowIndex: 0),
@@ -171,7 +188,7 @@ class ImportTemplateService {
         cell.cellStyle = CellStyle(bold: true);
       }
       for (final note in _columnNotes) {
-        notesSheet.appendRow(note.toList());
+        notesSheet.appendRow([for (final cell in note) TextCellValue(cell)]);
       }
 
       // excel.save() returns List<int>?; exportFileBytes requires Uint8List.

@@ -3,7 +3,7 @@ import 'package:church_analytics/platform/file_storage_interface.dart';
 import 'package:church_analytics/services/file_service.dart';
 import 'package:church_analytics/services/validation_service.dart';
 import 'package:csv/csv.dart';
-import 'package:excel/excel.dart';
+import 'package:spreadsheet_decoder/spreadsheet_decoder.dart';
 
 /// Service for importing weekly records from CSV or XLSX files
 class ImportService {
@@ -61,32 +61,53 @@ class ImportService {
     }
   }
 
-  /// Parse XLSX file and return raw data as list of lists
+  /// Parse XLSX file and return raw data as list of lists.
+  ///
+  /// Uses spreadsheet_decoder rather than the excel package: the latter's
+  /// parser rejects workbooks written by common non-Microsoft tools
+  /// (openpyxl, LibreOffice) with a null-check crash, while the decoder
+  /// handles them all.
   Future<ParseResult> _parseXlsxFile(PlatformFileResult file) async {
     try {
       final bytes = await _fileService.readFileAsBytes(file);
-      final excel = Excel.decodeBytes(bytes);
+      final book = SpreadsheetDecoder.decodeBytes(bytes);
 
-      if (excel.tables.keys.isEmpty) {
+      if (book.tables.isEmpty) {
         return ParseResult.error('XLSX file contains no sheets');
       }
 
-      final sheet = excel.tables[excel.tables.keys.first]!;
+      final sheet = book.tables.values.first;
       if (sheet.rows.isEmpty) {
         return ParseResult.error('XLSX sheet is empty');
       }
 
       final headers = sheet.rows.first
-          .map((e) => e?.value.toString().trim() ?? '')
+          .map((value) => value?.toString().trim() ?? '')
           .toList();
-      final rows = sheet.rows.skip(1).map((row) {
-        return row.map((cell) => cell?.value).toList();
-      }).toList();
+      final rows = sheet.rows
+          .skip(1)
+          .map((row) => List<dynamic>.from(row))
+          .toList();
 
       return ParseResult.success(headers, rows);
     } catch (e) {
       return ParseResult.error('Failed to parse XLSX: ${e.toString()}');
     }
+  }
+
+  /// Parses a week-start date from an ISO string or an Excel date serial.
+  ///
+  /// Spreadsheets store date-formatted cells as a day count since 1899-12-30
+  /// (e.g. 45662 for 2025-01-05), so a bare number in the date column is
+  /// interpreted as such when it falls in a plausible range (1954–2118).
+  static DateTime? _parseWeekStartDate(String value) {
+    final direct = DateTime.tryParse(value);
+    if (direct != null) return direct;
+    final serial = double.tryParse(value);
+    if (serial != null && serial >= 20000 && serial < 80000) {
+      return DateTime(1899, 12, 30).add(Duration(days: serial.truncate()));
+    }
+    return null;
   }
 
   /// Validate and convert row data to WeeklyRecord
@@ -113,14 +134,14 @@ class ImportService {
 
       // Parse date
       final dateStr = getValue('weekStartDate');
+      DateTime? weekStartDate;
       if (dateStr == null || dateStr.isEmpty) {
         errors.add('Week start date is required');
-      }
-      DateTime? weekStartDate;
-      try {
-        weekStartDate = DateTime.parse(dateStr);
-      } catch (e) {
-        errors.add('Invalid date format. Expected: YYYY-MM-DD');
+      } else {
+        weekStartDate = _parseWeekStartDate(dateStr);
+        if (weekStartDate == null) {
+          errors.add('Invalid date format. Expected: YYYY-MM-DD');
+        }
       }
 
       // Parse attendance fields
@@ -287,25 +308,28 @@ class ImportService {
       'holyCommunion': ['holycommunion', 'communion', 'holy_communion'],
     };
 
-    final allFields = fieldVariations.keys.toList();
-    final cleanedHeaders = headers
-      .map((h) => h
+    // Headers and variations must be normalised identically, otherwise
+    // variations written with underscores (e.g. 'home_church') can never
+    // match a header that has had its underscores stripped.
+    String clean(String value) => value
         .toLowerCase()
         // strip anything in parentheses e.g. "(KES)", "(USD)"
         .replaceAll(RegExp(r'\s*\(.*?\)'), '')
         .replaceAll(' ', '')
         .replaceAll('_', '')
-        .trim())
-      .toList();
+        .trim();
+
+    final allFields = fieldVariations.keys.toList();
+    final cleanedHeaders = headers.map(clean).toList();
 
     for (final fieldName in allFields) {
       // 1. Prioritize exact match (after cleaning)
-      var headerIndex = cleanedHeaders.indexOf(fieldName.toLowerCase());
+      var headerIndex = cleanedHeaders.indexOf(clean(fieldName));
 
       // 2. If no exact match, check common variations
       if (headerIndex == -1) {
         for (final variation in fieldVariations[fieldName]!) {
-          final variationIndex = cleanedHeaders.indexOf(variation);
+          final variationIndex = cleanedHeaders.indexOf(clean(variation));
           if (variationIndex != -1) {
             headerIndex = variationIndex;
             break;
