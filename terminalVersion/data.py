@@ -68,108 +68,32 @@ import numpy as np
 import pandas as pd
 from matplotlib.backends.backend_pdf import PdfPages
 
-SUPPORTED_SUFFIXES = {".csv", ".xlsx", ".xls", ".xslx"}
-SCRIPT_DIR = Path(__file__).resolve().parent
-
-# Real congregation data must live outside the repo checkout. Point the
-# CHURCH_DATA_DIR environment variable at the directory holding your data
-# files; the legacy data/ folder next to this script remains a fallback.
-DATA_DIR_ENV = "CHURCH_DATA_DIR"
-
-
-def data_home() -> Optional[Path]:
-    """Return $CHURCH_DATA_DIR as a Path if it is set and exists, else None."""
-    raw = os.environ.get(DATA_DIR_ENV, "").strip()
-    if raw:
-        path = Path(raw).expanduser()
-        if path.is_dir():
-            return path
-    return None
-
-# ---------------------------------------------------------------------------
-# Church brand palette
-# ---------------------------------------------------------------------------
-C_NAVY   = "#1B3A6B"
-C_GOLD   = "#C8972B"
-C_SKY    = "#4A90D9"
-C_GREEN  = "#2E8B57"
-C_ROSE   = "#C0395A"
-C_AMBER  = "#E07B30"
-C_SLATE  = "#5C6E8A"
-C_LIGHT  = "#EEF3FA"
-C_WHITE  = "#FFFFFF"
-C_GREY   = "#D0D7E2"
-
-CHURCH_PALETTE = [C_NAVY, C_GOLD, C_SKY, C_GREEN, C_ROSE, C_AMBER, C_SLATE,
-                  "#7B5EA7", "#2CA4A4", "#A44A3F", "#7A9E3B", "#4A7A7A"]
-
-WATERMARK_TEXT = "Kisii Central SDA Church  ·  Q1 2026"
-
-IMPORT_TEMPLATE_COLUMNS = [
-    "week_start_date",
-    "men",
-    "women",
-    "youth",
-    "children",
-    "sunday_home_church",
-    "tithe",
-    "offerings",
-    "emergency_collection",
-    "planned_collection",
-    "baptisms",
-    "holy_communion",
-]
-
-APP_WEEKLY_COLUMNS = [
-    "id",
-    "church_id",
-    "created_by_admin_id",
-    "week_start_date",
-    "men",
-    "women",
-    "youth",
-    "children",
-    "sunday_home_church",
-    "total_attendance",
-    "tithe",
-    "offerings",
-    "emergency_collection",
-    "planned_collection",
-    "mission_offering",
-    "local_church_budget",
-    "total_income",
-    "baptisms",
-    "holy_communion",
-    "holy_communion_expected",
-    "sabbath_school_attendance",
-    "visitors_count",
-    "board_business_meeting_attendance",
-    "board_business_meeting_expected",
-    "ambassadors_attendance",
-    "adult_attendance",
-    "created_at",
-    "updated_at",
-]
-
-OPTIONAL_METADATA_COLUMNS = [
-    "granularity",
-    "source",
-    "source_file",
-    "source_sheet",
-    "source_table",
-]
-
-IGNORED_COLUMNS = {
-    "col",
-    "col_2",
-    "col_3",
-    "col_4",
-    "col_5",
-    "25",
-    "112",
-    "126",
-    "148",
-}
+# All branding, data-location, and column-schema configuration lives in
+# church_reports.config (env overrides: CHURCH_DATA_DIR, CHURCH_NAME,
+# CHURCH_SHORT_NAME, CHURCH_WATERMARK).
+from church_reports.config import (
+    APP_WEEKLY_COLUMNS,
+    C_AMBER,
+    C_GOLD,
+    C_GREEN,
+    C_GREY,
+    C_LIGHT,
+    C_NAVY,
+    C_ROSE,
+    C_SKY,
+    C_SLATE,
+    C_WHITE,
+    CHURCH_PALETTE,
+    CHURCH_SHORT_NAME,
+    IGNORED_COLUMNS,
+    IMPORT_TEMPLATE_COLUMNS,
+    OPTIONAL_METADATA_COLUMNS,
+    SCRIPT_DIR,
+    SUPPORTED_SUFFIXES,
+    WATERMARK_TEXT,
+    XLSX_PATTERNS,
+    data_home,
+)
 
 ATTENDANCE_PARTS = ["men", "women", "youth", "children", "sunday_home_church"]
 SABBATH_ATTENDANCE_PARTS = ["men", "women", "youth", "children"]
@@ -772,7 +696,7 @@ def plot_sabbath_school_groups(df: pd.DataFrame) -> Optional[Figure]:
     showing a single-bar chart from the weekly total column if the XLSX is
     absent.
     """
-    path = _find_xlsx("sabbath school")
+    path = _find_xlsx(XLSX_PATTERNS["sabbath_school"])
     if path is not None:
         try:
             return _sabbath_school_from_xlsx(path)
@@ -881,7 +805,7 @@ def plot_sabbath_school_totals_trend(df: pd.DataFrame) -> Optional[Figure]:
     Reads the same SABBATH SCHOOL DATA*.xlsx.  If unavailable, falls back
     to the weekly sabbath_school_attendance column trend.
     """
-    path = _find_xlsx("sabbath school")
+    path = _find_xlsx(XLSX_PATTERNS["sabbath_school"])
     if path is not None:
         try:
             return _sabbath_school_totals_from_xlsx(path)
@@ -991,7 +915,7 @@ def _load_home_church_xlsx() -> Optional[pd.DataFrame]:
         home_church, adults_m, adults_f, youth_m, youth_f,
         amb_m, amb_f, children_m, children_f, visitors_m, visitors_f, total
     """
-    path = _find_xlsx("home church")
+    path = _find_xlsx(XLSX_PATTERNS["home_church"])
     if path is None:
         return None
     try:
@@ -1097,7 +1021,7 @@ def plot_home_church_stacked(df: pd.DataFrame) -> Optional[Figure]:
 # ── 5. Business Meeting per home church ─────────────────────────────────────
 
 def _load_business_meeting_xlsx() -> Optional[pd.DataFrame]:
-    path = _find_xlsx("business attendance")
+    path = _find_xlsx(XLSX_PATTERNS["business_meeting"])
     if path is None:
         return None
     try:
@@ -1168,7 +1092,7 @@ def plot_active_leaders_board(df: pd.DataFrame) -> Optional[Figure]:
     Uses board_business_meeting_attendance from the weekly data, grouped by
     month, OR parses the BOARD MEETING ATTENDANCE*.xlsx directly.
     """
-    path = _find_xlsx("board meeting")
+    path = _find_xlsx(XLSX_PATTERNS["board_meeting"])
     if path is not None:
         try:
             return _board_meeting_from_xlsx(path)
@@ -1350,7 +1274,7 @@ def plot_financial_trend_styled(df: pd.DataFrame) -> Optional[Figure]:
 # ── 10. Holy Communion per home church ───────────────────────────────────────
 
 def _load_holy_communion_xlsx() -> Optional[pd.DataFrame]:
-    path = _find_xlsx("holy communion")
+    path = _find_xlsx(XLSX_PATTERNS["holy_communion"])
     if path is None:
         return None
     try:
@@ -2538,7 +2462,7 @@ def setup_wizard(default_out: str = "church_analysis",
     """
     clear()
     print_header(
-        "Kisii Central SDA  ·  Church Analytics",
+        f"{CHURCH_SHORT_NAME}  ·  Church Analytics",
         "Data Setup  —  press Ctrl-C at any time to exit"
     )
 
