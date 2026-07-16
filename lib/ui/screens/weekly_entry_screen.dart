@@ -21,6 +21,7 @@ class WeeklyEntryScreen extends ConsumerStatefulWidget {
 
 class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _scrollController = ScrollController();
 
   // Controllers for attendance fields
   final _menController = TextEditingController();
@@ -52,6 +53,10 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
 
   // Outlier warnings
   List<OutlierWarning> _outlierWarnings = [];
+  // Informational message for the outlier check when there is nothing to warn
+  // about — either too little history, or a clean result. Without this the
+  // "Check for Unusual Values" button gives no feedback at all (B5).
+  String? _outlierInfoMessage;
   List<models.WeeklyRecord> _historicalRecords = [];
   final ValidationService _validationService = ValidationService();
 
@@ -129,6 +134,9 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
     if (_historicalRecords.length < 4) {
       apply(() {
         _outlierWarnings = [];
+        _outlierInfoMessage =
+            'Add at least 4 weeks of data for this church to enable outlier '
+            'detection (currently ${_historicalRecords.length}).';
       });
       return;
     }
@@ -174,11 +182,16 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
 
     apply(() {
       _outlierWarnings = warnings;
+      _outlierInfoMessage = warnings.isEmpty
+          ? 'No unusual values detected — this week is in line with recent '
+                'history.'
+          : null;
     });
   }
 
   @override
   void dispose() {
+    _scrollController.dispose();
     _menController.dispose();
     _womenController.dispose();
     _youthController.dispose();
@@ -270,6 +283,27 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
     return double.tryParse(value) ?? 0.0;
   }
 
+  /// Sets a form-level error and scrolls the error banner (top of the form)
+  /// back into view. On this long form the fields and Save button sit far
+  /// below the banner, so without scrolling the error appears off-screen
+  /// above the user's position (B4 — the same "invisible feedback" pattern
+  /// as the CSV import's off-screen Import button, U5).
+  void _showFormError(String message) {
+    setState(() {
+      _errorMessage = message;
+      _isLoading = false;
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
+    });
+  }
+
   Future<void> _saveRecord() async {
     // Clear previous error
     setState(() {
@@ -278,9 +312,7 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
 
     // Check if church is selected
     if (_selectedChurchId == null) {
-      setState(() {
-        _errorMessage = 'Please select a church first';
-      });
+      _showFormError('Please select a church first');
       return;
     }
 
@@ -312,11 +344,10 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
           : int.tryParse(_holyCommunionController.text.trim());
 
       if (emergencyCollection > 0 && plannedCollection > 0) {
-        setState(() {
-          _errorMessage =
-              'Planned and Emergency collections cannot both be entered for the same week.';
-          _isLoading = false;
-        });
+        _showFormError(
+          'Planned and Emergency collections cannot both be entered for the '
+          'same week.',
+        );
         return;
       }
 
@@ -329,11 +360,10 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
         );
 
         if (isDuplicate) {
-          setState(() {
-            _errorMessage =
-                'A record for this week already exists. Please choose a different date.';
-            _isLoading = false;
-          });
+          _showFormError(
+            'A record for this week already exists. Please choose a different '
+            'date.',
+          );
           return;
         }
       }
@@ -399,10 +429,7 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
         Navigator.of(context).pop(true); // Return true to indicate success
       }
     } catch (e) {
-      setState(() {
-        _errorMessage = 'Unable to save record. Please try again.';
-        _isLoading = false;
-      });
+      _showFormError('Unable to save record. Please try again.');
     }
   }
 
@@ -495,6 +522,7 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
           : LayoutBuilder(
               builder: (context, constraints) {
                 return SingleChildScrollView(
+                  controller: _scrollController,
                   // Ensure proper scroll behavior on all platforms
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: EdgeInsets.fromLTRB(
@@ -689,6 +717,33 @@ class _WeeklyEntryScreenState extends ConsumerState<WeeklyEntryScreen> {
                                         padding: const EdgeInsets.all(12),
                                       ),
                                     ),
+                                    if (_outlierInfoMessage != null) ...[
+                                      const SizedBox(height: 12),
+                                      Row(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Icon(
+                                            Icons.info_outline,
+                                            size: 18,
+                                            color: Theme.of(context)
+                                                .colorScheme
+                                                .onSurfaceVariant,
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              _outlierInfoMessage!,
+                                              style: TextStyle(
+                                                color: Theme.of(context)
+                                                    .colorScheme
+                                                    .onSurfaceVariant,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
                                     if (_outlierWarnings.isNotEmpty) ...[
                                       const SizedBox(height: 16),
                                       ..._outlierWarnings.map(
