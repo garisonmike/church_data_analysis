@@ -144,66 +144,76 @@ class _FirstLaunchBackupImportScreenState
       final adminRepo = AdminUserRepository(database);
       final recordRepo = WeeklyRecordRepository(database);
 
-      // ------------------------------------------------------------------
-      // 1. Restore churches. Track old-ID → new-ID for FK remapping.
-      // ------------------------------------------------------------------
-      final Map<int, int> churchIdMap = {};
-      for (final churchJson in backupData.churches) {
-        final church = _backupService.churchFromJson(churchJson);
-        final oldId = church.id;
-        final newId = await churchRepo.createChurch(church);
-        if (oldId != null) churchIdMap[oldId] = newId;
-      }
+      // Restore everything inside a single transaction so a failure at any
+      // step (e.g. a weekly record referencing an admin that no longer
+      // exists) rolls back the churches and admins already inserted, keeping
+      // the "No data was changed" promise in the error handler accurate.
+      await database.transaction(() async {
+        // ----------------------------------------------------------------
+        // 1. Restore churches. Track old-ID → new-ID for FK remapping.
+        // ----------------------------------------------------------------
+        final Map<int, int> churchIdMap = {};
+        for (final churchJson in backupData.churches) {
+          final church = _backupService.churchFromJson(churchJson);
+          final oldId = church.id;
+          final newId = await churchRepo.createChurch(church);
+          if (oldId != null) churchIdMap[oldId] = newId;
+        }
 
-      // ------------------------------------------------------------------
-      // 2. Restore admin users. Remap churchId; track old-ID → new-ID.
-      // ------------------------------------------------------------------
-      final Map<int, int> adminIdMap = {};
-      for (final adminJson in backupData.adminUsers) {
-        final admin = _backupService.adminUserFromJson(adminJson);
-        final oldId = admin.id;
-        final remappedChurchId = churchIdMap[admin.churchId] ?? admin.churchId;
-        final remappedAdmin = AdminUser(
-          username: admin.username,
-          fullName: admin.fullName,
-          email: admin.email,
-          churchId: remappedChurchId,
-          isActive: admin.isActive,
-          createdAt: admin.createdAt,
-          lastLoginAt: admin.lastLoginAt,
-        );
-        final newId = await adminRepo.createUser(remappedAdmin);
-        if (oldId != null) adminIdMap[oldId] = newId;
-      }
+        // ----------------------------------------------------------------
+        // 2. Restore admin users. Remap churchId; track old-ID → new-ID.
+        // ----------------------------------------------------------------
+        final Map<int, int> adminIdMap = {};
+        for (final adminJson in backupData.adminUsers) {
+          final admin = _backupService.adminUserFromJson(adminJson);
+          final oldId = admin.id;
+          final remappedChurchId =
+              churchIdMap[admin.churchId] ?? admin.churchId;
+          final remappedAdmin = AdminUser(
+            username: admin.username,
+            fullName: admin.fullName,
+            email: admin.email,
+            churchId: remappedChurchId,
+            isActive: admin.isActive,
+            createdAt: admin.createdAt,
+            lastLoginAt: admin.lastLoginAt,
+          );
+          final newId = await adminRepo.createUser(remappedAdmin);
+          if (oldId != null) adminIdMap[oldId] = newId;
+        }
 
-      // ------------------------------------------------------------------
-      // 3. Restore weekly records. Remap churchId and createdByAdminId.
-      // ------------------------------------------------------------------
-      for (final recordJson in backupData.weeklyRecords) {
-        final record = _backupService.weeklyRecordFromJson(recordJson);
-        final remappedChurchId =
-            churchIdMap[record.churchId] ?? record.churchId;
-        final remappedAdminId = record.createdByAdminId != null
-            ? (adminIdMap[record.createdByAdminId!] ?? record.createdByAdminId)
-            : null;
-        final remappedRecord = WeeklyRecord(
-          churchId: remappedChurchId,
-          createdByAdminId: remappedAdminId,
-          weekStartDate: record.weekStartDate,
-          men: record.men,
-          women: record.women,
-          youth: record.youth,
-          children: record.children,
-          sundayHomeChurch: record.sundayHomeChurch,
-          tithe: record.tithe,
-          offerings: record.offerings,
-          emergencyCollection: record.emergencyCollection,
-          plannedCollection: record.plannedCollection,
-          createdAt: record.createdAt,
-          updatedAt: record.updatedAt,
-        );
-        await recordRepo.createRecord(remappedRecord);
-      }
+        // ----------------------------------------------------------------
+        // 3. Restore weekly records. Remap churchId and createdByAdminId.
+        // ----------------------------------------------------------------
+        for (final recordJson in backupData.weeklyRecords) {
+          final record = _backupService.weeklyRecordFromJson(recordJson);
+          final remappedChurchId =
+              churchIdMap[record.churchId] ?? record.churchId;
+          // If the original admin wasn't restored (e.g. the backup had no
+          // admin accounts), fall through to null rather than reusing the
+          // stale original ID, which would violate the FK constraint.
+          final remappedAdminId = record.createdByAdminId != null
+              ? adminIdMap[record.createdByAdminId!]
+              : null;
+          final remappedRecord = WeeklyRecord(
+            churchId: remappedChurchId,
+            createdByAdminId: remappedAdminId,
+            weekStartDate: record.weekStartDate,
+            men: record.men,
+            women: record.women,
+            youth: record.youth,
+            children: record.children,
+            sundayHomeChurch: record.sundayHomeChurch,
+            tithe: record.tithe,
+            offerings: record.offerings,
+            emergencyCollection: record.emergencyCollection,
+            plannedCollection: record.plannedCollection,
+            createdAt: record.createdAt,
+            updatedAt: record.updatedAt,
+          );
+          await recordRepo.createRecord(remappedRecord);
+        }
+      });
 
       if (!mounted) return;
       setState(() => _state = _RestoreState.success);
