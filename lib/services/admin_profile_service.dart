@@ -2,6 +2,27 @@ import 'package:church_analytics/models/models.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+/// Thrown when a profile username is already in use, so UI layers can show a
+/// plain-language message instead of a raw exception string (U1).
+class DuplicateUsernameException implements Exception {
+  final String username;
+  DuplicateUsernameException(this.username);
+
+  @override
+  String toString() => 'Username "$username" already exists';
+}
+
+/// Thrown when a profile fails model validation. [message] comes from
+/// [AdminUser.validate] and is already phrased for end users, so UI layers
+/// can display it directly.
+class ProfileValidationException implements Exception {
+  final String message;
+  ProfileValidationException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 /// Service for managing admin profile state and operations
 class AdminProfileService {
   static const String _currentProfileIdKey = 'current_admin_profile_id';
@@ -60,7 +81,7 @@ class AdminProfileService {
     // Validate that username doesn't already exist
     final existing = await _repository.getUserByUsername(username);
     if (existing != null) {
-      throw Exception('Username already exists');
+      throw DuplicateUsernameException(username);
     }
 
     final now = DateTime.now();
@@ -77,7 +98,7 @@ class AdminProfileService {
     // Validate the profile
     final validationError = newProfile.validate();
     if (validationError != null) {
-      throw Exception(validationError);
+      throw ProfileValidationException(validationError);
     }
 
     // Create the profile
@@ -105,7 +126,7 @@ class AdminProfileService {
   Future<bool> updateProfile(AdminUser profile) async {
     final validationError = profile.validate();
     if (validationError != null) {
-      throw Exception(validationError);
+      throw ProfileValidationException(validationError);
     }
 
     return await _repository.updateUser(profile);

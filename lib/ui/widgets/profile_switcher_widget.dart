@@ -284,11 +284,38 @@ class ProfileSwitcherWidget extends ConsumerWidget {
                   );
                   onProfileChanged?.call();
                 }
-              } catch (e) {
+              } on DuplicateUsernameException {
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'That username is already taken — choose another.',
+                      ),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              } on ProfileValidationException catch (e) {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text('Error creating profile: $e'),
+                      content: Text(e.message),
+                      backgroundColor: Colors.red,
+                    ),
+                  );
+                }
+              } catch (e) {
+                LogService.error(
+                  'ProfileSwitcherWidget',
+                  'Profile creation failed',
+                  error: e,
+                );
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Could not create the profile. Please try again.',
+                      ),
                       backgroundColor: Colors.red,
                     ),
                   );

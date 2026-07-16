@@ -45,6 +45,8 @@ class _ProfileSelectionScreenState
         });
       }
     } catch (e) {
+      LogService.error('ProfileSelectionScreen', 'Failed to load profiles',
+          error: e);
       if (mounted) {
         setState(() {
           _error = e;
@@ -92,7 +94,16 @@ class _ProfileSelectionScreenState
     final service = AdminProfileService(AdminUserRepository(database), prefs);
     final ok = await service.switchProfile(profile.id!);
     if (!ok) {
-      throw StateError('Failed to switch profile');
+      // Surface the failure to the user instead of throwing an uncaught
+      // async error (U1 — no raw exceptions to the user).
+      if (mounted) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text('Could not switch to that profile. Try again.'),
+          ),
+        );
+      }
+      return;
     }
 
     if (!mounted) return;
@@ -227,10 +238,27 @@ class _ProfileSelectionScreenState
       await _load();
       if (!mounted) return;
       navigator.pushReplacementNamed('/');
-    } catch (e) {
+    } on DuplicateUsernameException {
       if (!mounted) return;
       messenger.showSnackBar(
-        SnackBar(content: Text('Error creating profile: $e')),
+        const SnackBar(
+          content: Text('That username is already taken — choose another.'),
+        ),
+      );
+    } on ProfileValidationException catch (e) {
+      // Validation messages are already phrased for end users.
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      // Plain-language message for the user; full detail goes to App Logs
+      // (U1 — no raw exceptions in user-facing error surfaces).
+      LogService.error('ProfileSelectionScreen', 'Profile creation failed',
+          error: e);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Could not create the profile. Please try again.'),
+        ),
       );
     }
   }
@@ -251,7 +279,20 @@ class _ProfileSelectionScreenState
       body: _loading
           ? const Center(child: CircularProgressIndicator())
           : _error != null
-          ? Center(child: Text('Error: $_error'))
+          ? Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text('Could not load profiles.'),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _load,
+                    icon: const Icon(Icons.refresh),
+                    label: const Text('Retry'),
+                  ),
+                ],
+              ),
+            )
           : _profiles.isEmpty
           ? Center(
               child: Padding(
