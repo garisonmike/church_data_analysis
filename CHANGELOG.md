@@ -11,6 +11,98 @@ Format: [BUG-XX] or [FEATURE] — Description — Files changed
 
 ---
 
+## [1.6.0] — 2026-07-16
+
+### Bug Fixes
+
+- **[BUG-16]** Backup restore no longer fails with a FOREIGN KEY error when
+  the backup's records reference admins that weren't restored, and the whole
+  restore is now atomic — a failure rolls back everything, so "No data was
+  changed" is true and retries can't create duplicate churches.
+  - Files: `lib/ui/screens/first_launch_backup_import_screen.dart`
+
+- **[BUG-17]** Target Analysis no longer crashes to a blank white page: the
+  missing 'Total Income' target was added and all target lookups now degrade
+  to "no target line" instead of a null-check crash when a metric has no
+  configured target.
+  - Files: `lib/ui/screens/target_analysis_screen.dart`
+
+- **[BUG-18]** Feedback that used to render off-screen is now brought into
+  view: weekly-entry validation errors scroll back to the banner, the
+  outlier check explains itself when there is too little history (or a clean
+  result), and CSV import auto-scrolls to the validation results and Import
+  button.
+  - Files: `lib/ui/screens/weekly_entry_screen.dart`,
+    `lib/ui/screens/import_screen.dart`
+
+- **[BUG-19]** Switching or creating a church now resets the navigation
+  stack — no more restart after switching, and the back button can't land on
+  the previous church's stale screens.
+  - Files: `lib/ui/screens/church_selection_screen.dart`
+
+- **[BUG-20]** Home Churches, Board Meeting, Holy Communion, and Business
+  Meeting entry now resolve the current church correctly. They previously
+  read a settings field that nothing ever wrote (always null), so Home
+  Churches was stuck on "No church selected"; all four now read the real
+  church selection, and the dead field was removed from the settings model.
+  - Files: `lib/services/weekly_records_provider.dart`,
+    `lib/ui/screens/home_church_screen.dart`,
+    `lib/ui/screens/board_meeting_entry_screen.dart`,
+    `lib/ui/screens/holy_communion_entry_screen.dart`,
+    `lib/ui/screens/business_meeting_entry_screen.dart`,
+    `lib/models/app_settings.dart`
+
+- **[BUG-21]** Backup metadata now records the app version that actually
+  created the backup (previously hardcoded to 1.0.0).
+  - Files: `lib/services/backup_service.dart`
+
+### New Features
+
+- **[FEATURE]** Multi-church management: a "Switch Church" entry in Church
+  Settings reaches the church selector at any time, and churches can be
+  deleted from there (full cascade in one transaction, confirmation with
+  record/admin counts; the church in use is protected).
+  - Files: `lib/ui/screens/church_settings_screen.dart`,
+    `lib/ui/screens/church_selection_screen.dart`,
+    `lib/repositories/church_repository.dart`,
+    `lib/services/church_service.dart`
+
+- **[FEATURE]** Admin profile management: profiles can be edited,
+  deactivated (retired admins keep their record attribution), and deleted —
+  deletion is blocked while an admin has entered records, preserving the
+  accountability trail. Usernames are now unique per church instead of
+  globally, and profile errors are shown in plain language instead of raw
+  exceptions.
+  - Files: `lib/ui/screens/profile_selection_screen.dart`,
+    `lib/services/admin_profile_service.dart`,
+    `lib/repositories/admin_user_repository.dart`,
+    `lib/ui/widgets/profile_switcher_widget.dart`
+
+- **[FEATURE]** Currency and region: church currency is a searchable ISO
+  4217 picker (no more free text or hardcoded USD default), and an optional
+  Region choice at church creation seeds currency, locale, and timezone —
+  all still overridable.
+  - Files: `lib/models/iso_currencies.dart`, `lib/models/regions.dart`,
+    `lib/ui/widgets/currency_picker_field.dart`,
+    `lib/ui/screens/church_selection_screen.dart`,
+    `lib/ui/screens/church_settings_screen.dart`
+
+- **[FEATURE]** App Logs: identical consecutive entries collapse into one
+  row with a ×N badge, and caught exceptions now log (and display) their
+  stack traces, so crashes are diagnosable from inside the app.
+  - Files: `lib/ui/screens/log_viewer_screen.dart`, entry/import screens
+
+### Maintenance
+
+- Church Settings tucks Church ID / Created / Last Updated into a collapsed
+  Advanced section; the onboarding tutorial was rewritten (7 slides, current
+  feature set, consistent "Chart Center" naming, financial-glossary link);
+  PDF report charts are regression-tested to render populated data for all
+  20 catalogue graphs; dead code removed (legacy CSV importer, unused PDF
+  helpers, duplicate onboarding flag); schema comments de-identified.
+
+---
+
 ## [1.5.0] — 2026-05-16
 
 ### Bug Fixes
