@@ -77,7 +77,12 @@ class _ChurchSelectionScreenState extends ConsumerState<ChurchSelectionScreen> {
     }
 
     if (!mounted) return;
-    navigator.pushReplacementNamed('/');
+    // Clear the whole stack, not just this screen: when reached mid-session
+    // (Dashboard → Church Settings → Switch Church) a pushReplacement would
+    // leave the previous church's screens underneath the new dashboard, so
+    // pressing back walked into stale data. On first launch the stack is just
+    // this selector, so clearing it loses nothing.
+    navigator.pushNamedAndRemoveUntil('/', (route) => false);
   }
 
   Future<void> createChurch() async {
@@ -214,7 +219,8 @@ class _ChurchSelectionScreenState extends ConsumerState<ChurchSelectionScreen> {
       if (!mounted) return;
       await _load();
       if (!mounted) return;
-      navigator.pushReplacementNamed('/');
+      // Same stack reset as _selectChurch — see comment there.
+      navigator.pushNamedAndRemoveUntil('/', (route) => false);
     } catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(
