@@ -133,7 +133,7 @@ class ExportHistoryList extends Table {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /// Home Churches — sub-congregations / ministry groups under a church.
-/// All 23 KCC home churches are rows here, managed by the clerk.
+/// Every home church of the congregation is a row here, managed by the clerk.
 class HomeChurches extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get churchId => integer().references(Churches, #id)();
@@ -143,7 +143,8 @@ class HomeChurches extends Table {
       text().withDefault(const Constant('geographical'))();
   /// Expected membership registered at this home church
   IntColumn get expectedMembership => integer().withDefault(const Constant(0))();
-  /// Expected count to appear at KCC (main church) events
+  /// Expected count to appear at main-church events. (The column name's
+  /// "Kcc" suffix is historical and kept for schema stability.)
   IntColumn get expectedAtKcc => integer().withDefault(const Constant(0))();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   IntColumn get sortOrder => integer().withDefault(const Constant(0))();
@@ -183,7 +184,7 @@ class HolyCommunionEvents extends Table {
   DateTimeColumn get eventDate => dateTime()();
   IntColumn get year => integer()();
   IntColumn get quarter => integer()(); // 1–4
-  /// Snapshot of the KCC-wide expected total at time of recording
+  /// Snapshot of the church-wide expected total at time of recording
   IntColumn get totalExpectedAtKcc =>
       integer().withDefault(const Constant(0))();
   TextColumn get notes => text().nullable()();
