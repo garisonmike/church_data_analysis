@@ -41,7 +41,6 @@ class ProfileHasRecordsException implements Exception {
 /// Service for managing admin profile state and operations
 class AdminProfileService {
   static const String _currentProfileIdKey = 'current_admin_profile_id';
-  static const String _hasSeenOnboardingKey = 'has_seen_onboarding';
 
   final AdminUserRepository _repository;
   final SharedPreferences _prefs;
@@ -183,11 +182,6 @@ class AdminProfileService {
     return await _repository.deactivateUser(profileId);
   }
 
-  /// Activates an admin profile
-  Future<bool> activateProfile(int profileId) async {
-    return await _repository.activateUser(profileId);
-  }
-
   /// Deletes an admin profile (hard delete).
   ///
   /// Throws [ProfileHasRecordsException] if the profile is recorded as
@@ -223,16 +217,6 @@ class AdminProfileService {
 
     final result = await _repository.deleteUser(profileId);
     return result > 0;
-  }
-
-  /// Checks if user has seen the onboarding
-  bool hasSeenOnboarding() {
-    return _prefs.getBool(_hasSeenOnboardingKey) ?? false;
-  }
-
-  /// Marks onboarding as seen
-  Future<bool> markOnboardingAsSeen() async {
-    return await _prefs.setBool(_hasSeenOnboardingKey, true);
   }
 
   /// Checks if any profiles exist for a church

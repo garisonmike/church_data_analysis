@@ -50,17 +50,6 @@ void main() {
       });
     });
 
-    group('Onboarding', () {
-      test('hasSeenOnboarding returns false by default', () {
-        expect(service.hasSeenOnboarding(), false);
-      });
-
-      test('markOnboardingAsSeen sets the flag', () async {
-        await service.markOnboardingAsSeen();
-        expect(service.hasSeenOnboarding(), true);
-      });
-    });
-
     group('Profile Creation Validation', () {
       test('createProfile throws error for invalid username', () async {
         expect(

@@ -74,19 +74,6 @@ void main() {
       });
     });
 
-    group('buildChartSection', () {
-      test('validates chart section structure', () {
-        // Test just validates the method signature and basic structure
-        // Actual image rendering requires a valid PNG which is complex to mock
-        expect(PdfReportService.buildChartSection, isNotNull);
-      });
-
-      test('validates description parameter handling', () {
-        // Test parameter handling without actually rendering
-        expect(PdfReportService.buildChartSection, isNotNull);
-      });
-    });
-
     group('buildKpiSection', () {
       test('creates KPI section with metrics', () {
         final metrics = [

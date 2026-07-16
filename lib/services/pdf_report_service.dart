@@ -10,18 +10,6 @@ import 'pdf_graph_catalogue.dart'; // 2.5-A
 import 'pdf_chart_builder.dart'; // 2.5-A
 
 class PdfReportService {
-  /// Creates a PDF document with standardized layout template
-  ///
-  /// Returns a PDF document ready for content insertion
-  static Future<pw.Document> createPdfTemplate({
-    required String title,
-    required String churchName,
-  }) async {
-    final pdf = pw.Document();
-
-    return pdf;
-  }
-
   /// Builds a header section for the PDF with title and metadata
   static pw.Widget buildHeader({
     required String title,
@@ -97,47 +85,6 @@ class PdfReportService {
         'Page ${context.pageNumber} of ${context.pagesCount}',
         style: pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
       ),
-    );
-  }
-
-  /// Inserts a captured chart image into the PDF
-  static pw.Widget buildChartSection({
-    required String chartTitle,
-    required Uint8List chartImageBytes,
-    String? description,
-  }) {
-    return pw.Column(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text(
-          chartTitle,
-          style: pw.TextStyle(
-            fontSize: 18,
-            fontWeight: pw.FontWeight.bold,
-            color: PdfColors.blue800,
-          ),
-        ),
-        pw.SizedBox(height: 8),
-        if (description != null) ...[
-          pw.Text(
-            description,
-            style: pw.TextStyle(fontSize: 12, color: PdfColors.grey700),
-          ),
-          pw.SizedBox(height: 8),
-        ],
-        pw.Container(
-          decoration: pw.BoxDecoration(
-            border: pw.Border.all(color: PdfColors.grey300),
-            borderRadius: const pw.BorderRadius.all(pw.Radius.circular(8)),
-          ),
-          padding: const pw.EdgeInsets.all(8),
-          child: pw.Image(
-            pw.MemoryImage(chartImageBytes),
-            fit: pw.BoxFit.contain,
-          ),
-        ),
-        pw.SizedBox(height: 20),
-      ],
     );
   }
 
