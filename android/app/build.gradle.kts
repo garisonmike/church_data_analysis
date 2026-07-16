@@ -42,7 +42,7 @@ android {
         // Android 4.x accounts for < 0.1% of the active install base and all
         // other packages in this project (Kotlin coroutines, flutter_local_
         // notifications, Material 3) have practical API 21+ floors anyway.
-        minSdk = 21
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -60,6 +60,14 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Side-by-side install: debug builds get their own application id
+            // so `flutter run` on a device that already has the release app
+            // installed can never collide with it (a signature-mismatch
+            // install would otherwise auto-uninstall the release app and
+            // wipe its data).
+            applicationIdSuffix = ".debug"
+        }
         release {
             // Use the release keystore when key.properties is present (CI / production).
             // Falls back to debug signing on developer machines that have not yet
