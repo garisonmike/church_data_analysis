@@ -402,9 +402,10 @@ class _ProfileSelectionScreenState
       builder: (ctx) => AlertDialog(
         title: Text('Delete "${profile.username}"?'),
         content: const Text(
-          'This permanently deletes the profile. Weekly records and events '
-          'this admin created are kept, but will no longer show who created '
-          'them.\n\nThis cannot be undone.',
+          'This permanently deletes the profile.\n\n'
+          'Profiles that have entered weekly records or events cannot be '
+          'deleted — the record of who entered the data is kept for '
+          'accountability.\n\nThis cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -434,6 +435,17 @@ class _ProfileSelectionScreenState
       if (!mounted) return;
       messenger.showSnackBar(
         SnackBar(content: Text('Deleted "${profile.username}"')),
+      );
+    } on ProfileHasRecordsException catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            'This profile entered ${e.recordCount} record(s) and cannot be '
+            'deleted — the record of who entered data is kept for '
+            'accountability.',
+          ),
+        ),
       );
     } catch (e) {
       LogService.error('ProfileSelectionScreen', 'Profile deletion failed',

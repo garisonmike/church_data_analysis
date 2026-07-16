@@ -127,7 +127,7 @@ void main() {
       expect((await adminRepo.getUsersByChurch(survivorId)).length, 1);
     });
 
-    test('deleteUser nulls createdByAdminId on records instead of failing',
+    test('admin with created records is counted and blocked from deletion',
         () async {
       final adminRepo = AdminUserRepository(database);
       final now = DateTime.now();
@@ -164,14 +164,28 @@ void main() {
         ),
       );
 
-      final deleted = await adminRepo.deleteUser(adminId);
-      expect(deleted, 1);
+      // The accountability count sees the record, and the raw delete is
+      // rejected by the FK constraint while it exists.
+      expect(await adminRepo.countCreatedRecords(adminId), 1);
+      expect(() => adminRepo.deleteUser(adminId), throwsA(anything));
 
-      // The record survives with its creator reference cleared.
+      // An admin with no created records deletes cleanly.
+      final idleAdminId = await adminRepo.createUser(
+        AdminUser(
+          username: 'idle',
+          fullName: 'Never Entered Data',
+          churchId: churchId,
+          isActive: true,
+          createdAt: now,
+          lastLoginAt: now,
+        ),
+      );
+      expect(await adminRepo.countCreatedRecords(idleAdminId), 0);
+      expect(await adminRepo.deleteUser(idleAdminId), 1);
+
+      // The original record keeps its creator attribution.
       final records = await weeklyRecordRepo.getRecordsByChurch(churchId);
-      expect(records.length, 1);
-      expect(records.single.createdByAdminId, isNull);
-      expect(await adminRepo.getUserById(adminId), isNull);
+      expect(records.single.createdByAdminId, adminId);
     });
 
     test('WeeklyRecord CRUD operations work correctly', () async {

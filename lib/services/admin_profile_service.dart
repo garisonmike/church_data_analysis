@@ -23,6 +23,21 @@ class ProfileValidationException implements Exception {
   String toString() => message;
 }
 
+/// Thrown when deleting a profile that is recorded as creator of weekly
+/// records or events. Deletion is blocked in that case — the creator
+/// reference is the accountability trail for who entered tithes/offerings,
+/// mirroring how church deletion is blocked while the church is active.
+class ProfileHasRecordsException implements Exception {
+  final String username;
+  final int recordCount;
+  ProfileHasRecordsException(this.username, this.recordCount);
+
+  @override
+  String toString() =>
+      'Profile "$username" created $recordCount record(s) and cannot be '
+      'deleted';
+}
+
 /// Service for managing admin profile state and operations
 class AdminProfileService {
   static const String _currentProfileIdKey = 'current_admin_profile_id';
@@ -173,8 +188,22 @@ class AdminProfileService {
     return await _repository.activateUser(profileId);
   }
 
-  /// Deletes an admin profile (hard delete)
+  /// Deletes an admin profile (hard delete).
+  ///
+  /// Throws [ProfileHasRecordsException] if the profile is recorded as
+  /// creator of any weekly records or events — accountability for who
+  /// entered the data outlives the convenience of deletion. Deactivate the
+  /// profile instead in that case.
   Future<bool> deleteProfile(int profileId) async {
+    final createdCount = await _repository.countCreatedRecords(profileId);
+    if (createdCount > 0) {
+      final profile = await _repository.getUserById(profileId);
+      throw ProfileHasRecordsException(
+        profile?.username ?? 'unknown',
+        createdCount,
+      );
+    }
+
     // Don't allow deleting the current profile if it's the last one
     final currentId = getCurrentProfileId();
     if (currentId == profileId) {
