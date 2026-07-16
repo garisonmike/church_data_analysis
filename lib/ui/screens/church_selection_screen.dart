@@ -18,6 +18,10 @@ class _ChurchSelectionScreenState extends ConsumerState<ChurchSelectionScreen> {
   bool _loading = true;
   Object? _error;
   List<Church> _churches = const [];
+  // The church currently in use, if any. Deletion of the active church is
+  // blocked from here — the user must switch away first — to avoid tearing
+  // the ground out from under the running session.
+  int? _currentChurchId;
 
   @override
   void initState() {
@@ -32,12 +36,16 @@ class _ChurchSelectionScreenState extends ConsumerState<ChurchSelectionScreen> {
     });
 
     try {
+      final prefs = await SharedPreferences.getInstance();
       final database = ref.read(db.databaseProvider);
       final repo = ChurchRepository(database);
+      final churchService = ChurchService(repo, prefs);
       final churches = await repo.getAllChurches();
+      final currentId = churchService.getCurrentChurchId();
       if (mounted) {
         setState(() {
           _churches = churches;
+          _currentChurchId = currentId;
         });
       }
     } catch (e) {
@@ -215,6 +223,70 @@ class _ChurchSelectionScreenState extends ConsumerState<ChurchSelectionScreen> {
     }
   }
 
+  Future<void> _deleteChurch(Church church) async {
+    if (church.id == null) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final database = ref.read(db.databaseProvider);
+
+    // Show the user exactly what will be removed before they commit — a
+    // church delete cascades to its admins, weekly records, and events.
+    final recordCount =
+        (await WeeklyRecordRepository(database).getRecordsByChurch(church.id!))
+            .length;
+    final adminCount =
+        (await AdminUserRepository(database).getUsersByChurch(church.id!))
+            .length;
+    if (!mounted) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete "${church.name}"?'),
+        content: Text(
+          'This permanently deletes the church and everything under it:\n\n'
+          '• $recordCount weekly record(s)\n'
+          '• $adminCount admin account(s)\n'
+          '• all board meetings, holy communion, business meeting, and home '
+          'church data\n\n'
+          'This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final churchService = ChurchService(ChurchRepository(database), prefs);
+      await churchService.deleteChurch(church.id!);
+      if (!mounted) return;
+      await _load();
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Deleted "${church.name}"')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Could not delete church: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -266,6 +338,7 @@ class _ChurchSelectionScreenState extends ConsumerState<ChurchSelectionScreen> {
               separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final church = _churches[index];
+                final isCurrent = church.id == _currentChurchId;
                 return ListTile(
                   leading: CircleAvatar(
                     child: Text(
@@ -276,8 +349,38 @@ class _ChurchSelectionScreenState extends ConsumerState<ChurchSelectionScreen> {
                   ),
                   title: Text(church.name),
                   subtitle: church.address == null
-                      ? null
-                      : Text(church.address!),
+                      ? (isCurrent ? const Text('Currently in use') : null)
+                      : Text(
+                          isCurrent
+                              ? '${church.address!} • Currently in use'
+                              : church.address!,
+                        ),
+                  trailing: PopupMenuButton<String>(
+                    tooltip: 'Church actions',
+                    onSelected: (value) {
+                      if (value == 'delete') _deleteChurch(church);
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem<String>(
+                        value: 'delete',
+                        // The active church can't be deleted from here; switch
+                        // to another church first.
+                        enabled: !isCurrent,
+                        child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(
+                            Icons.delete_outline,
+                            color: isCurrent
+                                ? Theme.of(context).disabledColor
+                                : Theme.of(context).colorScheme.error,
+                          ),
+                          title: Text(
+                            isCurrent ? 'Delete (in use)' : 'Delete church',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   onTap: () => _selectChurch(church),
                 );
               },

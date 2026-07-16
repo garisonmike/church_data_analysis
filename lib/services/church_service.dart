@@ -88,15 +88,15 @@ class ChurchService {
     return await _churchRepository.updateChurch(church);
   }
 
-  /// Delete a church by ID
-  /// Note: This may fail if there are related records (admins, weekly records, etc.)
-  Future<int> deleteChurch(int churchId) async {
+  /// Delete a church by ID, cascading to all of its dependent rows (admins,
+  /// weekly records, events, home churches, etc.) in a single transaction.
+  Future<void> deleteChurch(int churchId) async {
     // Check if this is the currently selected church
     if (getCurrentChurchId() == churchId) {
       await clearCurrentChurch();
     }
 
-    return await _churchRepository.deleteChurch(churchId);
+    await _churchRepository.deleteChurchCascade(churchId);
   }
 
   /// Search for churches by name

@@ -57,6 +57,76 @@ void main() {
       expect(afterDelete, isNull);
     });
 
+    test('deleteChurchCascade removes dependents and spares other churches',
+        () async {
+      final adminRepo = AdminUserRepository(database);
+      final now = DateTime.now();
+
+      // Church to delete, with an admin and a weekly record that references it.
+      final targetId = await churchRepo.createChurch(
+        Church(name: 'Doomed', createdAt: now, updatedAt: now),
+      );
+      final adminId = await adminRepo.createUser(
+        AdminUser(
+          username: 'doomed_admin',
+          fullName: 'Doomed Admin',
+          churchId: targetId,
+          isActive: true,
+          createdAt: now,
+          lastLoginAt: now,
+        ),
+      );
+      await weeklyRecordRepo.createRecord(
+        WeeklyRecord(
+          churchId: targetId,
+          createdByAdminId: adminId,
+          weekStartDate: DateTime(2026, 1, 4),
+          men: 10,
+          women: 12,
+          youth: 8,
+          children: 5,
+          sundayHomeChurch: 3,
+          tithe: 1000,
+          offerings: 500,
+          emergencyCollection: 0,
+          plannedCollection: 0,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      // A second church whose data must survive the cascade.
+      final survivorId = await churchRepo.createChurch(
+        Church(name: 'Survivor', createdAt: now, updatedAt: now),
+      );
+      await adminRepo.createUser(
+        AdminUser(
+          username: 'survivor_admin',
+          fullName: 'Survivor Admin',
+          churchId: survivorId,
+          isActive: true,
+          createdAt: now,
+          lastLoginAt: now,
+        ),
+      );
+
+      // A bare delete must fail while dependents exist (FK constraint on).
+      expect(
+        () => churchRepo.deleteChurch(targetId),
+        throwsA(anything),
+      );
+
+      await churchRepo.deleteChurchCascade(targetId);
+
+      expect(await churchRepo.getChurchById(targetId), isNull);
+      expect(await weeklyRecordRepo.getRecordsByChurch(targetId), isEmpty);
+      expect(await adminRepo.getUsersByChurch(targetId), isEmpty);
+
+      // The survivor and its admin are untouched.
+      expect(await churchRepo.getChurchById(survivorId), isNotNull);
+      expect((await adminRepo.getUsersByChurch(survivorId)).length, 1);
+    });
+
     test('WeeklyRecord CRUD operations work correctly', () async {
       // First create a church
       final church = Church(
