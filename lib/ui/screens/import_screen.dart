@@ -17,6 +17,13 @@ class ImportScreen extends ConsumerStatefulWidget {
 
 class _ImportScreenState extends ConsumerState<ImportScreen> {
   final _importService = ImportService();
+  final _scrollController = ScrollController();
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
 
   PlatformFileResult? _selectedFile;
   List<String>? _headers;
@@ -157,6 +164,20 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
     setState(() {
       _validationResults = results;
       _isLoading = false;
+    });
+
+    // The validation results — and the "Import N Records" button at the bottom
+    // of them — are appended below the mapping step, off-screen on a long
+    // file. Scroll them into view so the next action isn't left for the user
+    // to discover by chance (U5, the same off-screen-content pattern as B4).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients) {
+        _scrollController.animateTo(
+          _scrollController.position.maxScrollExtent,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeOut,
+        );
+      }
     });
   }
 
@@ -618,6 +639,7 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
     return FocusTraversalGroup(
       policy: OrderedTraversalPolicy(),
       child: ListView(
+        controller: _scrollController,
         padding: const EdgeInsets.all(16.0),
         children: [
           _buildFilePickerStep(),
