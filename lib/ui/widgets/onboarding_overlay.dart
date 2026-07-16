@@ -66,40 +66,61 @@ class _OnboardingOverlayState extends State<OnboardingOverlay> {
       icon: Icons.church,
       title: 'Welcome to Church Analytics',
       body:
-          'This app helps you track weekly attendance and financial records for '
-          'your church. Start by creating a church profile.',
+          'Your church is set up and ready. This quick tour shows how to record '
+          'your data, explore trends, and share reports. You can reopen it any '
+          'time from Settings → Help & Tutorial.',
     ),
     _OnboardingPage(
       icon: Icons.edit_calendar,
       title: 'Weekly Record Entry',
       body:
-          'Each week, tap "New Entry" from the dashboard to record attendance '
-          'by group (Men, Women, Youth, Children) and financial figures '
-          '(Tithe, Offerings).',
+          'Each week, tap "New Entry" on the dashboard to record attendance by '
+          'group (Men, Women, Youth, Children, Sunday Home Church) and finances '
+          '(Tithe, Offerings, and more). "Check for Unusual Values" flags likely '
+          'typos against your recent history.',
+      actionLabel: 'What do these financial terms mean?',
+      actionRoute: '/financial-glossary',
     ),
     _OnboardingPage(
       icon: Icons.upload_file,
       title: 'Importing Existing Data',
       body:
-          'Have existing records in a spreadsheet? Use the Import feature to '
-          'upload a CSV or XLSX file. The app guides you through mapping your '
-          'columns.',
+          'Already keep records in a spreadsheet? Use Import to bring in a CSV '
+          'or XLSX file — the app walks you through matching your columns and '
+          'flags duplicate weeks before anything is saved.',
+    ),
+    _OnboardingPage(
+      icon: Icons.diversity_3,
+      title: 'More Than Weekly Records',
+      body:
+          'Track the whole church: manage Home Churches (sub-congregations and '
+          'ministry groups), and record Board Meetings, Holy Communion, and '
+          'Business Meetings — each with its own attendance and analytics.',
     ),
     _OnboardingPage(
       icon: Icons.bar_chart,
       title: 'Analytics & Charts',
       body:
-          'The Graph Center gives you attendance trends, financial breakdowns, '
-          'and correlations. All charts update automatically as you add records. '
-          'You can find more detailed charts and category breakdowns in the Chart Center.',
+          'The Chart Center collects every visualization — attendance trends, '
+          'financial breakdowns, ratios, and correlations. Charts update '
+          'automatically as you add records; open any category for a detailed '
+          'breakdown.',
     ),
     _OnboardingPage(
       icon: Icons.picture_as_pdf,
-      title: 'Exporting Reports',
+      title: 'Reports & Backup',
       body:
-          'Go to Reports & Backup to export a PDF report, download your data '
-          'as CSV, or create a full backup. Visit chart screens first to '
-          'include graphs in your PDF.',
+          'Go to Reports & Backup to export a PDF, download your data as CSV, '
+          'or create a full backup. Charts are generated automatically from '
+          'your records — you do not need to open them first.',
+    ),
+    _OnboardingPage(
+      icon: Icons.swap_horiz,
+      title: 'Churches & Profiles',
+      body:
+          'Managing more than one church? Switch between them any time from '
+          'Church Settings → Switch Church. Each church has its own admin '
+          'profiles, so every record shows who entered it.',
     ),
   ];
 
@@ -205,10 +226,18 @@ class _OnboardingPage extends StatelessWidget {
   final String title;
   final String body;
 
+  /// Optional in-slide link. When both are set, an outlined button is shown
+  /// that pushes [actionRoute] (e.g. the financial glossary) so related help
+  /// is reachable straight from the tutorial.
+  final String? actionLabel;
+  final String? actionRoute;
+
   const _OnboardingPage({
     required this.icon,
     required this.title,
     required this.body,
+    this.actionLabel,
+    this.actionRoute,
   });
 
   @override
@@ -235,6 +264,15 @@ class _OnboardingPage extends StatelessWidget {
             style: Theme.of(context).textTheme.bodyLarge,
             textAlign: TextAlign.center,
           ),
+          if (actionLabel != null && actionRoute != null) ...[
+            const SizedBox(height: 20),
+            OutlinedButton.icon(
+              onPressed: () =>
+                  Navigator.of(context).pushNamed(actionRoute!),
+              icon: const Icon(Icons.menu_book_outlined),
+              label: Text(actionLabel!),
+            ),
+          ],
         ],
       ),
     );
