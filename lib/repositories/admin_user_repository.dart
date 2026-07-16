@@ -23,10 +23,15 @@ class AdminUserRepository {
     return result != null ? _toModel(result) : null;
   }
 
-  /// Get admin user by username
-  Future<AdminUser?> getUserByUsername(String username) async {
+  /// Get admin user by username within a church.
+  ///
+  /// Usernames are unique per church, not globally — the same username may
+  /// exist under different churches, so lookups must always carry the church
+  /// context. (There is no DB-level unique index on username; the uniqueness
+  /// check in AdminProfileService.createProfile is the sole enforcement.)
+  Future<AdminUser?> getUserByUsername(String username, int churchId) async {
     final query = _db.select(_db.adminUsers)
-      ..where((t) => t.username.equals(username));
+      ..where((t) => t.username.equals(username) & t.churchId.equals(churchId));
     final result = await query.getSingleOrNull();
     return result != null ? _toModel(result) : null;
   }

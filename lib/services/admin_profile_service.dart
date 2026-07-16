@@ -78,8 +78,10 @@ class AdminProfileService {
     required int churchId,
     bool setAsActive = true,
   }) async {
-    // Validate that username doesn't already exist
-    final existing = await _repository.getUserByUsername(username);
+    // Validate that the username isn't already taken within this church.
+    // Uniqueness is per-church, so admins at different churches may share a
+    // username.
+    final existing = await _repository.getUserByUsername(username, churchId);
     if (existing != null) {
       throw DuplicateUsernameException(username);
     }
