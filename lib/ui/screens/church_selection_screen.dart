@@ -1,5 +1,6 @@
 import 'package:church_analytics/database/app_database.dart' as db;
 import 'package:church_analytics/models/church.dart';
+import 'package:church_analytics/models/regions.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:church_analytics/ui/widgets/currency_picker_field.dart';
@@ -93,6 +94,8 @@ class _ChurchSelectionScreenState extends ConsumerState<ChurchSelectionScreen> {
     final phoneController = TextEditingController();
     // No hardcoded default currency — the user must pick one (U2/U3).
     String? selectedCurrency;
+    // Optional region shortcut that seeds currency + locale + timezone (U4).
+    AppRegion? selectedRegion;
 
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
@@ -115,6 +118,36 @@ class _ChurchSelectionScreenState extends ConsumerState<ChurchSelectionScreen> {
                   builder: (context, setDialogState) => Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
+                      // Region shortcut — seeds currency, locale, and timezone.
+                      // Everything below (and app settings) stays editable.
+                      DropdownButtonFormField<AppRegion>(
+                        initialValue: selectedRegion,
+                        isExpanded: true,
+                        decoration: const InputDecoration(
+                          labelText: 'Region',
+                          helperText:
+                              'Sets currency, language, and timezone — you '
+                              'can change any of them later',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.public),
+                        ),
+                        items: kRegions
+                            .map(
+                              (r) => DropdownMenuItem(
+                                value: r,
+                                child: Text('${r.name} (${r.currencyCode})'),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (region) => setDialogState(() {
+                          selectedRegion = region;
+                          // Prefill the currency; the picker can still override.
+                          if (region != null) {
+                            selectedCurrency = region.currencyCode;
+                          }
+                        }),
+                      ),
+                      const SizedBox(height: 12),
                       TextField(
                         controller: nameController,
                         decoration: const InputDecoration(
@@ -222,6 +255,16 @@ class _ChurchSelectionScreenState extends ConsumerState<ChurchSelectionScreen> {
       final churchService = ChurchService(ChurchRepository(database), prefs);
       final newId = await churchService.createChurch(church);
       await churchService.setCurrentChurchId(newId);
+
+      // Seed app-wide currency/locale/timezone from the chosen region. These
+      // are the app defaults and remain editable in App Settings.
+      final region = selectedRegion;
+      if (region != null) {
+        final settings = ref.read(appSettingsProvider.notifier);
+        await settings.updateCurrency(region.currency);
+        await settings.updateLocale(region.locale);
+        await settings.updateTimezone(region.timezone);
+      }
 
       if (!mounted) return;
       await _load();
