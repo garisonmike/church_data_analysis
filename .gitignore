@@ -50,6 +50,7 @@ app.*.map.json
 /tasks.md
 /plan.md
 /PLAN.md
+/bugs-ux-review.md
 runError.txt
 flutterTest.txt
 failedTests.txt
