@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 
 import '../../models/models.dart';
 import '../../services/log_service.dart';
-import '../../services/settings_service.dart';
 import '../../services/weekly_records_provider.dart';
 
 /// Screen for entering or editing a monthly board meeting attendance record.
@@ -56,8 +55,7 @@ class _BoardMeetingEntryScreenState
 
   Future<void> _prefillExpected() async {
     // Auto-fill expected from church settings boardMemberCount
-    final settings = ref.read(appSettingsProvider);
-    final cid = settings.selectedChurchId;
+    final cid = ref.read(currentChurchIdProvider);
     if (cid == null) return;
     final repo = ref.read(churchRepositoryProvider);
     final church = await repo.getChurchById(cid);
@@ -70,8 +68,7 @@ class _BoardMeetingEntryScreenState
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      final settings = ref.read(appSettingsProvider);
-      final churchId = settings.selectedChurchId;
+      final churchId = ref.read(currentChurchIdProvider);
       if (churchId == null) throw Exception('No church selected');
 
       final record = BoardMeetingRecord(
@@ -143,8 +140,7 @@ class _BoardMeetingEntryScreenState
 
     setState(() => _saving = true);
     try {
-      final settings = ref.read(appSettingsProvider);
-      final churchId = settings.selectedChurchId;
+      final churchId = ref.read(currentChurchIdProvider);
       final repo = ref.read(boardMeetingRepositoryProvider);
       await repo.deleteRecord(widget.existing!.id!);
       if (churchId != null) ref.invalidate(boardMeetingRecordsProvider(churchId));

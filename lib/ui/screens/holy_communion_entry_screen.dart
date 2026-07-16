@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 
 import '../../models/models.dart';
 import '../../services/log_service.dart';
-import '../../services/settings_service.dart';
 import '../../services/weekly_records_provider.dart';
 
 /// Entry screen for Holy Communion quarterly event.
@@ -91,8 +90,7 @@ class _HolyCommunionEntryScreenState
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      final settings = ref.read(appSettingsProvider);
-      final churchId = settings.selectedChurchId;
+      final churchId = ref.read(currentChurchIdProvider);
       if (churchId == null) throw Exception('No church selected');
 
       final attendanceRows = _homeChurches.map((hc) =>
@@ -177,8 +175,7 @@ class _HolyCommunionEntryScreenState
 
     setState(() => _saving = true);
     try {
-      final settings = ref.read(appSettingsProvider);
-      final churchId = settings.selectedChurchId;
+      final churchId = ref.read(currentChurchIdProvider);
       final repo = ref.read(holyCommunionRepositoryProvider);
       await repo.deleteEvent(widget.existing!.id!);
       if (churchId != null) ref.invalidate(holyCommunionEventsProvider(churchId));
@@ -197,8 +194,7 @@ class _HolyCommunionEntryScreenState
 
   @override
   Widget build(BuildContext context) {
-    final settings = ref.watch(appSettingsProvider);
-    final churchId = settings.selectedChurchId;
+    final churchId = ref.watch(currentChurchIdProvider);
     final hcAsync = churchId != null
         ? ref.watch(homeChurchesProvider(churchId))
         : null;

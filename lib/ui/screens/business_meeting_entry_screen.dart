@@ -4,7 +4,6 @@ import 'package:intl/intl.dart';
 
 import '../../models/models.dart';
 import '../../services/log_service.dart';
-import '../../services/settings_service.dart';
 import '../../services/weekly_records_provider.dart';
 
 class BusinessMeetingEntryScreen extends ConsumerStatefulWidget {
@@ -82,8 +81,7 @@ class _BusinessMeetingEntryScreenState
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
     try {
-      final settings = ref.read(appSettingsProvider);
-      final churchId = settings.selectedChurchId;
+      final churchId = ref.read(currentChurchIdProvider);
       if (churchId == null) throw Exception('No church selected');
 
       final rows = _homeChurches.map((hc) => BusinessMeetingAttendanceRow(
@@ -160,8 +158,7 @@ class _BusinessMeetingEntryScreenState
 
     setState(() => _saving = true);
     try {
-      final settings = ref.read(appSettingsProvider);
-      final churchId = settings.selectedChurchId;
+      final churchId = ref.read(currentChurchIdProvider);
       final repo = ref.read(businessMeetingRepositoryProvider);
       await repo.deleteEvent(widget.existing!.id!);
       if (churchId != null) ref.invalidate(businessMeetingEventsProvider(churchId));
@@ -180,8 +177,7 @@ class _BusinessMeetingEntryScreenState
 
   @override
   Widget build(BuildContext context) {
-    final settings = ref.watch(appSettingsProvider);
-    final churchId = settings.selectedChurchId;
+    final churchId = ref.watch(currentChurchIdProvider);
     final hcAsync = churchId != null ? ref.watch(homeChurchesProvider(churchId)) : null;
     final dateFmt = DateFormat('d MMMM yyyy');
 

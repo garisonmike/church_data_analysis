@@ -236,6 +236,21 @@ final churchRepositoryProvider = Provider<ChurchRepository>((ref) {
   return ChurchRepository(ref.read(databaseProvider));
 });
 
+/// The currently-selected church id, read live from [ChurchService] — the
+/// maintained source of truth in SharedPreferences that the church switcher
+/// and startup gate write.
+///
+/// Screens that aren't handed a churchId via route arguments (Home Churches,
+/// board/holy-communion/business-meeting entry) must use this rather than
+/// `AppSettings.selectedChurchId`, which no code path ever writes and so is
+/// always null. Kept [Provider.autoDispose] so each fresh screen subscription
+/// re-reads the current value instead of serving a stale first evaluation.
+final currentChurchIdProvider = Provider.autoDispose<int?>((ref) {
+  final prefs = ref.read(sharedPreferencesProvider);
+  return ChurchService(ref.read(churchRepositoryProvider), prefs)
+      .getCurrentChurchId();
+});
+
 // ── HomeChurch providers ──────────────────────────────────────────────────────
 
 final homeChurchRepositoryProvider = Provider<HomeChurchRepository>((ref) {

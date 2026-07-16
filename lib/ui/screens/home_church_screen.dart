@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/models.dart';
 import '../../services/log_service.dart';
 import '../../services/weekly_records_provider.dart';
-import '../../services/settings_service.dart';
 
 /// Screen for managing the list of home churches under a church.
 /// Clerk can add, edit, reorder, and deactivate home churches.
@@ -18,8 +17,7 @@ class HomeChurchScreen extends ConsumerStatefulWidget {
 class _HomeChurchScreenState extends ConsumerState<HomeChurchScreen> {
   @override
   Widget build(BuildContext context) {
-    final settings = ref.watch(appSettingsProvider);
-    final churchId = settings.selectedChurchId;
+    final churchId = ref.watch(currentChurchIdProvider);
     if (churchId == null) {
       return const Scaffold(body: Center(child: Text('No church selected.')));
     }
@@ -79,9 +77,9 @@ class _HomeChurchScreenState extends ConsumerState<HomeChurchScreen> {
   Future<void> _toggleActive(HomeChurch hc) async {
     final repo = ref.read(homeChurchRepositoryProvider);
     await repo.update(hc.copyWith(isActive: !hc.isActive));
-    final settings = ref.read(appSettingsProvider);
-    if (settings.selectedChurchId != null) {
-      ref.invalidate(homeChurchesProvider(settings.selectedChurchId!));
+    final churchId = ref.read(currentChurchIdProvider);
+    if (churchId != null) {
+      ref.invalidate(homeChurchesProvider(churchId));
     }
     LogService.info('HomeChurchScreen',
         '${hc.isActive ? "Deactivated" : "Activated"} home church: ${hc.name}');
