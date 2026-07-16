@@ -119,8 +119,8 @@ class _BusinessMeetingEntryScreenState
       ref.invalidate(businessMeetingEventsProvider(churchId));
       LogService.info('BusinessMeetingEntry', 'Saved BM event: Q$_quarter $_year #$_meetingNumber');
       if (mounted) Navigator.pop(context, true);
-    } catch (e) {
-      LogService.error('BusinessMeetingEntry', 'Save failed', error: e);
+    } catch (e, stack) {
+      LogService.error('BusinessMeetingEntry', 'Save failed', error: e, stackTrace: stack);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
@@ -168,8 +168,8 @@ class _BusinessMeetingEntryScreenState
       LogService.info('BusinessMeetingEntry',
           'Deleted BM event id=${widget.existing!.id}');
       if (mounted) Navigator.pop(context, true);
-    } catch (e) {
-      LogService.error('BusinessMeetingEntry', 'Delete failed', error: e);
+    } catch (e, stack) {
+      LogService.error('BusinessMeetingEntry', 'Delete failed', error: e, stackTrace: stack);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));

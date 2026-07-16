@@ -304,11 +304,12 @@ class ProfileSwitcherWidget extends ConsumerWidget {
                     ),
                   );
                 }
-              } catch (e) {
+              } catch (e, stack) {
                 LogService.error(
                   'ProfileSwitcherWidget',
                   'Profile creation failed',
                   error: e,
+                  stackTrace: stack,
                 );
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(

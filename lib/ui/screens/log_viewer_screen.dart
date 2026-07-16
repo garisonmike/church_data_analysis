@@ -20,9 +20,19 @@ class LogViewerScreen extends StatefulWidget {
   State<LogViewerScreen> createState() => _LogViewerScreenState();
 }
 
+/// A run of consecutive identical log entries, collapsed for display (U6).
+/// [entry] is the most recent occurrence; [count] is how many identical
+/// entries were folded into it.
+class _LogGroup {
+  final LogEntry entry;
+  final int count;
+  const _LogGroup(this.entry, this.count);
+}
+
 class _LogViewerScreenState extends State<LogViewerScreen> {
   LogLevel _filterLevel = LogLevel.debug;
-  List<LogEntry> _entries = [];
+  List<_LogGroup> _groups = [];
+  int _totalCount = 0;
 
   // Export range
   DateTime _exportFrom = DateTime.now().subtract(const Duration(days: 6));
@@ -39,9 +49,32 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
   }
 
   void _refresh() {
+    final entries = LogService.getRecentEntries(minLevel: _filterLevel);
     setState(() {
-      _entries = LogService.getRecentEntries(minLevel: _filterLevel);
+      _totalCount = entries.length;
+      _groups = _collapseConsecutive(entries);
     });
+  }
+
+  /// Folds runs of identical consecutive entries (same level, tag, message,
+  /// and error — timestamp ignored) into one [_LogGroup] with a count, so
+  /// four back-to-back copies of the same exception read as one row ×4
+  /// instead of four near-duplicate rows (U6).
+  static List<_LogGroup> _collapseConsecutive(List<LogEntry> entries) {
+    final groups = <_LogGroup>[];
+    for (final e in entries) {
+      final last = groups.isEmpty ? null : groups.last;
+      if (last != null &&
+          last.entry.level == e.level &&
+          last.entry.tag == e.tag &&
+          last.entry.message == e.message &&
+          last.entry.error == e.error) {
+        groups[groups.length - 1] = _LogGroup(last.entry, last.count + 1);
+      } else {
+        groups.add(_LogGroup(e, 1));
+      }
+    }
+    return groups;
   }
 
   Color _levelColor(LogLevel level) {
@@ -248,7 +281,7 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
             child: Row(
               children: [
                 Text(
-                  'Showing ${_entries.length} entries  ·  min level: ${_filterLevel.name.toUpperCase()}',
+                  'Showing $_totalCount entries  ·  min level: ${_filterLevel.name.toUpperCase()}',
                   style: Theme.of(context).textTheme.bodySmall,
                 ),
               ],
@@ -258,20 +291,21 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
 
           // ── Log list ─────────────────────────────────────────────────────
           Expanded(
-            child: _entries.isEmpty
+            child: _groups.isEmpty
                 ? const Center(child: Text('No log entries yet.'))
                 : ListView.separated(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
                       vertical: 8,
                     ),
-                    itemCount: _entries.length,
+                    itemCount: _groups.length,
                     separatorBuilder: (_, __) => const Divider(height: 1),
                     itemBuilder: (context, i) {
-                      final e = _entries[i];
+                      final g = _groups[i];
                       return _LogEntryTile(
-                        entry: e,
-                        levelColor: _levelColor(e.level),
+                        entry: g.entry,
+                        count: g.count,
+                        levelColor: _levelColor(g.entry.level),
                         timeFmt: _timeFmt,
                       );
                     },
@@ -285,11 +319,13 @@ class _LogViewerScreenState extends State<LogViewerScreen> {
 
 class _LogEntryTile extends StatelessWidget {
   final LogEntry entry;
+  final int count;
   final Color levelColor;
   final DateFormat timeFmt;
 
   const _LogEntryTile({
     required this.entry,
+    this.count = 1,
     required this.levelColor,
     required this.timeFmt,
   });
@@ -342,6 +378,28 @@ class _LogEntryTile extends StatelessWidget {
                         fontWeight: FontWeight.w500,
                       ),
                     ),
+                    if (count > 1) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 1,
+                        ),
+                        decoration: BoxDecoration(
+                          color: levelColor.withAlpha(30),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: levelColor.withAlpha(90)),
+                        ),
+                        child: Text(
+                          '×$count',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: levelColor,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
                 const SizedBox(height: 2),
@@ -356,6 +414,31 @@ class _LogEntryTile extends StatelessWidget {
                     style: Theme.of(context).textTheme.bodySmall?.copyWith(
                       color: Colors.red,
                       fontFamily: 'monospace',
+                    ),
+                  ),
+                ],
+                if (entry.stackTrace != null) ...[
+                  const SizedBox(height: 4),
+                  // Stack traces make crashes like B3 diagnosable from the log
+                  // alone. Kept in a bounded, scrollable monospace box so a
+                  // long trace doesn't dominate the list.
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 140),
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: SingleChildScrollView(
+                      child: Text(
+                        entry.stackTrace!,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          fontFamily: 'monospace',
+                          fontSize: 10,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -411,8 +494,9 @@ class _CrashRecoveryDialogState extends State<_CrashRecoveryDialog> {
         subject: 'Church Analytics Crash Report',
         text: 'Crash log from Church Analytics. Please send to: $kCrashEmail',
       );
-    } catch (e) {
-      LogService.error('CrashDialog', 'Failed to send crash report', error: e);
+    } catch (e, stack) {
+      LogService.error('CrashDialog', 'Failed to send crash report',
+          error: e, stackTrace: stack);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(

@@ -51,9 +51,9 @@ class _ProfileSelectionScreenState
           _currentProfileId = currentId;
         });
       }
-    } catch (e) {
+    } catch (e, stack) {
       LogService.error('ProfileSelectionScreen', 'Failed to load profiles',
-          error: e);
+          error: e, stackTrace: stack);
       if (mounted) {
         setState(() {
           _error = e;
@@ -256,11 +256,11 @@ class _ProfileSelectionScreenState
       // Validation messages are already phrased for end users.
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
-    } catch (e) {
+    } catch (e, stack) {
       // Plain-language message for the user; full detail goes to App Logs
       // (U1 — no raw exceptions in user-facing error surfaces).
       LogService.error('ProfileSelectionScreen', 'Profile creation failed',
-          error: e);
+          error: e, stackTrace: stack);
       if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(
@@ -380,9 +380,9 @@ class _ProfileSelectionScreenState
     } on ProfileValidationException catch (e) {
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
-    } catch (e) {
+    } catch (e, stack) {
       LogService.error('ProfileSelectionScreen', 'Profile update failed',
-          error: e);
+          error: e, stackTrace: stack);
       if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(
@@ -447,9 +447,9 @@ class _ProfileSelectionScreenState
           ),
         ),
       );
-    } catch (e) {
+    } catch (e, stack) {
       LogService.error('ProfileSelectionScreen', 'Profile deletion failed',
-          error: e);
+          error: e, stackTrace: stack);
       if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(

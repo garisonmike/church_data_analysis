@@ -102,8 +102,8 @@ class _BoardMeetingEntryScreenState
           'Saved board meeting record: ${record.displayLabel}');
 
       if (mounted) Navigator.pop(context, true);
-    } catch (e) {
-      LogService.error('BoardMeetingEntry', 'Save failed', error: e);
+    } catch (e, stack) {
+      LogService.error('BoardMeetingEntry', 'Save failed', error: e, stackTrace: stack);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
@@ -151,8 +151,8 @@ class _BoardMeetingEntryScreenState
       LogService.info('BoardMeetingEntry',
           'Deleted board meeting record id=${widget.existing!.id}');
       if (mounted) Navigator.pop(context, true);
-    } catch (e) {
-      LogService.error('BoardMeetingEntry', 'Delete failed', error: e);
+    } catch (e, stack) {
+      LogService.error('BoardMeetingEntry', 'Delete failed', error: e, stackTrace: stack);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));

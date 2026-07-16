@@ -107,8 +107,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
         _isLoading = false;
         _validationResults = null;
       });
-    } catch (e) {
-      LogService.error('ImportScreen', 'File pick failed', error: e);
+    } catch (e, stack) {
+      LogService.error('ImportScreen', 'File pick failed',
+          error: e, stackTrace: stack);
       setState(() {
         _errorMessage = 'Could not open the file. Please try a different file.';
         _isLoading = false;
@@ -306,12 +307,15 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             await repository.createRecord(record);
             successCount++;
           }
-        } catch (e) {
+        } catch (e, stack) {
           errors.add('Failed to import record: row data error');
-          LogService.error('ImportScreen', 'Row import failed', error: e);
+          LogService.error('ImportScreen', 'Row import failed',
+              error: e, stackTrace: stack);
         }
       }
-    } catch (e) {
+    } catch (e, stack) {
+      LogService.error('ImportScreen', 'Import failed',
+          error: e, stackTrace: stack);
       _setOverlay(null);
       if (mounted) {
         setState(() { _errorMessage = 'Import failed: ${e.toString()}'; });

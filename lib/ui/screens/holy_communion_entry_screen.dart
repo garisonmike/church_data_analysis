@@ -136,8 +136,8 @@ class _HolyCommunionEntryScreenState
       LogService.info('HolyCommunionEntry',
           'Saved HC event: Q$_quarter $_year, ${attendanceRows.length} HC rows');
       if (mounted) Navigator.pop(context, true);
-    } catch (e) {
-      LogService.error('HolyCommunionEntry', 'Save failed', error: e);
+    } catch (e, stack) {
+      LogService.error('HolyCommunionEntry', 'Save failed', error: e, stackTrace: stack);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
@@ -185,8 +185,8 @@ class _HolyCommunionEntryScreenState
       LogService.info('HolyCommunionEntry',
           'Deleted HC event id=${widget.existing!.id}');
       if (mounted) Navigator.pop(context, true);
-    } catch (e) {
-      LogService.error('HolyCommunionEntry', 'Delete failed', error: e);
+    } catch (e, stack) {
+      LogService.error('HolyCommunionEntry', 'Delete failed', error: e, stackTrace: stack);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
