@@ -127,6 +127,53 @@ void main() {
       expect((await adminRepo.getUsersByChurch(survivorId)).length, 1);
     });
 
+    test('deleteUser nulls createdByAdminId on records instead of failing',
+        () async {
+      final adminRepo = AdminUserRepository(database);
+      final now = DateTime.now();
+
+      final churchId = await churchRepo.createChurch(
+        Church(name: 'Test Church', createdAt: now, updatedAt: now),
+      );
+      final adminId = await adminRepo.createUser(
+        AdminUser(
+          username: 'creator',
+          fullName: 'Record Creator',
+          churchId: churchId,
+          isActive: true,
+          createdAt: now,
+          lastLoginAt: now,
+        ),
+      );
+      await weeklyRecordRepo.createRecord(
+        WeeklyRecord(
+          churchId: churchId,
+          createdByAdminId: adminId,
+          weekStartDate: DateTime(2026, 2, 1),
+          men: 5,
+          women: 6,
+          youth: 4,
+          children: 3,
+          sundayHomeChurch: 2,
+          tithe: 700,
+          offerings: 300,
+          emergencyCollection: 0,
+          plannedCollection: 0,
+          createdAt: now,
+          updatedAt: now,
+        ),
+      );
+
+      final deleted = await adminRepo.deleteUser(adminId);
+      expect(deleted, 1);
+
+      // The record survives with its creator reference cleared.
+      final records = await weeklyRecordRepo.getRecordsByChurch(churchId);
+      expect(records.length, 1);
+      expect(records.single.createdByAdminId, isNull);
+      expect(await adminRepo.getUserById(adminId), isNull);
+    });
+
     test('WeeklyRecord CRUD operations work correctly', () async {
       // First create a church
       final church = Church(

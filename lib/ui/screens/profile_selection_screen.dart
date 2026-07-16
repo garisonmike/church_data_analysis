@@ -22,6 +22,9 @@ class _ProfileSelectionScreenState
   bool _loading = true;
   Object? _error;
   List<AdminUser> _profiles = const [];
+  // The profile currently in use, if any. Like the church switcher, the
+  // active profile can't be deleted from here — switch away first.
+  int? _currentProfileId;
 
   @override
   void initState() {
@@ -36,12 +39,16 @@ class _ProfileSelectionScreenState
     });
 
     try {
+      final prefs = await SharedPreferences.getInstance();
       final database = ref.read(db.databaseProvider);
       final repo = AdminUserRepository(database);
+      final service = AdminProfileService(repo, prefs);
       final profiles = await repo.getActiveUsersByChurch(widget.churchId);
+      final currentId = service.getCurrentProfileId();
       if (mounted) {
         setState(() {
           _profiles = profiles;
+          _currentProfileId = currentId;
         });
       }
     } catch (e) {
@@ -263,6 +270,183 @@ class _ProfileSelectionScreenState
     }
   }
 
+  Future<void> _editProfile(AdminUser profile) async {
+    final usernameController = TextEditingController(text: profile.username);
+    final fullNameController = TextEditingController(text: profile.fullName);
+    final emailController = TextEditingController(text: profile.email ?? '');
+
+    final messenger = ScaffoldMessenger.of(context);
+
+    final shouldSave = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Edit Profile'),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        content: LayoutBuilder(
+          builder: (context, constraints) => ConstrainedBox(
+            constraints: BoxConstraints(
+              maxHeight: constraints.maxHeight * 0.8,
+              maxWidth: 560,
+            ),
+            child: SingleChildScrollView(
+              child: FocusTraversalGroup(
+                policy: OrderedTraversalPolicy(),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: usernameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Username *',
+                        hintText: '3-50 characters',
+                        border: OutlineInputBorder(),
+                      ),
+                      autofocus: true,
+                      textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: fullNameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Full Name *',
+                        border: OutlineInputBorder(),
+                      ),
+                      textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: emailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Email',
+                        border: OutlineInputBorder(),
+                      ),
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.done,
+                      onSubmitted: (_) => Navigator.of(context).pop(true),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
+
+    if (shouldSave != true) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final database = ref.read(db.databaseProvider);
+      final service = AdminProfileService(AdminUserRepository(database), prefs);
+      // Built directly rather than via copyWith so a cleared email actually
+      // becomes null instead of silently keeping the old value.
+      final email = emailController.text.trim();
+      await service.updateProfile(
+        AdminUser(
+          id: profile.id,
+          username: usernameController.text.trim(),
+          fullName: fullNameController.text.trim(),
+          email: email.isEmpty ? null : email,
+          churchId: profile.churchId,
+          isActive: profile.isActive,
+          createdAt: profile.createdAt,
+          lastLoginAt: profile.lastLoginAt,
+          pinHash: profile.pinHash,
+        ),
+      );
+
+      if (!mounted) return;
+      await _load();
+      if (!mounted) return;
+      messenger.showSnackBar(const SnackBar(content: Text('Profile updated')));
+    } on DuplicateUsernameException {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('That username is already taken — choose another.'),
+        ),
+      );
+    } on ProfileValidationException catch (e) {
+      if (!mounted) return;
+      messenger.showSnackBar(SnackBar(content: Text(e.message)));
+    } catch (e) {
+      LogService.error('ProfileSelectionScreen', 'Profile update failed',
+          error: e);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Could not update the profile. Please try again.'),
+        ),
+      );
+    }
+  }
+
+  Future<void> _deleteProfile(AdminUser profile) async {
+    if (profile.id == null) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Delete "${profile.username}"?'),
+        content: const Text(
+          'This permanently deletes the profile. Weekly records and events '
+          'this admin created are kept, but will no longer show who created '
+          'them.\n\nThis cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final database = ref.read(db.databaseProvider);
+      final service = AdminProfileService(AdminUserRepository(database), prefs);
+      await service.deleteProfile(profile.id!);
+      if (!mounted) return;
+      await _load();
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Deleted "${profile.username}"')),
+      );
+    } catch (e) {
+      LogService.error('ProfileSelectionScreen', 'Profile deletion failed',
+          error: e);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Could not delete the profile. Please try again.'),
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -319,6 +503,7 @@ class _ProfileSelectionScreenState
               separatorBuilder: (_, __) => const Divider(height: 1),
               itemBuilder: (context, index) {
                 final profile = _profiles[index];
+                final isCurrent = profile.id == _currentProfileId;
                 return ListTile(
                   leading: CircleAvatar(
                     child: Text(
@@ -329,8 +514,47 @@ class _ProfileSelectionScreenState
                   ),
                   title: Text(profile.username),
                   subtitle: profile.fullName.isEmpty
-                      ? null
-                      : Text(profile.fullName),
+                      ? (isCurrent ? const Text('Currently in use') : null)
+                      : Text(
+                          isCurrent
+                              ? '${profile.fullName} • Currently in use'
+                              : profile.fullName,
+                        ),
+                  trailing: PopupMenuButton<String>(
+                    tooltip: 'Profile actions',
+                    onSelected: (value) {
+                      if (value == 'edit') _editProfile(profile);
+                      if (value == 'delete') _deleteProfile(profile);
+                    },
+                    itemBuilder: (context) => [
+                      const PopupMenuItem<String>(
+                        value: 'edit',
+                        child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(Icons.edit_outlined),
+                          title: Text('Edit profile'),
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'delete',
+                        // The active profile can't be deleted from here;
+                        // switch to another profile first.
+                        enabled: !isCurrent,
+                        child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(
+                            Icons.delete_outline,
+                            color: isCurrent
+                                ? Theme.of(context).disabledColor
+                                : Theme.of(context).colorScheme.error,
+                          ),
+                          title: Text(
+                            isCurrent ? 'Delete (in use)' : 'Delete profile',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                   onTap: () => _selectProfile(profile),
                 );
               },

@@ -116,11 +116,43 @@ class AdminUserRepository {
     return await updateUser(user.copyWith(isActive: true));
   }
 
-  /// Delete an admin user (hard delete)
+  /// Delete an admin user (hard delete).
+  ///
+  /// `createdByAdminId` on weekly records and event tables references this
+  /// row with no ON DELETE action and `foreign_keys = ON`, so any record the
+  /// admin ever created would block a bare delete. Those columns are nullable
+  /// ("creator no longer exists" — the same semantics backup restore uses),
+  /// so null them out first, in the same transaction as the delete.
   Future<int> deleteUser(int id) async {
-    return await (_db.delete(
-      _db.adminUsers,
-    )..where((t) => t.id.equals(id))).go();
+    return await _db.transaction(() async {
+      final clearCreator = db.WeeklyRecordsCompanion(
+        createdByAdminId: const Value(null),
+      );
+      await (_db.update(_db.weeklyRecords)
+            ..where((t) => t.createdByAdminId.equals(id)))
+          .write(clearCreator);
+      await (_db.update(_db.boardMeetingRecords)
+            ..where((t) => t.createdByAdminId.equals(id)))
+          .write(
+            db.BoardMeetingRecordsCompanion(createdByAdminId: const Value(null)),
+          );
+      await (_db.update(_db.holyCommunionEvents)
+            ..where((t) => t.createdByAdminId.equals(id)))
+          .write(
+            db.HolyCommunionEventsCompanion(createdByAdminId: const Value(null)),
+          );
+      await (_db.update(_db.businessMeetingEvents)
+            ..where((t) => t.createdByAdminId.equals(id)))
+          .write(
+            db.BusinessMeetingEventsCompanion(
+              createdByAdminId: const Value(null),
+            ),
+          );
+
+      return await (_db.delete(
+        _db.adminUsers,
+      )..where((t) => t.id.equals(id))).go();
+    });
   }
 
   /// Convert database model to domain model

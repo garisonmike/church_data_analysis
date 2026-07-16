@@ -131,6 +131,16 @@ class AdminProfileService {
       throw ProfileValidationException(validationError);
     }
 
+    // A rename must not collide with another profile in the same church
+    // (matching the per-church uniqueness rule enforced at creation).
+    final existing = await _repository.getUserByUsername(
+      profile.username,
+      profile.churchId,
+    );
+    if (existing != null && existing.id != profile.id) {
+      throw DuplicateUsernameException(profile.username);
+    }
+
     return await _repository.updateUser(profile);
   }
 
