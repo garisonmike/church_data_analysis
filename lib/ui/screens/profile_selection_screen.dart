@@ -392,6 +392,60 @@ class _ProfileSelectionScreenState
     }
   }
 
+  Future<void> _deactivateProfile(AdminUser profile) async {
+    if (profile.id == null) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text('Deactivate "${profile.username}"?'),
+        content: const Text(
+          'A deactivated admin can no longer log in or be selected as a '
+          'profile, but everything they entered is preserved — records keep '
+          'showing who created them.\n\n'
+          'Use this to retire admins who have entered records (deletion is '
+          'blocked for them to protect that history).',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Deactivate'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final database = ref.read(db.databaseProvider);
+      final service = AdminProfileService(AdminUserRepository(database), prefs);
+      await service.deactivateProfile(profile.id!);
+      if (!mounted) return;
+      await _load();
+      if (!mounted) return;
+      messenger.showSnackBar(
+        SnackBar(content: Text('Deactivated "${profile.username}"')),
+      );
+    } catch (e, stack) {
+      LogService.error('ProfileSelectionScreen', 'Profile deactivation failed',
+          error: e, stackTrace: stack);
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text('Could not deactivate the profile. Please try again.'),
+        ),
+      );
+    }
+  }
+
   Future<void> _deleteProfile(AdminUser profile) async {
     if (profile.id == null) return;
 
@@ -405,7 +459,8 @@ class _ProfileSelectionScreenState
           'This permanently deletes the profile.\n\n'
           'Profiles that have entered weekly records or events cannot be '
           'deleted — the record of who entered the data is kept for '
-          'accountability.\n\nThis cannot be undone.',
+          'accountability. Use Deactivate for those instead.\n\n'
+          'This cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -441,9 +496,8 @@ class _ProfileSelectionScreenState
       messenger.showSnackBar(
         SnackBar(
           content: Text(
-            'This profile entered ${e.recordCount} record(s) and cannot be '
-            'deleted — the record of who entered data is kept for '
-            'accountability.',
+            'This admin has entered ${e.recordCount} record(s) and can\'t be '
+            'deleted. Deactivate them instead from the profile menu.',
           ),
         ),
       );
@@ -536,6 +590,7 @@ class _ProfileSelectionScreenState
                     tooltip: 'Profile actions',
                     onSelected: (value) {
                       if (value == 'edit') _editProfile(profile);
+                      if (value == 'deactivate') _deactivateProfile(profile);
                       if (value == 'delete') _deleteProfile(profile);
                     },
                     itemBuilder: (context) => [
@@ -545,6 +600,25 @@ class _ProfileSelectionScreenState
                           contentPadding: EdgeInsets.zero,
                           leading: Icon(Icons.edit_outlined),
                           title: Text('Edit profile'),
+                        ),
+                      ),
+                      PopupMenuItem<String>(
+                        value: 'deactivate',
+                        // The active profile can't be deactivated from here;
+                        // switch to another profile first — same guardrail
+                        // as delete.
+                        enabled: !isCurrent,
+                        child: ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: Icon(
+                            Icons.person_off_outlined,
+                            color: isCurrent
+                                ? Theme.of(context).disabledColor
+                                : null,
+                          ),
+                          title: Text(
+                            isCurrent ? 'Deactivate (in use)' : 'Deactivate',
+                          ),
                         ),
                       ),
                       PopupMenuItem<String>(
