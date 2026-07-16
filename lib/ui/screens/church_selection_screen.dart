@@ -2,6 +2,7 @@ import 'package:church_analytics/database/app_database.dart' as db;
 import 'package:church_analytics/models/church.dart';
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
+import 'package:church_analytics/ui/widgets/currency_picker_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -90,7 +91,8 @@ class _ChurchSelectionScreenState extends ConsumerState<ChurchSelectionScreen> {
     final addressController = TextEditingController();
     final emailController = TextEditingController();
     final phoneController = TextEditingController();
-    final currencyController = TextEditingController(text: 'USD');
+    // No hardcoded default currency — the user must pick one (U2/U3).
+    String? selectedCurrency;
 
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
@@ -109,58 +111,57 @@ class _ChurchSelectionScreenState extends ConsumerState<ChurchSelectionScreen> {
             child: SingleChildScrollView(
               child: FocusTraversalGroup(
                 policy: OrderedTraversalPolicy(),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: nameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Church Name *',
-                        border: OutlineInputBorder(),
+                child: StatefulBuilder(
+                  builder: (context, setDialogState) => Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      TextField(
+                        controller: nameController,
+                        decoration: const InputDecoration(
+                          labelText: 'Church Name *',
+                          border: OutlineInputBorder(),
+                        ),
+                        autofocus: true,
+                        textInputAction: TextInputAction.next,
                       ),
-                      autofocus: true,
-                      textInputAction: TextInputAction.next,
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: addressController,
-                      decoration: const InputDecoration(
-                        labelText: 'Address',
-                        border: OutlineInputBorder(),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: addressController,
+                        decoration: const InputDecoration(
+                          labelText: 'Address',
+                          border: OutlineInputBorder(),
+                        ),
+                        textInputAction: TextInputAction.next,
                       ),
-                      textInputAction: TextInputAction.next,
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Contact Email',
-                        border: OutlineInputBorder(),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: emailController,
+                        decoration: const InputDecoration(
+                          labelText: 'Contact Email',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.emailAddress,
+                        textInputAction: TextInputAction.next,
                       ),
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.next,
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: phoneController,
-                      decoration: const InputDecoration(
-                        labelText: 'Contact Phone',
-                        border: OutlineInputBorder(),
+                      const SizedBox(height: 12),
+                      TextField(
+                        controller: phoneController,
+                        decoration: const InputDecoration(
+                          labelText: 'Contact Phone',
+                          border: OutlineInputBorder(),
+                        ),
+                        keyboardType: TextInputType.phone,
+                        textInputAction: TextInputAction.next,
                       ),
-                      keyboardType: TextInputType.phone,
-                      textInputAction: TextInputAction.next,
-                    ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: currencyController,
-                      decoration: const InputDecoration(
-                        labelText: 'Currency',
-                        border: OutlineInputBorder(),
+                      const SizedBox(height: 12),
+                      CurrencyPickerField(
+                        labelText: 'Currency *',
+                        value: selectedCurrency,
+                        onChanged: (code) =>
+                            setDialogState(() => selectedCurrency = code),
                       ),
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => Navigator.of(context).pop(true),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -181,6 +182,14 @@ class _ChurchSelectionScreenState extends ConsumerState<ChurchSelectionScreen> {
 
     if (shouldCreate != true) return;
 
+    if (selectedCurrency == null) {
+      if (!mounted) return;
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Please choose a currency.')),
+      );
+      return;
+    }
+
     final now = DateTime.now();
     final church = Church(
       name: nameController.text.trim(),
@@ -193,9 +202,7 @@ class _ChurchSelectionScreenState extends ConsumerState<ChurchSelectionScreen> {
       contactPhone: phoneController.text.trim().isEmpty
           ? null
           : phoneController.text.trim(),
-      currency: currencyController.text.trim().isEmpty
-          ? 'USD'
-          : currencyController.text.trim(),
+      currency: selectedCurrency!,
       createdAt: now,
       updatedAt: now,
     );

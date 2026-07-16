@@ -4,6 +4,7 @@ import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:flutter/material.dart';
 import 'package:church_analytics/ui/screens/home_church_screen.dart';
+import 'package:church_analytics/ui/widgets/currency_picker_field.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -29,7 +30,8 @@ class _ChurchSettingsScreenState extends ConsumerState<ChurchSettingsScreen> {
   late TextEditingController _addressController;
   late TextEditingController _emailController;
   late TextEditingController _phoneController;
-  late TextEditingController _currencyController;
+  // Currency is a picked ISO 4217 code, not free text (U2/U3).
+  String? _selectedCurrency;
 
   @override
   void initState() {
@@ -38,7 +40,6 @@ class _ChurchSettingsScreenState extends ConsumerState<ChurchSettingsScreen> {
     _addressController = TextEditingController();
     _emailController = TextEditingController();
     _phoneController = TextEditingController();
-    _currencyController = TextEditingController();
     _initializeService();
   }
 
@@ -48,7 +49,6 @@ class _ChurchSettingsScreenState extends ConsumerState<ChurchSettingsScreen> {
     _addressController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
-    _currencyController.dispose();
     super.dispose();
   }
 
@@ -82,7 +82,7 @@ class _ChurchSettingsScreenState extends ConsumerState<ChurchSettingsScreen> {
         _addressController.text = church.address ?? '';
         _emailController.text = church.contactEmail ?? '';
         _phoneController.text = church.contactPhone ?? '';
-        _currencyController.text = church.currency;
+        _selectedCurrency = church.currency;
         _isLoading = false;
       });
     } catch (e) {
@@ -105,6 +105,13 @@ class _ChurchSettingsScreenState extends ConsumerState<ChurchSettingsScreen> {
       return;
     }
 
+    if (_selectedCurrency == null || _selectedCurrency!.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please choose a currency.')),
+      );
+      return;
+    }
+
     setState(() {
       _isSaving = true;
     });
@@ -121,9 +128,7 @@ class _ChurchSettingsScreenState extends ConsumerState<ChurchSettingsScreen> {
         contactPhone: _phoneController.text.trim().isEmpty
             ? null
             : _phoneController.text.trim(),
-        currency: _currencyController.text.trim().isEmpty
-            ? 'USD'
-            : _currencyController.text.trim(),
+        currency: _selectedCurrency!,
         updatedAt: DateTime.now(),
       );
 
@@ -247,20 +252,10 @@ class _ChurchSettingsScreenState extends ConsumerState<ChurchSettingsScreen> {
                     const SizedBox(height: 16),
 
                     // Currency
-                    TextFormField(
-                      controller: _currencyController,
-                      decoration: const InputDecoration(
-                        labelText: 'Currency',
-                        hintText: 'e.g., USD, EUR, GBP',
-                        border: OutlineInputBorder(),
-                        prefixIcon: Icon(Icons.attach_money),
-                      ),
-                      validator: (value) {
-                        if (value == null || value.trim().isEmpty) {
-                          return 'Currency is required';
-                        }
-                        return null;
-                      },
+                    CurrencyPickerField(
+                      value: _selectedCurrency,
+                      onChanged: (code) =>
+                          setState(() => _selectedCurrency = code),
                     ),
                     const SizedBox(height: 24),
 
