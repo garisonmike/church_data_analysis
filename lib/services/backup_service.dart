@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:church_analytics/models/models.dart';
 import 'package:church_analytics/platform/file_storage_interface.dart';
 import 'package:church_analytics/services/file_service.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 /// Result of a backup operation
 class BackupResult {
@@ -161,11 +162,28 @@ class BackupData {
 /// Service for creating and restoring JSON backups
 class BackupService {
   static const String backupVersion = '1.0';
-  static const String appVersion = '1.0.0';
   final FileService _fileService;
+  final Future<PackageInfo> Function() _getPackageInfo;
 
-  BackupService({FileService? fileService})
-    : _fileService = fileService ?? FileService();
+  BackupService({
+    FileService? fileService,
+    // Injectable for tests, same pattern as UpdateService.
+    Future<PackageInfo> Function()? getPackageInfo,
+  }) : _fileService = fileService ?? FileService(),
+       _getPackageInfo = getPackageInfo ?? PackageInfo.fromPlatform;
+
+  /// Resolves the real app version for backup metadata; previously this was
+  /// a hardcoded '1.0.0' stamped into every backup regardless of the version
+  /// that actually created it.
+  Future<String> _resolveAppVersion() async {
+    try {
+      final info = await _getPackageInfo();
+      return info.version;
+    } catch (_) {
+      // Platform channel unavailable (e.g. bare unit tests).
+      return 'unknown';
+    }
+  }
 
   /// Generate a timestamped backup filename
   String generateBackupFilename() {
@@ -277,7 +295,7 @@ class BackupService {
       final metadata = BackupMetadata(
         version: backupVersion,
         createdAt: DateTime.now(),
-        appVersion: appVersion,
+        appVersion: await _resolveAppVersion(),
         churchCount: churches.length,
         adminCount: admins.length,
         recordCount: records.length,

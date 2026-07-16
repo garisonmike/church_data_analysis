@@ -5,6 +5,7 @@ import 'package:church_analytics/models/models.dart';
 import 'package:church_analytics/platform/file_storage_interface.dart';
 import 'package:church_analytics/services/backup_service.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as path;
 
 void main() {
@@ -196,6 +197,28 @@ void main() {
 
         // Verify file exists
         expect(await File(result.filePath!).exists(), isTrue);
+      });
+
+      test('stamps the real app version into backup metadata', () async {
+        // Previously a hardcoded '1.0.0' regardless of the actual version.
+        final versionedService = BackupService(
+          getPackageInfo: () async => PackageInfo(
+            appName: 'church_analytics',
+            packageName: 'com.example.church_analytics',
+            version: '9.9.9',
+            buildNumber: '42',
+          ),
+        );
+
+        final result = await versionedService.createBackup(
+          churches: [createTestChurch(id: 1)],
+          admins: [createTestAdmin(id: 1)],
+          records: [createTestRecord(id: 1)],
+          customPath: path.join(tempDir.path, 'versioned_backup.json'),
+        );
+
+        expect(result.success, isTrue);
+        expect(result.metadata!.appVersion, equals('9.9.9'));
       });
 
       test('should create valid JSON structure', () async {
