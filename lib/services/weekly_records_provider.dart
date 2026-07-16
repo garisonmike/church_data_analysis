@@ -241,10 +241,11 @@ final churchRepositoryProvider = Provider<ChurchRepository>((ref) {
 /// and startup gate write.
 ///
 /// Screens that aren't handed a churchId via route arguments (Home Churches,
-/// board/holy-communion/business-meeting entry) must use this rather than
-/// `AppSettings.selectedChurchId`, which no code path ever writes and so is
-/// always null. Kept [Provider.autoDispose] so each fresh screen subscription
-/// re-reads the current value instead of serving a stale first evaluation.
+/// board/holy-communion/business-meeting entry) must use this. (They formerly
+/// read an `AppSettings.selectedChurchId` field that no code path ever wrote —
+/// always null — which is why it was removed from the model.) Kept
+/// [Provider.autoDispose] so each fresh screen subscription re-reads the
+/// current value instead of serving a stale first evaluation.
 final currentChurchIdProvider = Provider.autoDispose<int?>((ref) {
   final prefs = ref.read(sharedPreferencesProvider);
   return ChurchService(ref.read(churchRepositoryProvider), prefs)

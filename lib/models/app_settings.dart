@@ -58,24 +58,24 @@ enum Currency {
   }
 }
 
-/// Application settings model — includes the active church selection so every
-/// screen can read it from a single, persisted source of truth.
+/// Application settings model: currency, locale, timezone, and theme.
+///
+/// The current church selection is NOT stored here — it lives in
+/// SharedPreferences under ChurchService, exposed to widgets via
+/// `currentChurchIdProvider`. (An unwired `selectedChurchId` field here was
+/// the root cause of U9's "No church selected" bug; a stale value from an
+/// old settings JSON is deliberately ignored by [fromJson].)
 class AppSettings extends Equatable {
   final Currency currency;
   final String locale;
   final String timezone;
   final AppThemeMode themeMode;
 
-  /// The ID of the currently selected church. Null when no church has been
-  /// selected yet (first-launch state).
-  final int? selectedChurchId;
-
   const AppSettings({
     this.currency = Currency.kes,
     this.locale = 'en_KE',
     this.timezone = 'Africa/Nairobi',
     this.themeMode = AppThemeMode.system,
-    this.selectedChurchId,
   });
 
   AppSettings copyWith({
@@ -83,17 +83,12 @@ class AppSettings extends Equatable {
     String? locale,
     String? timezone,
     AppThemeMode? themeMode,
-    // Use a sentinel so callers can explicitly set selectedChurchId to null.
-    Object? selectedChurchId = _unset,
   }) {
     return AppSettings(
       currency: currency ?? this.currency,
       locale: locale ?? this.locale,
       timezone: timezone ?? this.timezone,
       themeMode: themeMode ?? this.themeMode,
-      selectedChurchId: identical(selectedChurchId, _unset)
-          ? this.selectedChurchId
-          : selectedChurchId as int?,
     );
   }
 
@@ -103,7 +98,6 @@ class AppSettings extends Equatable {
       'locale': locale,
       'timezone': timezone,
       'themeMode': themeMode.value,
-      if (selectedChurchId != null) 'selectedChurchId': selectedChurchId,
     };
   }
 
@@ -115,7 +109,6 @@ class AppSettings extends Equatable {
       themeMode: AppThemeMode.fromValue(
         json['themeMode'] ?? AppThemeMode.system.value,
       ),
-      selectedChurchId: json['selectedChurchId'] as int?,
     );
   }
 
@@ -129,17 +122,11 @@ class AppSettings extends Equatable {
   }
 
   @override
-  List<Object?> get props =>
-      [currency, locale, timezone, themeMode, selectedChurchId];
+  List<Object?> get props => [currency, locale, timezone, themeMode];
 
   @override
   String toString() {
     return 'AppSettings(currency: $currency, locale: $locale, '
-        'timezone: $timezone, themeMode: $themeMode, '
-        'selectedChurchId: $selectedChurchId)';
+        'timezone: $timezone, themeMode: $themeMode)';
   }
 }
-
-/// Private sentinel value used by [AppSettings.copyWith] so that
-/// `selectedChurchId: null` can be distinguished from "not provided".
-const _unset = Object();
