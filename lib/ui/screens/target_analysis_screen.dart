@@ -19,6 +19,10 @@ const Map<String, double> _kTargets = {
   'Home Church': 2000,
   'Tithe': 1050000,
   'Offerings': 450000,
+  // Total Income target = Tithe target + Offerings target. Required by
+  // _buildTripleTargetBars, which indexes this map with 'Total Income';
+  // without it the `_kTargets[entry.key]!` lookup crashes the screen.
+  'Total Income': 1500000,
   'Baptisms': 500,  // from data.py DS2 targets
 };
 
