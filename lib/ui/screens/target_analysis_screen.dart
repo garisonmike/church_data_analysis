@@ -574,7 +574,7 @@ class _TargetContent extends StatelessWidget {
             data: data,
             title: '${entry.key} vs Target',
             yAxisTitle: 'Count',
-            target: _kTargets[entry.key]!,
+            target: _kTargets[entry.key] ?? 0,
             targetLabel: 'Target',
           ),
         ),
@@ -608,7 +608,7 @@ class _TargetContent extends StatelessWidget {
             data: data,
             title: '${entry.key} vs Target',
             yAxisTitle: entry.key == 'Total Income' ? 'Amount' : 'Count',
-            target: _kTargets[entry.key]!,
+            target: _kTargets[entry.key] ?? 0,
             targetLabel: 'Target',
           ),
         ),
@@ -659,22 +659,27 @@ class _BarWithTarget extends StatelessWidget {
               title: AxisTitle(text: yAxisTitle),
               numberFormat: NumberFormat.compact(),
               labelStyle: const TextStyle(fontSize: 10),
-              plotBands: [
-                PlotBand(
-                  start: target,
-                  end: target,
-                  borderColor: Colors.red,
-                  borderWidth: 2,
-                  dashArray: const <double>[8, 4],
-                  text: targetLabel,
-                  textStyle: const TextStyle(
-                    color: Colors.red,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                  horizontalTextAlignment: TextAnchor.end,
-                ),
-              ],
+              // Only draw the target line when a real target is set. A missing
+              // metric now resolves to 0 (see _kTargets lookups) rather than
+              // crashing; a zero target line would be meaningless, so skip it.
+              plotBands: target > 0
+                  ? [
+                      PlotBand(
+                        start: target,
+                        end: target,
+                        borderColor: Colors.red,
+                        borderWidth: 2,
+                        dashArray: const <double>[8, 4],
+                        text: targetLabel,
+                        textStyle: const TextStyle(
+                          color: Colors.red,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        horizontalTextAlignment: TextAnchor.end,
+                      ),
+                    ]
+                  : const <PlotBand>[],
             ),
             plotAreaBorderWidth: 0,
             series: <CartesianSeries>[
