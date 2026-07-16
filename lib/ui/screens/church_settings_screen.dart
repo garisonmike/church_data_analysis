@@ -313,6 +313,24 @@ class _ChurchSettingsScreenState extends ConsumerState<ChurchSettingsScreen> {
                       ),
                     ),
 
+                    const SizedBox(height: 8),
+
+                    // Switch Church — reaches the church selector, which is
+                    // otherwise only pushed automatically at first launch.
+                    Card(
+                      child: ListTile(
+                        key: const ValueKey('switch_church_tile'),
+                        leading: const Icon(Icons.swap_horiz),
+                        title: const Text('Switch Church'),
+                        subtitle: const Text(
+                          'Select a different church or create a new one',
+                        ),
+                        trailing: const Icon(Icons.chevron_right),
+                        onTap: () =>
+                            Navigator.of(context).pushNamed('/select-church'),
+                      ),
+                    ),
+
                     const SizedBox(height: 24),
 
                     // Save Button (large)
