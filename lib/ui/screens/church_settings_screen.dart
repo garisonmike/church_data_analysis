@@ -259,38 +259,39 @@ class _ChurchSettingsScreenState extends ConsumerState<ChurchSettingsScreen> {
                     ),
                     const SizedBox(height: 24),
 
-                    // Metadata
-                    if (_church != null) ...[
+                    // Metadata — collapsed by default (U8). Church ID, created,
+                    // and last-updated are support/debug details, not primary
+                    // editable fields, so they live in a folded "Advanced"
+                    // section below the form rather than at full prominence.
+                    if (_church != null)
                       Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Church Information',
-                                style: Theme.of(context).textTheme.titleMedium,
-                              ),
-                              const SizedBox(height: 12),
-                              _buildInfoRow(
-                                'Church ID',
-                                _church!.id.toString(),
-                              ),
-                              const SizedBox(height: 8),
-                              _buildInfoRow(
-                                'Created',
-                                _formatDateTime(_church!.createdAt),
-                              ),
-                              const SizedBox(height: 8),
-                              _buildInfoRow(
-                                'Last Updated',
-                                _formatDateTime(_church!.updatedAt),
-                              ),
-                            ],
+                        clipBehavior: Clip.antiAlias,
+                        child: ExpansionTile(
+                          leading: const Icon(Icons.info_outline),
+                          title: const Text('Advanced'),
+                          subtitle: const Text('Technical details'),
+                          childrenPadding: const EdgeInsets.fromLTRB(
+                            16,
+                            0,
+                            16,
+                            16,
                           ),
+                          expandedCrossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildInfoRow('Church ID', _church!.id.toString()),
+                            const SizedBox(height: 8),
+                            _buildInfoRow(
+                              'Created',
+                              _formatDateTime(_church!.createdAt),
+                            ),
+                            const SizedBox(height: 8),
+                            _buildInfoRow(
+                              'Last Updated',
+                              _formatDateTime(_church!.updatedAt),
+                            ),
+                          ],
                         ),
                       ),
-                    ],
 
                     const SizedBox(height: 24),
 
