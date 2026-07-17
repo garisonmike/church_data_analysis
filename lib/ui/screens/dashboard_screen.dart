@@ -263,7 +263,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   visualDensity: VisualDensity.standard,
                 ),
               ),
-              ChurchSelectorWidget(onChurchChanged: _loadData),
+              const ChurchSelectorWidget(),
               if (_profileService != null)
                 ProfileSwitcherWidget(
                   churchId: widget.churchId,
@@ -1166,7 +1166,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               const SizedBox(height: 12),
-              ChurchSelectorWidget(onChurchChanged: _loadData),
+              const ChurchSelectorWidget(),
             ],
           ),
         ),
