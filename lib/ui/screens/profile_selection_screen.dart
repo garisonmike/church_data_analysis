@@ -114,7 +114,11 @@ class _ProfileSelectionScreenState
     }
 
     if (!mounted) return;
-    navigator.pushReplacementNamed('/');
+    // Clear the whole stack: this screen is reachable both from the startup
+    // gate (stack of one) and mid-session from the dashboard's profile chip;
+    // in the latter case a pushReplacement would leave the previous
+    // profile's dashboard underneath the new one.
+    navigator.pushNamedAndRemoveUntil('/', (route) => false);
   }
 
   /// Shows a PIN entry dialog. Returns the entered PIN string or null on cancel.
@@ -164,13 +168,14 @@ class _ProfileSelectionScreenState
       builder: (context) => AlertDialog(
         title: const Text('Create Admin Profile'),
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        content: LayoutBuilder(
-          builder: (context, constraints) => ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: constraints.maxHeight * 0.8,
-              maxWidth: 560,
-            ),
-            child: SingleChildScrollView(
+        // NOTE: no LayoutBuilder here — AlertDialog measures its content via
+        // IntrinsicWidth, and LayoutBuilder cannot report intrinsics (debug
+        // builds assert and the dialog renders as a dimmed empty barrier).
+        // AlertDialog already height-limits its content; the scroll view
+        // handles overflow.
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: SingleChildScrollView(
               child: FocusTraversalGroup(
                 policy: OrderedTraversalPolicy(),
                 child: Column(
@@ -209,7 +214,6 @@ class _ProfileSelectionScreenState
                   ],
                 ),
               ),
-            ),
           ),
         ),
         actions: [
@@ -244,7 +248,8 @@ class _ProfileSelectionScreenState
       if (!mounted) return;
       await _load();
       if (!mounted) return;
-      navigator.pushReplacementNamed('/');
+      // Same stack reset as _selectProfile — see comment there.
+      navigator.pushNamedAndRemoveUntil('/', (route) => false);
     } on DuplicateUsernameException {
       if (!mounted) return;
       messenger.showSnackBar(
@@ -282,13 +287,11 @@ class _ProfileSelectionScreenState
       builder: (context) => AlertDialog(
         title: const Text('Edit Profile'),
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        content: LayoutBuilder(
-          builder: (context, constraints) => ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: constraints.maxHeight * 0.8,
-              maxWidth: 560,
-            ),
-            child: SingleChildScrollView(
+        // See note on the create dialog: LayoutBuilder breaks AlertDialog's
+        // intrinsic measurement.
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: SingleChildScrollView(
               child: FocusTraversalGroup(
                 policy: OrderedTraversalPolicy(),
                 child: Column(
@@ -327,7 +330,6 @@ class _ProfileSelectionScreenState
                   ],
                 ),
               ),
-            ),
           ),
         ),
         actions: [

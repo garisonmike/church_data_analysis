@@ -268,7 +268,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ProfileSwitcherWidget(
                   churchId: widget.churchId,
                   profileService: _profileService!,
-                  onProfileChanged: _loadData,
                 ),
               IconButton(
                 icon: const Icon(Icons.analytics_outlined),
@@ -1195,10 +1194,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ),
               const SizedBox(height: 12),
               ProfileSwitcherWidget(
-                churchId: widget.churchId,
-                profileService: _profileService!,
-                onProfileChanged: _loadData,
-              ),
+                  churchId: widget.churchId,
+                  profileService: _profileService!,
+                ),
             ],
           ),
         ),
