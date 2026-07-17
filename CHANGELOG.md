@@ -11,7 +11,80 @@ Format: [BUG-XX] or [FEATURE] — Description — Files changed
 
 ---
 
-## [1.6.0] — 2026-07-16
+## [1.6.0] — 2026-07-17
+
+### Bug Fixes (on-device testing round)
+
+Found and fixed during live testing on a physical Android device; several
+shared a root cause and had shipped hidden behind the pre-release code
+audit.
+
+- **[BUG-22]** Reports & Backup "Restore" reported success but wrote
+  nothing to the database (a parse-only stub); restoring then landed the
+  user on "no church exists". Restore is now real, atomic, and shared with
+  the first-launch importer. The matching export stub shipped an empty
+  admin list and only the current church — every backup it produced was
+  born with orphaned admin references; export now captures all churches and
+  admins, and the serializer round-trips the previously-dropped optional
+  fields (baptisms, communion, sabbath school, visitors, mission offering,
+  local budget).
+  - Files: `lib/services/backup_service.dart`,
+    `lib/ui/screens/reports_screen.dart`,
+    `lib/ui/screens/first_launch_backup_import_screen.dart`,
+    `lib/repositories/admin_user_repository.dart`
+
+- **[BUG-23]** Imported and restored records never appeared in any chart,
+  and older records never appeared on the dashboard. The chart pipeline
+  silently filtered to records created by the current admin (restored
+  records have no creator, so they matched nothing), and the dashboard used
+  a hardcoded 12-week window. Removed the per-admin filter (analytics are
+  church-wide); the dashboard now honors a visible time-range selector
+  defaulting to All Time, so dashboard, charts, imported-data, and PDF
+  reports finally agree on scope.
+  - Files: `lib/services/weekly_records_provider.dart`,
+    `lib/repositories/weekly_record_repository.dart`,
+    `lib/ui/screens/dashboard_screen.dart`
+
+- **[BUG-24]** The dashboard's church selector updated the stored current
+  church but every screen kept the church id frozen at construction, so
+  "switching" relabeled the screen while still showing the old church's
+  data (which read as cross-church leakage). The chip now routes through
+  the real selector/gate so all screens rebuild for the new church.
+  - Files: `lib/ui/widgets/church_selector_widget.dart`,
+    `lib/ui/screens/dashboard_screen.dart`
+
+- **[BUG-25]** CSV/XLSX import invalidated no providers, so imported
+  records were invisible until an app restart. Import now refreshes the
+  record providers and dashboard.
+  - Files: `lib/ui/screens/import_screen.dart`
+
+- **[BUG-26]** Profile Edit/Deactivate/Delete were unreachable: the
+  dashboard's profile chip opened a bare switch/create dialog while the
+  real management screen was only reachable from the startup gate. The chip
+  now opens the real screen.
+  - Files: `lib/ui/widgets/profile_switcher_widget.dart`,
+    `lib/ui/screens/profile_selection_screen.dart`
+
+- **[BUG-27]** Five dialogs (profile create/edit, church create, and three
+  CSV-import dialogs) used LayoutBuilder as AlertDialog content, which
+  asserts under the dialog's intrinsic measurement — a dimmed, hung screen
+  in debug. All switched to a plain constrained box.
+  - Files: `lib/ui/screens/profile_selection_screen.dart`,
+    `lib/ui/screens/church_selection_screen.dart`,
+    `lib/ui/screens/import_screen.dart`
+
+- **[BUG-28]** App Settings currency/theme dropdowns and every chart
+  screen's app bar overflowed on phone widths. Fixed with isExpanded on the
+  dropdowns and by moving the chart time-range selector to a full-width
+  app-bar bottom bar.
+  - Files: `lib/ui/screens/app_settings_screen.dart`, chart screens
+
+- **[BUG-29]** Three entry forms exposed an internal congregation
+  abbreviation ("Expected at KCC") in field labels; relabeled to "Expected"
+  with helper text.
+  - Files: `lib/ui/screens/home_church_screen.dart`,
+    `lib/ui/screens/business_meeting_entry_screen.dart`,
+    `lib/ui/screens/holy_communion_entry_screen.dart`
 
 ### Bug Fixes
 

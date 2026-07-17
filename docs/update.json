@@ -1,8 +1,8 @@
 {
-    "version": "1.5.0",
-    "release_date": "2026-05-16",
+    "version": "1.6.0",
+    "release_date": "2026-07-17",
     "min_supported_version": "1.0.0",
-    "release_notes": "## What's New\n\n- Enhanced in-app update flow with backup prompts, visible download progress, install failure recovery, and update controls in settings.\n- Background update checks now respect connectivity state and app lifecycle startup paths.\n- Release CI now builds Android, Windows, and web container assets from branch and version tag pushes.\n\n## Bug Fixes\n\n- Fixed onboarding/update-gating edge cases after update prompts and install attempts.\n- Strengthened update download result handling, checksum validation, Android install permission checks, and foreground download support.",
+    "release_notes": "## What's New\n\n- Multi-church management: switch churches from anywhere, create and delete churches, with data correctly scoped to the church you're viewing.\n- Admin profiles: edit, deactivate, or delete profiles; usernames are unique per church; deleting a profile that entered records is blocked to keep the record of who entered data.\n- Currency and region: pick your currency from a searchable list, and set currency, language, and timezone at once by choosing your region when creating a church.\n- Charts and dashboard now show all of your church's data, with a visible time-range selector to narrow the view.\n\n## Bug Fixes\n\n- Backup & Restore now works end to end: restoring a backup actually loads your data, and backups capture every church and admin.\n- Imported data now appears immediately on the dashboard and in charts, without restarting the app.\n- Fixed a hang when creating a profile, dropdown/app-bar layout glitches, and unclear field labels.",
     "platforms": {
         "android": {
             "download_url": "https://github.com/GarisonMike/church_data_analysis/releases/download/v1.5.0/app-release.apk",
