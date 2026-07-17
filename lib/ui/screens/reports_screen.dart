@@ -7,6 +7,7 @@ import '../../models/models.dart';
 import '../../platform/path_safety_guard.dart';
 // 2.6-A: removed repositories.dart (caused unused-import warning)
 // 2.6-A: added individual repository imports needed by _getRecords / _getChurches
+import '../../repositories/admin_user_repository.dart';
 import '../../repositories/weekly_record_repository.dart';
 import '../../repositories/church_repository.dart';
 import '../../services/services.dart';
@@ -97,11 +98,36 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
     return church != null ? [church] : [];
   }
 
-  Future<List<AdminUser>> _getAdmins() async {
-    // For this repair task, we just return empty or current user if needed,
-    // but the backup service expects a list.
-    // In a real app we'd fetch actual users.
-    return [];
+  // ── Full-backup fetchers ───────────────────────────────────────────────────
+  // A backup must capture the WHOLE database — every church, every admin,
+  // every record — not just the church this screen happens to be scoped to.
+  // (The old _getAdmins() stub returned [] and _createBackup reused the
+  // current-church fetchers, producing backups that silently dropped other
+  // churches and all admin accounts; restoring one orphaned every record's
+  // createdByAdminId.)
+
+  Future<List<Church>> _getAllChurchesForBackup() async {
+    final database = ref.read(db.databaseProvider);
+    return ChurchRepository(database).getAllChurches();
+  }
+
+  Future<List<AdminUser>> _getAllAdminsForBackup() async {
+    final database = ref.read(db.databaseProvider);
+    return AdminUserRepository(database).getAllUsers();
+  }
+
+  Future<List<WeeklyRecord>> _getAllRecordsForBackup(
+    List<Church> churches,
+  ) async {
+    final database = ref.read(db.databaseProvider);
+    final repository = WeeklyRecordRepository(database);
+    final all = <WeeklyRecord>[];
+    for (final church in churches) {
+      if (church.id != null) {
+        all.addAll(await repository.getRecordsByChurch(church.id!));
+      }
+    }
+    return all;
   }
 
   void _showStatus(
@@ -279,9 +305,10 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   Future<void> _createBackup() async {
     setState(() => _isProcessing = true);
     try {
-      final records = await _getRecords();
-      final churches = await _getChurches();
-      final admins = await _getAdmins();
+      // Full backup: every church, every admin, every record — app-wide.
+      final churches = await _getAllChurchesForBackup();
+      final admins = await _getAllAdminsForBackup();
+      final records = await _getAllRecordsForBackup(churches);
 
       final suggestedName = _backupService.generateBackupFilename();
       final customPath = await _pickExportPath(
@@ -339,16 +366,56 @@ class _ReportsScreenState extends ConsumerState<ReportsScreen> {
   }
 
   Future<void> _restoreBackup() async {
+    // Restores are additive: the backup's churches come in as NEW churches
+    // (nothing is merged or overwritten). Make sure the user understands
+    // that before writing anything.
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Restore Backup?'),
+        content: const Text(
+          'The backup\'s churches, admins, and records will be ADDED as new '
+          'entries. Existing data is not merged or overwritten.\n\n'
+          'Restoring the same backup twice will create duplicates.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Restore'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
     setState(() => _isProcessing = true);
     try {
       final file = await ref
           .read(fileServiceProvider)
           .pickFile(allowedExtensions: ['json']);
       if (file != null && mounted) {
-        final result = await _backupService.restoreFromBackup(file);
+        final database = ref.read(db.databaseProvider);
+        final result = await _backupService.restoreFromBackup(file, database);
         if (result.success) {
           if (mounted) {
-            ExportResultSnackBar.showImportSuccess(context, file.name);
+            // The restore wrote new rows — drop every cached record list so
+            // screens reflect them without an app restart.
+            ref.invalidate(weeklyRecordsForChurchProvider(widget.churchId));
+            ref.invalidate(allWeeklyRecordsForChurchProvider(widget.churchId));
+            ref.read(dashboardRefreshProvider.notifier).update((n) => n + 1);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Restored ${result.churchesRestored} church(es), '
+                  '${result.adminsRestored} admin(s), '
+                  '${result.recordsRestored} record(s) from ${file.name}.',
+                ),
+              ),
+            );
           }
         } else {
           if (kDebugMode) {

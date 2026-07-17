@@ -8,6 +8,17 @@ class AdminUserRepository {
 
   AdminUserRepository(this._db);
 
+  /// Get every admin user across all churches.
+  ///
+  /// Used by the full-backup export, which must capture all admins so that
+  /// restored records keep their creator references (a backup exported
+  /// without admins forces every restored record's createdByAdminId to
+  /// null).
+  Future<List<AdminUser>> getAllUsers() async {
+    final users = await _db.select(_db.adminUsers).get();
+    return users.map(_toModel).toList();
+  }
+
   /// Get all admin users for a church
   Future<List<AdminUser>> getUsersByChurch(int churchId) async {
     final users = await (_db.select(

@@ -1,7 +1,9 @@
 import 'dart:convert';
 
+import 'package:church_analytics/database/app_database.dart' as db;
 import 'package:church_analytics/models/models.dart';
 import 'package:church_analytics/platform/file_storage_interface.dart';
+import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/file_service.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 
@@ -253,6 +255,12 @@ class BackupService {
     'youth': record.youth,
     'children': record.children,
     'sundayHomeChurch': record.sundayHomeChurch,
+    'baptisms': record.baptisms,
+    'holyCommunion': record.holyCommunion,
+    'sabbathSchoolAttendance': record.sabbathSchoolAttendance,
+    'visitorsCount': record.visitorsCount,
+    'missionOffering': record.missionOffering,
+    'localChurchBudget': record.localChurchBudget,
     'tithe': record.tithe,
     'offerings': record.offerings,
     'emergencyCollection': record.emergencyCollection,
@@ -272,6 +280,14 @@ class BackupService {
     youth: json['youth'] as int,
     children: json['children'] as int,
     sundayHomeChurch: json['sundayHomeChurch'] as int,
+    // Nullable extras — absent in backups created before they were added
+    // to the serializer, so parse leniently.
+    baptisms: json['baptisms'] as int?,
+    holyCommunion: json['holyCommunion'] as int?,
+    sabbathSchoolAttendance: json['sabbathSchoolAttendance'] as int?,
+    visitorsCount: json['visitorsCount'] as int?,
+    missionOffering: (json['missionOffering'] as num?)?.toDouble(),
+    localChurchBudget: (json['localChurchBudget'] as num?)?.toDouble(),
     tithe: (json['tithe'] as num).toDouble(),
     offerings: (json['offerings'] as num).toDouble(),
     emergencyCollection: (json['emergencyCollection'] as num).toDouble(),
@@ -416,9 +432,17 @@ class BackupService {
 
   /// Restore data from a backup file
   /// Returns parsed data that can be used by repositories to persist
-  Future<RestoreResult> restoreFromBackup(PlatformFileResult file) async {
+  /// Validates [file], parses it, and writes its contents into [database].
+  ///
+  /// This used to be a stub that parsed the file, counted its contents, and
+  /// reported success without writing a single row — a restore button that
+  /// lied. It now performs the same atomic restore as the first-launch
+  /// import screen via [restoreBackupData].
+  Future<RestoreResult> restoreFromBackup(
+    PlatformFileResult file,
+    db.AppDatabase database,
+  ) async {
     try {
-      // Validate backup first
       if (!await validateBackup(file)) {
         return RestoreResult.error('Invalid backup file format');
       }
@@ -428,18 +452,117 @@ class BackupService {
         return RestoreResult.error('Could not read backup file');
       }
 
-      // Parse all data
-      final churches = parseChurches(backupData);
-      final admins = parseAdminUsers(backupData);
-      final records = parseWeeklyRecords(backupData);
-
-      return RestoreResult.success(
-        churches: churches.length,
-        admins: admins.length,
-        records: records.length,
-      );
+      return await restoreBackupData(database, backupData);
     } catch (e) {
       return RestoreResult.error('Failed to restore from backup: $e');
+    }
+  }
+
+  /// Restores [backupData] into [database] atomically.
+  ///
+  /// The single shared restore implementation (also used by the first-launch
+  /// import screen). Semantics:
+  ///
+  /// - **Additive**: the backup's churches are inserted as new rows; nothing
+  ///   is merged with or overwritten in existing data. Old IDs are remapped
+  ///   to the freshly-inserted ones for admins and records.
+  /// - **Orphaned admin references become null**: if a record's
+  ///   `createdByAdminId` isn't among the restored admins (e.g. a backup
+  ///   exported with no admins), the reference is dropped rather than
+  ///   reusing a stale ID that would violate the FK constraint.
+  /// - **Atomic**: everything runs in one transaction — any failure rolls
+  ///   back all of it, so a failed restore really does change nothing.
+  Future<RestoreResult> restoreBackupData(
+    db.AppDatabase database,
+    BackupData backupData,
+  ) async {
+    final churchRepo = ChurchRepository(database);
+    final adminRepo = AdminUserRepository(database);
+    final recordRepo = WeeklyRecordRepository(database);
+
+    var churchCount = 0;
+    var adminCount = 0;
+    var recordCount = 0;
+
+    try {
+      await database.transaction(() async {
+        // 1. Churches — track old ID → new ID for FK remapping.
+        final Map<int, int> churchIdMap = {};
+        for (final churchJson in backupData.churches) {
+          final church = churchFromJson(churchJson);
+          final oldId = church.id;
+          final newId = await churchRepo.createChurch(church);
+          if (oldId != null) churchIdMap[oldId] = newId;
+          churchCount++;
+        }
+
+        // 2. Admin users — remap churchId; track old ID → new ID.
+        final Map<int, int> adminIdMap = {};
+        for (final adminJson in backupData.adminUsers) {
+          final admin = adminUserFromJson(adminJson);
+          final oldId = admin.id;
+          final remappedChurchId =
+              churchIdMap[admin.churchId] ?? admin.churchId;
+          final newId = await adminRepo.createUser(
+            AdminUser(
+              username: admin.username,
+              fullName: admin.fullName,
+              email: admin.email,
+              churchId: remappedChurchId,
+              isActive: admin.isActive,
+              createdAt: admin.createdAt,
+              lastLoginAt: admin.lastLoginAt,
+            ),
+          );
+          if (oldId != null) adminIdMap[oldId] = newId;
+          adminCount++;
+        }
+
+        // 3. Weekly records — remap churchId and createdByAdminId.
+        for (final recordJson in backupData.weeklyRecords) {
+          final record = weeklyRecordFromJson(recordJson);
+          final remappedChurchId =
+              churchIdMap[record.churchId] ?? record.churchId;
+          final remappedAdminId = record.createdByAdminId != null
+              ? adminIdMap[record.createdByAdminId!]
+              : null;
+          await recordRepo.createRecord(
+            WeeklyRecord(
+              churchId: remappedChurchId,
+              createdByAdminId: remappedAdminId,
+              weekStartDate: record.weekStartDate,
+              men: record.men,
+              women: record.women,
+              youth: record.youth,
+              children: record.children,
+              sundayHomeChurch: record.sundayHomeChurch,
+              baptisms: record.baptisms,
+              holyCommunion: record.holyCommunion,
+              sabbathSchoolAttendance: record.sabbathSchoolAttendance,
+              visitorsCount: record.visitorsCount,
+              missionOffering: record.missionOffering,
+              localChurchBudget: record.localChurchBudget,
+              tithe: record.tithe,
+              offerings: record.offerings,
+              emergencyCollection: record.emergencyCollection,
+              plannedCollection: record.plannedCollection,
+              createdAt: record.createdAt,
+              updatedAt: record.updatedAt,
+            ),
+          );
+          recordCount++;
+        }
+      });
+
+      return RestoreResult.success(
+        churches: churchCount,
+        admins: adminCount,
+        records: recordCount,
+      );
+    } catch (e) {
+      return RestoreResult.error(
+        'Restore failed: $e. No data was changed.',
+      );
     }
   }
 

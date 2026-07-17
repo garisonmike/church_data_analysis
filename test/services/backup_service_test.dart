@@ -1,9 +1,12 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:church_analytics/database/app_database.dart' as db;
 import 'package:church_analytics/models/models.dart';
 import 'package:church_analytics/platform/file_storage_interface.dart';
+import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/backup_service.dart';
+import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:path/path.dart' as path;
@@ -50,11 +53,18 @@ void main() {
     lastLoginAt: DateTime(2025, 1, 15),
   );
 
-  WeeklyRecord createTestRecord({int? id, int churchId = 1}) => WeeklyRecord(
+  // Distinct dates matter: {churchId, weekStartDate} is a UNIQUE key, so two
+  // records with the same default date collide the moment they are actually
+  // inserted (the old parse-only restore stub never noticed).
+  WeeklyRecord createTestRecord({
+    int? id,
+    int churchId = 1,
+    DateTime? weekStartDate,
+  }) => WeeklyRecord(
     id: id,
     churchId: churchId,
     createdByAdminId: 1,
-    weekStartDate: DateTime(2025, 1, 5),
+    weekStartDate: weekStartDate ?? DateTime(2025, 1, 5),
     men: 50,
     women: 60,
     youth: 30,
@@ -356,13 +366,30 @@ void main() {
     });
 
     group('restoreFromBackup', () {
-      test('should restore data from valid backup', () async {
+      late db.AppDatabase database;
+
+      setUp(() {
+        database = db.AppDatabase.forTesting(NativeDatabase.memory());
+      });
+
+      tearDown(() async {
+        await database.close();
+      });
+
+      test('should actually write restored data into the database', () async {
+        // The old implementation parsed the file, counted its contents, and
+        // reported success without inserting a single row — and the old
+        // version of this test only checked the counts, so it passed. Assert
+        // on the database itself.
         final churches = [
           createTestChurch(id: 1),
           createTestChurch(id: 2, name: 'Church 2'),
         ];
         final admins = [createTestAdmin(id: 1)];
-        final records = [createTestRecord(id: 1), createTestRecord(id: 2)];
+        final records = [
+          createTestRecord(id: 1),
+          createTestRecord(id: 2, weekStartDate: DateTime(2025, 1, 12)),
+        ];
 
         final filePath = path.join(tempDir.path, 'restore_test.json');
         final createResult = await service.createBackup(
@@ -371,26 +398,103 @@ void main() {
           records: records,
           customPath: filePath,
         );
-
         expect(createResult.success, isTrue);
-        expect(createResult.filePath, isNotNull);
 
         final result = await service.restoreFromBackup(
           fileFromPath(createResult.filePath!),
+          database,
         );
 
+        expect(result.error, isNull);
         expect(result.success, isTrue);
         expect(result.churchesRestored, equals(2));
         expect(result.adminsRestored, equals(1));
         expect(result.recordsRestored, equals(2));
-        expect(result.totalRestored, equals(5));
+
+        final dbChurches = await ChurchRepository(database).getAllChurches();
+        final dbAdmins = await AdminUserRepository(database).getAllUsers();
+        expect(dbChurches.length, equals(2));
+        expect(dbAdmins.length, equals(1));
+        final dbRecords = await WeeklyRecordRepository(database)
+            .getRecordsByChurch(dbChurches.first.id!);
+        expect(dbRecords, isNotEmpty);
+      });
+
+      test('nulls orphaned admin references instead of failing', () async {
+        // A backup exported with no admins (the pre-fix export stub produced
+        // exactly these) has records referencing admin IDs that don't exist.
+        final churches = [createTestChurch(id: 1)];
+        final records = [createTestRecord(id: 1)]; // createdByAdminId: 1
+
+        final filePath = path.join(tempDir.path, 'orphaned_admin.json');
+        final createResult = await service.createBackup(
+          churches: churches,
+          admins: const [], // no admins in the backup
+          records: records,
+          customPath: filePath,
+        );
+        expect(createResult.success, isTrue);
+
+        final result = await service.restoreFromBackup(
+          fileFromPath(createResult.filePath!),
+          database,
+        );
+
+        expect(result.success, isTrue);
+        final dbChurches = await ChurchRepository(database).getAllChurches();
+        final dbRecords = await WeeklyRecordRepository(database)
+            .getRecordsByChurch(dbChurches.single.id!);
+        expect(dbRecords.single.createdByAdminId, isNull);
+      });
+
+      test('round-trips optional record fields through backup and restore',
+          () async {
+        // baptisms/holyCommunion/sabbathSchool/visitors/missionOffering/
+        // localChurchBudget were silently dropped by the old serializer.
+        final record = createTestRecord(id: 1).copyWith(
+          baptisms: 3,
+          holyCommunion: 45,
+          sabbathSchoolAttendance: 60,
+          visitorsCount: 7,
+          missionOffering: 1500.0,
+          localChurchBudget: 2500.0,
+        );
+
+        final filePath = path.join(tempDir.path, 'optional_fields.json');
+        final createResult = await service.createBackup(
+          churches: [createTestChurch(id: 1)],
+          admins: [createTestAdmin(id: 1)],
+          records: [record],
+          customPath: filePath,
+        );
+        expect(createResult.success, isTrue);
+
+        final result = await service.restoreFromBackup(
+          fileFromPath(createResult.filePath!),
+          database,
+        );
+        expect(result.success, isTrue);
+
+        final dbChurches = await ChurchRepository(database).getAllChurches();
+        final restored = (await WeeklyRecordRepository(database)
+                .getRecordsByChurch(dbChurches.single.id!))
+            .single;
+        expect(restored.baptisms, equals(3));
+        expect(restored.holyCommunion, equals(45));
+        expect(restored.sabbathSchoolAttendance, equals(60));
+        expect(restored.visitorsCount, equals(7));
+        expect(restored.missionOffering, equals(1500.0));
+        expect(restored.localChurchBudget, equals(2500.0));
       });
 
       test('should return error for invalid backup', () async {
         final filePath = path.join(tempDir.path, 'invalid.json');
         await File(filePath).writeAsString('invalid');
 
-        final result = await service.restoreFromBackup(fileFromPath(filePath));
+        final result = await service.restoreFromBackup(
+          fileFromPath(filePath),
+          database,
+        );
 
         expect(result.success, isFalse);
         expect(result.error, contains('Invalid backup'));
@@ -399,6 +503,7 @@ void main() {
       test('should return error for non-existent file', () async {
         final result = await service.restoreFromBackup(
           fileFromPath('/nonexistent/backup.json'),
+          database,
         );
         expect(result.success, isFalse);
       });
