@@ -24,6 +24,16 @@ class FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
     );
     return Scaffold(
       appBar: AppBar(
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(52),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TimeRangeSelector(compact: true),
+            ),
+          ),
+        ),
         title: const Text('Financial Charts'),
         actions: [
           IconButton(
@@ -31,13 +41,6 @@ class FinancialChartsScreenState extends ConsumerState<FinancialChartsScreen> {
             tooltip: 'Financial Glossary',
             onPressed: () =>
                 Navigator.pushNamed(context, '/financial-glossary'),
-          ),
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: TimeRangeSelector(compact: true),
-            ),
           ),
           IconButton(
             icon: const Icon(Icons.refresh),

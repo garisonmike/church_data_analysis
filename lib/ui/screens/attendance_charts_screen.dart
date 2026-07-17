@@ -27,13 +27,6 @@ class AttendanceChartsScreenState
       appBar: AppBar(
         title: const Text('Attendance Charts'),
         actions: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: TimeRangeSelector(compact: true),
-            ),
-          ),
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
@@ -41,6 +34,20 @@ class AttendanceChartsScreenState
                 ref.invalidate(weeklyRecordsForChurchProvider(widget.churchId)),
           ),
         ],
+        // Full-width row below the title. In the AppBar action area the
+        // selector's fixed 400px cap plus the title and icons overflowed the
+        // toolbar on phone widths; here it gets the whole width and scrolls
+        // horizontally on its own.
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(52),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: TimeRangeSelector(compact: true),
+            ),
+          ),
+        ),
       ),
       body: recordsAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),

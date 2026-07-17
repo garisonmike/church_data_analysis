@@ -25,15 +25,18 @@ class CorrelationChartsScreenState
     );
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Correlation Charts'),
-        actions: [
-          ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 400),
-            child: const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
+        bottom: const PreferredSize(
+          preferredSize: Size.fromHeight(52),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: Align(
+              alignment: Alignment.centerLeft,
               child: TimeRangeSelector(compact: true),
             ),
           ),
+        ),
+        title: const Text('Correlation Charts'),
+        actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
             tooltip: 'Refresh',
