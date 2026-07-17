@@ -325,6 +325,17 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
 
     _setOverlay(null); // clear before opening result dialog
 
+    if (successCount > 0) {
+      // The import wrote new rows through the repository, but the record
+      // providers are app-lifetime caches — without invalidation the
+      // dashboard, chart screens, and Imported Data list keep serving the
+      // pre-import cache until a full app restart (mirrors what the delete
+      // flow in ImportedDataScreen already does).
+      ref.invalidate(weeklyRecordsForChurchProvider(widget.churchId));
+      ref.invalidate(allWeeklyRecordsForChurchProvider(widget.churchId));
+      ref.read(dashboardRefreshProvider.notifier).update((n) => n + 1);
+    }
+
     if (!mounted) return;
 
     // ── Step 5: Result dialog (Fix 2: PopScope prevents Escape dismiss) ───────
