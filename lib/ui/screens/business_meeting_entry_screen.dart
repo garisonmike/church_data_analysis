@@ -246,7 +246,9 @@ class _BusinessMeetingEntryScreenState
             TextFormField(
               controller: _expectedKcc,
               decoration: const InputDecoration(
-                  labelText: 'Total Expected at KCC', border: OutlineInputBorder()),
+                  labelText: 'Expected',
+                  helperText: 'Total expected attendance at the main church',
+                  border: OutlineInputBorder()),
               keyboardType: TextInputType.number,
               validator: (v) {
                 final n = int.tryParse(v ?? '');

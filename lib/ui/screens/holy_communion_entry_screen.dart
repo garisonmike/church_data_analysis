@@ -270,7 +270,7 @@ class _HolyCommunionEntryScreenState
             TextFormField(
               controller: _expectedKcc,
               decoration: const InputDecoration(
-                  labelText: 'Total Expected at KCC',
+                  labelText: 'Expected',
                   helperText: 'Overall expected count for the whole church',
                   border: OutlineInputBorder()),
               keyboardType: TextInputType.number,

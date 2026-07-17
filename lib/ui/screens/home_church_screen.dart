@@ -242,8 +242,9 @@ class _HomeChurchDialogState extends State<_HomeChurchDialog> {
             TextFormField(
               controller: _expectedAtKcc,
               decoration: const InputDecoration(
-                  labelText: 'Expected at KCC',
-                  helperText: 'How many attend main church events',
+                  labelText: 'Expected',
+                  helperText:
+                      'How many of this group attend main church events',
                   border: OutlineInputBorder()),
               keyboardType: TextInputType.number,
               validator: (v) {
