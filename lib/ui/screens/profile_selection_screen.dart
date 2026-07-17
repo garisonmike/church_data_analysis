@@ -52,8 +52,12 @@ class _ProfileSelectionScreenState
         });
       }
     } catch (e, stack) {
-      LogService.error('ProfileSelectionScreen', 'Failed to load profiles',
-          error: e, stackTrace: stack);
+      LogService.error(
+        'ProfileSelectionScreen',
+        'Failed to load profiles',
+        error: e,
+        stackTrace: stack,
+      );
       if (mounted) {
         setState(() {
           _error = e;
@@ -176,44 +180,44 @@ class _ProfileSelectionScreenState
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),
           child: SingleChildScrollView(
-              child: FocusTraversalGroup(
-                policy: OrderedTraversalPolicy(),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: usernameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Username *',
-                        hintText: '3-50 characters',
-                        border: OutlineInputBorder(),
-                      ),
-                      autofocus: true,
-                      textInputAction: TextInputAction.next,
+            child: FocusTraversalGroup(
+              policy: OrderedTraversalPolicy(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: usernameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Username *',
+                      hintText: '3-50 characters',
+                      border: OutlineInputBorder(),
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: fullNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Full Name *',
-                        border: OutlineInputBorder(),
-                      ),
-                      textInputAction: TextInputAction.next,
+                    autofocus: true,
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: fullNameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Full Name *',
+                      border: OutlineInputBorder(),
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => Navigator.of(context).pop(true),
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(),
                     ),
-                  ],
-                ),
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => Navigator.of(context).pop(true),
+                  ),
+                ],
               ),
+            ),
           ),
         ),
         actions: [
@@ -264,8 +268,12 @@ class _ProfileSelectionScreenState
     } catch (e, stack) {
       // Plain-language message for the user; full detail goes to App Logs
       // (U1 — no raw exceptions in user-facing error surfaces).
-      LogService.error('ProfileSelectionScreen', 'Profile creation failed',
-          error: e, stackTrace: stack);
+      LogService.error(
+        'ProfileSelectionScreen',
+        'Profile creation failed',
+        error: e,
+        stackTrace: stack,
+      );
       if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(
@@ -292,44 +300,44 @@ class _ProfileSelectionScreenState
         content: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 560),
           child: SingleChildScrollView(
-              child: FocusTraversalGroup(
-                policy: OrderedTraversalPolicy(),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    TextField(
-                      controller: usernameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Username *',
-                        hintText: '3-50 characters',
-                        border: OutlineInputBorder(),
-                      ),
-                      autofocus: true,
-                      textInputAction: TextInputAction.next,
+            child: FocusTraversalGroup(
+              policy: OrderedTraversalPolicy(),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: usernameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Username *',
+                      hintText: '3-50 characters',
+                      border: OutlineInputBorder(),
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: fullNameController,
-                      decoration: const InputDecoration(
-                        labelText: 'Full Name *',
-                        border: OutlineInputBorder(),
-                      ),
-                      textInputAction: TextInputAction.next,
+                    autofocus: true,
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: fullNameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Full Name *',
+                      border: OutlineInputBorder(),
                     ),
-                    const SizedBox(height: 12),
-                    TextField(
-                      controller: emailController,
-                      decoration: const InputDecoration(
-                        labelText: 'Email',
-                        border: OutlineInputBorder(),
-                      ),
-                      keyboardType: TextInputType.emailAddress,
-                      textInputAction: TextInputAction.done,
-                      onSubmitted: (_) => Navigator.of(context).pop(true),
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: emailController,
+                    decoration: const InputDecoration(
+                      labelText: 'Email',
+                      border: OutlineInputBorder(),
                     ),
-                  ],
-                ),
+                    keyboardType: TextInputType.emailAddress,
+                    textInputAction: TextInputAction.done,
+                    onSubmitted: (_) => Navigator.of(context).pop(true),
+                  ),
+                ],
               ),
+            ),
           ),
         ),
         actions: [
@@ -383,8 +391,12 @@ class _ProfileSelectionScreenState
       if (!mounted) return;
       messenger.showSnackBar(SnackBar(content: Text(e.message)));
     } catch (e, stack) {
-      LogService.error('ProfileSelectionScreen', 'Profile update failed',
-          error: e, stackTrace: stack);
+      LogService.error(
+        'ProfileSelectionScreen',
+        'Profile update failed',
+        error: e,
+        stackTrace: stack,
+      );
       if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(
@@ -437,8 +449,12 @@ class _ProfileSelectionScreenState
         SnackBar(content: Text('Deactivated "${profile.username}"')),
       );
     } catch (e, stack) {
-      LogService.error('ProfileSelectionScreen', 'Profile deactivation failed',
-          error: e, stackTrace: stack);
+      LogService.error(
+        'ProfileSelectionScreen',
+        'Profile deactivation failed',
+        error: e,
+        stackTrace: stack,
+      );
       if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(
@@ -504,8 +520,12 @@ class _ProfileSelectionScreenState
         ),
       );
     } catch (e, stack) {
-      LogService.error('ProfileSelectionScreen', 'Profile deletion failed',
-          error: e, stackTrace: stack);
+      LogService.error(
+        'ProfileSelectionScreen',
+        'Profile deletion failed',
+        error: e,
+        stackTrace: stack,
+      );
       if (!mounted) return;
       messenger.showSnackBar(
         const SnackBar(

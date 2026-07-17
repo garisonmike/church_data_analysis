@@ -81,7 +81,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       final file = await _importService.pickFile();
 
       if (file == null) {
-        setState(() { _isLoading = false; });
+        setState(() {
+          _isLoading = false;
+        });
         return;
       }
 
@@ -108,8 +110,12 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
         _validationResults = null;
       });
     } catch (e, stack) {
-      LogService.error('ImportScreen', 'File pick failed',
-          error: e, stackTrace: stack);
+      LogService.error(
+        'ImportScreen',
+        'File pick failed',
+        error: e,
+        stackTrace: stack,
+      );
       setState(() {
         _errorMessage = 'Could not open the file. Please try a different file.';
         _isLoading = false;
@@ -128,9 +134,11 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
     });
 
     final unmappedFields = _requiredFields
-        .where((field) =>
-            !_columnMapping.containsKey(field) ||
-            _columnMapping[field] == null)
+        .where(
+          (field) =>
+              !_columnMapping.containsKey(field) ||
+              _columnMapping[field] == null,
+        )
         .toList();
 
     if (unmappedFields.isNotEmpty) {
@@ -193,7 +201,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
         .toList();
 
     if (validRecords.isEmpty) {
-      setState(() { _errorMessage = 'No valid records to import'; });
+      setState(() {
+        _errorMessage = 'No valid records to import';
+      });
       return;
     }
 
@@ -205,19 +215,20 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
         canPop: false,
         child: AlertDialog(
           title: const Text('Confirm Import'),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          content: LayoutBuilder(
-            builder: (context, constraints) => ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: constraints.maxHeight * 0.8,
-                maxWidth: 560,
-              ),
-              child: SingleChildScrollView(
-                child: Text(
-                  'Import ${validRecords.length} record(s)?\n\n'
-                  '${_validationResults!.where((r) => !r.success).length} '
-                  'record(s) will be skipped due to errors.',
-                ),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
+          // No LayoutBuilder as AlertDialog content: the dialog measures its
+          // content via IntrinsicWidth and LayoutBuilder cannot report
+          // intrinsics — debug builds assert, leaving a dimmed empty barrier.
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: SingleChildScrollView(
+              child: Text(
+                'Import ${validRecords.length} record(s)?\n\n'
+                '${_validationResults!.where((r) => !r.success).length} '
+                'record(s) will be skipped due to errors.',
               ),
             ),
           ),
@@ -309,16 +320,26 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
           }
         } catch (e, stack) {
           errors.add('Failed to import record: row data error');
-          LogService.error('ImportScreen', 'Row import failed',
-              error: e, stackTrace: stack);
+          LogService.error(
+            'ImportScreen',
+            'Row import failed',
+            error: e,
+            stackTrace: stack,
+          );
         }
       }
     } catch (e, stack) {
-      LogService.error('ImportScreen', 'Import failed',
-          error: e, stackTrace: stack);
+      LogService.error(
+        'ImportScreen',
+        'Import failed',
+        error: e,
+        stackTrace: stack,
+      );
       _setOverlay(null);
       if (mounted) {
-        setState(() { _errorMessage = 'Import failed: ${e.toString()}'; });
+        setState(() {
+          _errorMessage = 'Import failed: ${e.toString()}';
+        });
       }
       return;
     }
@@ -345,53 +366,54 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       builder: (context) => PopScope(
         canPop: false,
         child: AlertDialog(
-          title: Text(successCount > 0 ? 'Import Complete' : 'Nothing Imported'),
-          insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          content: LayoutBuilder(
-            builder: (context, constraints) => ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: constraints.maxHeight * 0.8,
-                maxWidth: 560,
-              ),
-              child: SingleChildScrollView(
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (successCount > 0)
-                      Text('Successfully imported: $successCount'),
-                    if (skipCount > 0)
-                      Text(
-                        'Skipped (already exist): $skipCount',
-                        style: const TextStyle(color: Colors.orange),
+          title: Text(
+            successCount > 0 ? 'Import Complete' : 'Nothing Imported',
+          ),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
+          // See Confirm Import dialog: no LayoutBuilder as dialog content.
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (successCount > 0)
+                    Text('Successfully imported: $successCount'),
+                  if (skipCount > 0)
+                    Text(
+                      'Skipped (already exist): $skipCount',
+                      style: const TextStyle(color: Colors.orange),
+                    ),
+                  if (successCount == 0 && skipCount > 0)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 8),
+                      child: Text(
+                        'All records already exist in the database.',
+                        style: TextStyle(color: Colors.grey),
                       ),
-                    if (successCount == 0 && skipCount > 0)
-                      const Padding(
-                        padding: EdgeInsets.only(top: 8),
-                        child: Text(
-                          'All records already exist in the database.',
-                          style: TextStyle(color: Colors.grey),
-                        ),
+                    ),
+                  if (errors.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Details:',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    ListView.builder(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: errors.length,
+                      itemBuilder: (context, index) => Text(
+                        '\u2022 ${errors[index]}',
+                        style: const TextStyle(fontSize: 12),
                       ),
-                    if (errors.isNotEmpty) ...[
-                      const SizedBox(height: 16),
-                      const Text(
-                        'Details:',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 4),
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: errors.length,
-                        itemBuilder: (context, index) => Text(
-                          '\u2022 ${errors[index]}',
-                          style: const TextStyle(fontSize: 12),
-                        ),
-                      ),
-                    ],
+                    ),
                   ],
-                ),
+                ],
               ),
             ),
           ),
@@ -414,10 +436,8 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
   Future<String?> _showDuplicateStrategyDialog(
     List<DateTime> conflictDates,
   ) async {
-    final dateStrings = conflictDates
-        .map((d) => d.toString().split('T')[0])
-        .toList()
-      ..sort();
+    final dateStrings =
+        conflictDates.map((d) => d.toString().split('T')[0]).toList()..sort();
 
     return showDialog<String>(
       context: context,
@@ -425,14 +445,14 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       builder: (ctx) => PopScope(
         canPop: false,
         child: AlertDialog(
-        title: const Text('Duplicate Records Found'),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        content: LayoutBuilder(
-          builder: (context, constraints) => ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: constraints.maxHeight * 0.7,
-              maxWidth: 560,
-            ),
+          title: const Text('Duplicate Records Found'),
+          insetPadding: const EdgeInsets.symmetric(
+            horizontal: 16,
+            vertical: 12,
+          ),
+          // See Confirm Import dialog: no LayoutBuilder as dialog content.
+          content: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 560),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -445,36 +465,30 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
                   ...dateStrings.map(
                     (d) => Text(
                       '• $d',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: Colors.grey,
-                      ),
+                      style: const TextStyle(fontSize: 13, color: Colors.grey),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
-                    'What would you like to do with these records?',
-                  ),
+                  const Text('What would you like to do with these records?'),
                 ],
               ),
             ),
           ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, null),
+              child: const Text('Cancel'),
+            ),
+            OutlinedButton(
+              onPressed: () => Navigator.pop(ctx, 'skip'),
+              child: const Text('Skip Duplicates'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, 'update'),
+              child: const Text('Update Existing'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, null),
-            child: const Text('Cancel'),
-          ),
-          OutlinedButton(
-            onPressed: () => Navigator.pop(ctx, 'skip'),
-            child: const Text('Skip Duplicates'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx, 'update'),
-            child: const Text('Update Existing'),
-          ),
-        ],
-      ),
       ), // Fix 3: closes PopScope
     );
   }
@@ -523,13 +537,17 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             ListTile(
               leading: const Icon(Icons.table_chart_outlined),
               title: const Text('Excel (.xlsx)'),
-              subtitle: const Text('Recommended — opens in Excel & Google Sheets'),
+              subtitle: const Text(
+                'Recommended — opens in Excel & Google Sheets',
+              ),
               onTap: () => Navigator.of(ctx).pop('xlsx'),
             ),
             ListTile(
               leading: const Icon(Icons.text_snippet_outlined),
               title: const Text('CSV (.csv)'),
-              subtitle: const Text('Plain text, compatible with any spreadsheet app'),
+              subtitle: const Text(
+                'Plain text, compatible with any spreadsheet app',
+              ),
               onTap: () => Navigator.of(ctx).pop('csv'),
             ),
             const SizedBox(height: 8),
@@ -560,7 +578,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
       );
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Could not save template. Check storage permissions.')),
+        const SnackBar(
+          content: Text('Could not save template. Check storage permissions.'),
+        ),
       );
     }
   }
@@ -633,10 +653,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
               const SizedBox(height: 16),
               Text(
                 _errorMessage!,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyLarge
-                    ?.copyWith(color: Colors.red),
+                style: Theme.of(
+                  context,
+                ).textTheme.bodyLarge?.copyWith(color: Colors.red),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 24),
@@ -953,10 +972,9 @@ class _ImportScreenState extends ConsumerState<ImportScreen> {
             ),
             const SizedBox(height: 16),
             Card(
-              color: Theme.of(context)
-                  .colorScheme
-                  .secondaryContainer
-                  .withValues(alpha: 0.5),
+              color: Theme.of(
+                context,
+              ).colorScheme.secondaryContainer.withValues(alpha: 0.5),
               child: Padding(
                 padding: const EdgeInsets.all(16.0),
                 child: Row(

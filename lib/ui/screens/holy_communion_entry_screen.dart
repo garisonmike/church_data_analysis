@@ -38,13 +38,15 @@ class _HolyCommunionEntryScreenState
     _year = e?.year ?? DateTime.now().year;
     _quarter = e?.quarter ?? ((DateTime.now().month / 3).ceil());
     _expectedKcc = TextEditingController(
-        text: e?.totalExpectedAtKcc.toString() ?? '');
+      text: e?.totalExpectedAtKcc.toString() ?? '',
+    );
     _notes = TextEditingController(text: e?.notes ?? '');
   }
 
   @override
   void dispose() {
-    _expectedKcc.dispose(); _notes.dispose();
+    _expectedKcc.dispose();
+    _notes.dispose();
     for (final c in _actualControllers.values) {
       c.dispose();
     }
@@ -58,20 +60,32 @@ class _HolyCommunionEntryScreenState
     if (_homeChurches.length == homeChurches.length) return;
     _homeChurches = homeChurches;
     for (final hc in homeChurches) {
-      final existingRow = widget.existing?.attendance
-          .firstWhere((r) => r.homeChurchId == hc.id, orElse: () =>
-              HolyCommunionAttendanceRow(
-                eventId: 0, homeChurchId: hc.id!, homeChurchName: hc.name,
-                actualAttendance: 0, expectedAtHc: hc.expectedMembership));
+      final existingRow = widget.existing?.attendance.firstWhere(
+        (r) => r.homeChurchId == hc.id,
+        orElse: () => HolyCommunionAttendanceRow(
+          eventId: 0,
+          homeChurchId: hc.id!,
+          homeChurchName: hc.name,
+          actualAttendance: 0,
+          expectedAtHc: hc.expectedMembership,
+        ),
+      );
       _actualControllers[hc.id!] = TextEditingController(
-          text: existingRow?.actualAttendance.toString() ?? '0');
+        text: existingRow?.actualAttendance.toString() ?? '0',
+      );
       _expectedHcControllers[hc.id!] = TextEditingController(
-          text: existingRow?.expectedAtHc.toString() ??
-              hc.expectedMembership.toString());
+        text:
+            existingRow?.expectedAtHc.toString() ??
+            hc.expectedMembership.toString(),
+      );
     }
-    // Auto-fill KCC total from sum of HC expected if empty
+    // Auto-fill the church-wide expected total from sum of home-church
+    // expected counts if empty
     if (_expectedKcc.text.isEmpty) {
-      final total = homeChurches.fold(0, (sum, hc) => sum + hc.expectedMembership);
+      final total = homeChurches.fold(
+        0,
+        (sum, hc) => sum + hc.expectedMembership,
+      );
       _expectedKcc.text = total.toString();
     }
   }
@@ -93,16 +107,20 @@ class _HolyCommunionEntryScreenState
       final churchId = ref.read(currentChurchIdProvider);
       if (churchId == null) throw Exception('No church selected');
 
-      final attendanceRows = _homeChurches.map((hc) =>
-          HolyCommunionAttendanceRow(
-            eventId: widget.existing?.id ?? 0,
-            homeChurchId: hc.id!,
-            homeChurchName: hc.name,
-            actualAttendance:
-                int.tryParse(_actualControllers[hc.id!]?.text ?? '0') ?? 0,
-            expectedAtHc:
-                int.tryParse(_expectedHcControllers[hc.id!]?.text ?? '0') ?? 0,
-          )).toList();
+      final attendanceRows = _homeChurches
+          .map(
+            (hc) => HolyCommunionAttendanceRow(
+              eventId: widget.existing?.id ?? 0,
+              homeChurchId: hc.id!,
+              homeChurchName: hc.name,
+              actualAttendance:
+                  int.tryParse(_actualControllers[hc.id!]?.text ?? '0') ?? 0,
+              expectedAtHc:
+                  int.tryParse(_expectedHcControllers[hc.id!]?.text ?? '0') ??
+                  0,
+            ),
+          )
+          .toList();
 
       final event = HolyCommunionEvent(
         id: widget.existing?.id,
@@ -131,14 +149,22 @@ class _HolyCommunionEntryScreenState
       await repo.upsertAttendanceRows(eventId, attendanceRows);
       ref.invalidate(holyCommunionEventsProvider(churchId));
 
-      LogService.info('HolyCommunionEntry',
-          'Saved HC event: Q$_quarter $_year, ${attendanceRows.length} HC rows');
+      LogService.info(
+        'HolyCommunionEntry',
+        'Saved HC event: Q$_quarter $_year, ${attendanceRows.length} HC rows',
+      );
       if (mounted) Navigator.pop(context, true);
     } catch (e, stack) {
-      LogService.error('HolyCommunionEntry', 'Save failed', error: e, stackTrace: stack);
+      LogService.error(
+        'HolyCommunionEntry',
+        'Save failed',
+        error: e,
+        stackTrace: stack,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
       }
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -154,7 +180,8 @@ class _HolyCommunionEntryScreenState
       builder: (ctx) => AlertDialog(
         title: const Text('Delete Event'),
         content: const Text(
-            'Permanently delete this Holy Communion event? This cannot be undone.'),
+          'Permanently delete this Holy Communion event? This cannot be undone.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
@@ -178,15 +205,25 @@ class _HolyCommunionEntryScreenState
       final churchId = ref.read(currentChurchIdProvider);
       final repo = ref.read(holyCommunionRepositoryProvider);
       await repo.deleteEvent(widget.existing!.id!);
-      if (churchId != null) ref.invalidate(holyCommunionEventsProvider(churchId));
-      LogService.info('HolyCommunionEntry',
-          'Deleted HC event id=${widget.existing!.id}');
+      if (churchId != null) {
+        ref.invalidate(holyCommunionEventsProvider(churchId));
+      }
+      LogService.info(
+        'HolyCommunionEntry',
+        'Deleted HC event id=${widget.existing!.id}',
+      );
       if (mounted) Navigator.pop(context, true);
     } catch (e, stack) {
-      LogService.error('HolyCommunionEntry', 'Delete failed', error: e, stackTrace: stack);
+      LogService.error(
+        'HolyCommunionEntry',
+        'Delete failed',
+        error: e,
+        stackTrace: stack,
+      );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red));
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
         setState(() => _saving = false);
       }
     }
@@ -202,21 +239,29 @@ class _HolyCommunionEntryScreenState
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.existing != null
-            ? 'Edit Holy Communion'
-            : 'New Holy Communion Event'),
+        title: Text(
+          widget.existing != null
+              ? 'Edit Holy Communion'
+              : 'New Holy Communion Event',
+        ),
         actions: [
           if (_saving)
             const Padding(
-                padding: EdgeInsets.all(16),
-                child: SizedBox(width: 20, height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2)))
+              padding: EdgeInsets.all(16),
+              child: SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+            )
           else ...[
             // Delete only shown when editing an existing event
             if (widget.existing != null)
               IconButton(
-                icon: Icon(Icons.delete_outline,
-                    color: Theme.of(context).colorScheme.error),
+                icon: Icon(
+                  Icons.delete_outline,
+                  color: Theme.of(context).colorScheme.error,
+                ),
                 tooltip: 'Delete event',
                 onPressed: _delete,
               ),
@@ -230,32 +275,46 @@ class _HolyCommunionEntryScreenState
           padding: const EdgeInsets.all(16),
           children: [
             // Event header
-            Text('Event Details', style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Event Details',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 12),
-            Row(children: [
-              Expanded(
-                child: DropdownButtonFormField<int>(
-                  initialValue: _quarter,
-                  decoration: const InputDecoration(
-                      labelText: 'Quarter', border: OutlineInputBorder()),
-                  items: [1, 2, 3, 4].map((q) =>
-                      DropdownMenuItem(value: q, child: Text('Q$q'))).toList(),
-                  onChanged: (v) => setState(() => _quarter = v!),
+            Row(
+              children: [
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    initialValue: _quarter,
+                    decoration: const InputDecoration(
+                      labelText: 'Quarter',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: [1, 2, 3, 4]
+                        .map(
+                          (q) => DropdownMenuItem(value: q, child: Text('Q$q')),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() => _quarter = v!),
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: DropdownButtonFormField<int>(
-                  initialValue: _year,
-                  decoration: const InputDecoration(
-                      labelText: 'Year', border: OutlineInputBorder()),
-                  items: List.generate(10, (i) => DateTime.now().year - 2 + i)
-                      .map((y) => DropdownMenuItem(value: y, child: Text('$y')))
-                      .toList(),
-                  onChanged: (v) => setState(() => _year = v!),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: DropdownButtonFormField<int>(
+                    initialValue: _year,
+                    decoration: const InputDecoration(
+                      labelText: 'Year',
+                      border: OutlineInputBorder(),
+                    ),
+                    items: List.generate(10, (i) => DateTime.now().year - 2 + i)
+                        .map(
+                          (y) => DropdownMenuItem(value: y, child: Text('$y')),
+                        )
+                        .toList(),
+                    onChanged: (v) => setState(() => _year = v!),
+                  ),
                 ),
-              ),
-            ]),
+              ],
+            ),
             const SizedBox(height: 12),
             Card(
               child: ListTile(
@@ -270,9 +329,10 @@ class _HolyCommunionEntryScreenState
             TextFormField(
               controller: _expectedKcc,
               decoration: const InputDecoration(
-                  labelText: 'Expected',
-                  helperText: 'Overall expected count for the whole church',
-                  border: OutlineInputBorder()),
+                labelText: 'Expected',
+                helperText: 'Overall expected count for the whole church',
+                border: OutlineInputBorder(),
+              ),
               keyboardType: TextInputType.number,
               validator: (v) {
                 final n = int.tryParse(v ?? '');
@@ -283,8 +343,10 @@ class _HolyCommunionEntryScreenState
             const SizedBox(height: 24),
 
             // Per-HC attendance table
-            Text('Attendance by Home Church',
-                style: Theme.of(context).textTheme.titleMedium),
+            Text(
+              'Attendance by Home Church',
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
             const SizedBox(height: 8),
             if (hcAsync == null)
               const Text('No church selected.')
@@ -293,28 +355,38 @@ class _HolyCommunionEntryScreenState
                 loading: () => const Center(child: CircularProgressIndicator()),
                 error: (e, _) => Text('Error loading home churches: $e'),
                 data: (hcs) {
-                  WidgetsBinding.instance
-                      .addPostFrameCallback((_) => _initRowControllers(hcs));
+                  WidgetsBinding.instance.addPostFrameCallback(
+                    (_) => _initRowControllers(hcs),
+                  );
                   if (hcs.isEmpty) {
                     return Card(
                       child: Padding(
                         padding: const EdgeInsets.all(16),
                         child: Text(
                           'No home churches found. Add them in Church Settings → Home Churches.',
-                          style: TextStyle(color: Theme.of(context).colorScheme.outline),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.outline,
+                          ),
                         ),
                       ),
                     );
                   }
                   return Column(
-                    children: hcs.map((hc) => _HcAttendanceRow(
-                      homeChurch: hc,
-                      actualController: _actualControllers[hc.id!] ??
-                          TextEditingController(text: '0'),
-                      expectedController: _expectedHcControllers[hc.id!] ??
-                          TextEditingController(
-                              text: hc.expectedMembership.toString()),
-                    )).toList(),
+                    children: hcs
+                        .map(
+                          (hc) => _HcAttendanceRow(
+                            homeChurch: hc,
+                            actualController:
+                                _actualControllers[hc.id!] ??
+                                TextEditingController(text: '0'),
+                            expectedController:
+                                _expectedHcControllers[hc.id!] ??
+                                TextEditingController(
+                                  text: hc.expectedMembership.toString(),
+                                ),
+                          ),
+                        )
+                        .toList(),
                   );
                 },
               ),
@@ -323,8 +395,9 @@ class _HolyCommunionEntryScreenState
             TextFormField(
               controller: _notes,
               decoration: const InputDecoration(
-                  labelText: 'Notes (optional)',
-                  border: OutlineInputBorder()),
+                labelText: 'Notes (optional)',
+                border: OutlineInputBorder(),
+              ),
               maxLines: 3,
             ),
             const SizedBox(height: 32),
@@ -332,8 +405,9 @@ class _HolyCommunionEntryScreenState
               width: double.infinity,
               child: FilledButton(
                 onPressed: _saving ? null : _save,
-                child: Text(widget.existing != null
-                    ? 'Update Event' : 'Save Event'),
+                child: Text(
+                  widget.existing != null ? 'Update Event' : 'Save Event',
+                ),
               ),
             ),
           ],
@@ -358,47 +432,53 @@ class _HcAttendanceRow extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
-      child: Row(children: [
-        Expanded(
-          flex: 3,
-          child: Text(homeChurch.name,
-              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13)),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 2,
-          child: TextFormField(
-            controller: actualController,
-            decoration: const InputDecoration(
+      child: Row(
+        children: [
+          Expanded(
+            flex: 3,
+            child: Text(
+              homeChurch.name,
+              style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 2,
+            child: TextFormField(
+              controller: actualController,
+              decoration: const InputDecoration(
                 labelText: 'Actual',
                 isDense: true,
-                border: OutlineInputBorder()),
-            keyboardType: TextInputType.number,
-            validator: (v) {
-              final n = int.tryParse(v ?? '');
-              if (n == null || n < 0) return '!';
-              return null;
-            },
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+              validator: (v) {
+                final n = int.tryParse(v ?? '');
+                if (n == null || n < 0) return '!';
+                return null;
+              },
+            ),
           ),
-        ),
-        const SizedBox(width: 8),
-        Expanded(
-          flex: 2,
-          child: TextFormField(
-            controller: expectedController,
-            decoration: const InputDecoration(
+          const SizedBox(width: 8),
+          Expanded(
+            flex: 2,
+            child: TextFormField(
+              controller: expectedController,
+              decoration: const InputDecoration(
                 labelText: 'Expected',
                 isDense: true,
-                border: OutlineInputBorder()),
-            keyboardType: TextInputType.number,
-            validator: (v) {
-              final n = int.tryParse(v ?? '');
-              if (n == null || n < 0) return '!';
-              return null;
-            },
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.number,
+              validator: (v) {
+                final n = int.tryParse(v ?? '');
+                if (n == null || n < 0) return '!';
+                return null;
+              },
+            ),
           ),
-        ),
-      ]),
+        ],
+      ),
     );
   }
 }

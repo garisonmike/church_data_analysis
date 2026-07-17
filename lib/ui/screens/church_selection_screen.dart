@@ -105,96 +105,94 @@ class _ChurchSelectionScreenState extends ConsumerState<ChurchSelectionScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Create Church'),
         insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        content: LayoutBuilder(
-          builder: (context, constraints) => ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: constraints.maxHeight * 0.8,
-              maxWidth: 560,
-            ),
-            child: SingleChildScrollView(
-              child: FocusTraversalGroup(
-                policy: OrderedTraversalPolicy(),
-                child: StatefulBuilder(
-                  builder: (context, setDialogState) => Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      // Region shortcut — seeds currency, locale, and timezone.
-                      // Everything below (and app settings) stays editable.
-                      DropdownButtonFormField<AppRegion>(
-                        initialValue: selectedRegion,
-                        isExpanded: true,
-                        decoration: const InputDecoration(
-                          labelText: 'Region',
-                          helperText:
-                              'Sets currency, language, and timezone — you '
-                              'can change any of them later',
-                          border: OutlineInputBorder(),
-                          prefixIcon: Icon(Icons.public),
-                        ),
-                        items: kRegions
-                            .map(
-                              (r) => DropdownMenuItem(
-                                value: r,
-                                child: Text('${r.name} (${r.currencyCode})'),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (region) => setDialogState(() {
-                          selectedRegion = region;
-                          // Prefill the currency; the picker can still override.
-                          if (region != null) {
-                            selectedCurrency = region.currencyCode;
-                          }
-                        }),
+        // No LayoutBuilder as AlertDialog content — the dialog measures its
+        // content via IntrinsicWidth and LayoutBuilder cannot report
+        // intrinsics (debug builds assert, leaving a dimmed empty barrier).
+        content: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: SingleChildScrollView(
+            child: FocusTraversalGroup(
+              policy: OrderedTraversalPolicy(),
+              child: StatefulBuilder(
+                builder: (context, setDialogState) => Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Region shortcut — seeds currency, locale, and timezone.
+                    // Everything below (and app settings) stays editable.
+                    DropdownButtonFormField<AppRegion>(
+                      initialValue: selectedRegion,
+                      isExpanded: true,
+                      decoration: const InputDecoration(
+                        labelText: 'Region',
+                        helperText:
+                            'Sets currency, language, and timezone — you '
+                            'can change any of them later',
+                        border: OutlineInputBorder(),
+                        prefixIcon: Icon(Icons.public),
                       ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: nameController,
-                        decoration: const InputDecoration(
-                          labelText: 'Church Name *',
-                          border: OutlineInputBorder(),
-                        ),
-                        autofocus: true,
-                        textInputAction: TextInputAction.next,
+                      items: kRegions
+                          .map(
+                            (r) => DropdownMenuItem(
+                              value: r,
+                              child: Text('${r.name} (${r.currencyCode})'),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (region) => setDialogState(() {
+                        selectedRegion = region;
+                        // Prefill the currency; the picker can still override.
+                        if (region != null) {
+                          selectedCurrency = region.currencyCode;
+                        }
+                      }),
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: nameController,
+                      decoration: const InputDecoration(
+                        labelText: 'Church Name *',
+                        border: OutlineInputBorder(),
                       ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: addressController,
-                        decoration: const InputDecoration(
-                          labelText: 'Address',
-                          border: OutlineInputBorder(),
-                        ),
-                        textInputAction: TextInputAction.next,
+                      autofocus: true,
+                      textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: addressController,
+                      decoration: const InputDecoration(
+                        labelText: 'Address',
+                        border: OutlineInputBorder(),
                       ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: emailController,
-                        decoration: const InputDecoration(
-                          labelText: 'Contact Email',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.emailAddress,
-                        textInputAction: TextInputAction.next,
+                      textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: emailController,
+                      decoration: const InputDecoration(
+                        labelText: 'Contact Email',
+                        border: OutlineInputBorder(),
                       ),
-                      const SizedBox(height: 12),
-                      TextField(
-                        controller: phoneController,
-                        decoration: const InputDecoration(
-                          labelText: 'Contact Phone',
-                          border: OutlineInputBorder(),
-                        ),
-                        keyboardType: TextInputType.phone,
-                        textInputAction: TextInputAction.next,
+                      keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: phoneController,
+                      decoration: const InputDecoration(
+                        labelText: 'Contact Phone',
+                        border: OutlineInputBorder(),
                       ),
-                      const SizedBox(height: 12),
-                      CurrencyPickerField(
-                        labelText: 'Currency *',
-                        value: selectedCurrency,
-                        onChanged: (code) =>
-                            setDialogState(() => selectedCurrency = code),
-                      ),
-                    ],
-                  ),
+                      keyboardType: TextInputType.phone,
+                      textInputAction: TextInputAction.next,
+                    ),
+                    const SizedBox(height: 12),
+                    CurrencyPickerField(
+                      labelText: 'Currency *',
+                      value: selectedCurrency,
+                      onChanged: (code) =>
+                          setDialogState(() => selectedCurrency = code),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -287,12 +285,12 @@ class _ChurchSelectionScreenState extends ConsumerState<ChurchSelectionScreen> {
 
     // Show the user exactly what will be removed before they commit — a
     // church delete cascades to its admins, weekly records, and events.
-    final recordCount =
-        (await WeeklyRecordRepository(database).getRecordsByChurch(church.id!))
-            .length;
-    final adminCount =
-        (await AdminUserRepository(database).getUsersByChurch(church.id!))
-            .length;
+    final recordCount = (await WeeklyRecordRepository(
+      database,
+    ).getRecordsByChurch(church.id!)).length;
+    final adminCount = (await AdminUserRepository(
+      database,
+    ).getUsersByChurch(church.id!)).length;
     if (!mounted) return;
 
     final confirmed = await showDialog<bool>(
