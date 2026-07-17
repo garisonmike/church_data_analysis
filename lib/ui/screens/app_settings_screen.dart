@@ -58,6 +58,11 @@ class AppSettingsScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   DropdownButtonFormField<Currency>(
                     initialValue: settings.currency,
+                    // Give the selected item the full field width so a long
+                    // currency name doesn't overflow the Row. (Flexible/
+                    // Expanded can't be used inside dropdown items — the
+                    // dropdown measures item intrinsic width and those assert.)
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Currency',
                       border: OutlineInputBorder(),
@@ -135,6 +140,7 @@ class AppSettingsScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   DropdownButtonFormField<AppThemeMode>(
                     initialValue: settings.themeMode,
+                    isExpanded: true,
                     decoration: const InputDecoration(
                       labelText: 'Theme Mode',
                       border: OutlineInputBorder(),
