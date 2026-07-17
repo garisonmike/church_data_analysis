@@ -51,6 +51,7 @@ app.*.map.json
 /plan.md
 /PLAN.md
 /bugs-ux-review.md
+/session-report-*.md
 runError.txt
 flutterTest.txt
 failedTests.txt
