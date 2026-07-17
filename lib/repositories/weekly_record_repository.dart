@@ -50,18 +50,6 @@ class WeeklyRecordRepository {
   Future<List<domain.WeeklyRecord>> getAllRecords(int churchId) =>
       getRecordsByChurch(churchId);
 
-  /// All records for [churchId] created by [adminId], most recent first.
-  Future<List<domain.WeeklyRecord>> getAllRecordsByAdmin(
-      int churchId, int adminId) async {
-    final rows = await (_db.select(_db.weeklyRecords)
-          ..where((t) =>
-              t.churchId.equals(churchId) &
-              t.createdByAdminId.equals(adminId))
-          ..orderBy([(t) => OrderingTerm.desc(t.weekStartDate)]))
-        .get();
-    return rows.map(_toModel).toList();
-  }
-
   /// Records for [churchId] whose [weekStartDate] falls within the last
   /// [weeks] weeks, most recent first.
   Future<List<domain.WeeklyRecord>> getRecentRecords(
@@ -70,20 +58,6 @@ class WeeklyRecordRepository {
     final rows = await (_db.select(_db.weeklyRecords)
           ..where((t) =>
               t.churchId.equals(churchId) &
-              t.weekStartDate.isBiggerOrEqualValue(cutoff))
-          ..orderBy([(t) => OrderingTerm.desc(t.weekStartDate)]))
-        .get();
-    return rows.map(_toModel).toList();
-  }
-
-  /// Recent records filtered to a specific [adminId].
-  Future<List<domain.WeeklyRecord>> getRecentRecordsByAdmin(
-      int churchId, int adminId, int weeks) async {
-    final cutoff = DateTime.now().subtract(Duration(days: weeks * 7));
-    final rows = await (_db.select(_db.weeklyRecords)
-          ..where((t) =>
-              t.churchId.equals(churchId) &
-              t.createdByAdminId.equals(adminId) &
               t.weekStartDate.isBiggerOrEqualValue(cutoff))
           ..orderBy([(t) => OrderingTerm.desc(t.weekStartDate)]))
         .get();

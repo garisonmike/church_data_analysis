@@ -3,7 +3,6 @@ import 'package:church_analytics/models/models.dart' as models;
 import 'package:church_analytics/repositories/repositories.dart';
 import 'package:church_analytics/services/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 
 /// Enum for different time range options for charts
 enum ChartTimeRange {
@@ -23,15 +22,20 @@ enum ChartTimeRange {
 }
 
 /// Parameters for fetching weekly records
+///
+/// Note: there is deliberately NO per-admin filter here. Analytics are
+/// church-wide; createdByAdminId is an accountability trail, not a
+/// visibility boundary. A silent admin filter in this pipeline once hid
+/// every imported and restored record from all charts (records created by
+/// another profile — or with a nulled creator after restore — never matched
+/// the current admin).
 class WeeklyRecordsParams {
   final int churchId;
   final ChartTimeRange timeRange;
-  final int? adminId;
 
   const WeeklyRecordsParams({
     required this.churchId,
     required this.timeRange,
-    this.adminId,
   });
 
   @override
@@ -40,11 +44,10 @@ class WeeklyRecordsParams {
       other is WeeklyRecordsParams &&
           runtimeType == other.runtimeType &&
           churchId == other.churchId &&
-          timeRange == other.timeRange &&
-          adminId == other.adminId;
+          timeRange == other.timeRange;
 
   @override
-  int get hashCode => Object.hash(churchId, timeRange, adminId);
+  int get hashCode => Object.hash(churchId, timeRange);
 }
 
 /// State class for weekly records with loading/error states
@@ -72,23 +75,13 @@ class WeeklyRecordsState {
   }
 }
 
-/// Provider for current chart time range selection
+/// Provider for current chart time range selection.
+///
+/// Defaults to All Time so the dashboard and chart screens agree with the
+/// Imported Data list and the PDF report about what "the church's data" is.
+/// The user can narrow the window with the TimeRangeSelector.
 final chartTimeRangeProvider = StateProvider<ChartTimeRange>((ref) {
-  return ChartTimeRange.twelveWeeks; // Default to 12 weeks
-});
-
-/// Provider for current admin ID (for filtering records)
-final currentAdminIdProvider = FutureProvider<int?>((ref) async {
-  try {
-    final prefs = await SharedPreferences.getInstance();
-    final adminDb = ref.watch(databaseProvider);
-    final adminRepo = AdminUserRepository(adminDb);
-    final profileService = AdminProfileService(adminRepo, prefs);
-    final currentAdminId = profileService.getCurrentProfileId();
-    return currentAdminId;
-  } catch (e) {
-    return null;
-  }
+  return ChartTimeRange.all;
 });
 
 /// Provider for weekly records based on church ID and time range
@@ -113,29 +106,21 @@ final weeklyRecordsForChurchProvider =
       churchId,
     ) {
       final timeRange = ref.watch(chartTimeRangeProvider);
-      final adminIdAsync = ref.watch(currentAdminIdProvider);
 
-      return adminIdAsync.when(
-        loading: () => const AsyncValue.loading(),
-        error: (error, stackTrace) => AsyncValue.error(error, stackTrace),
-        data: (adminId) {
-          final params = WeeklyRecordsParams(
-            churchId: churchId,
-            timeRange: timeRange,
-            adminId: adminId,
-          );
-
-          final recordsState = ref.watch(weeklyRecordsProvider(params));
-
-          if (recordsState.isLoading) {
-            return const AsyncValue.loading();
-          } else if (recordsState.error != null) {
-            return AsyncValue.error(recordsState.error!, StackTrace.current);
-          } else {
-            return AsyncValue.data(recordsState.records);
-          }
-        },
+      final params = WeeklyRecordsParams(
+        churchId: churchId,
+        timeRange: timeRange,
       );
+
+      final recordsState = ref.watch(weeklyRecordsProvider(params));
+
+      if (recordsState.isLoading) {
+        return const AsyncValue.loading();
+      } else if (recordsState.error != null) {
+        return AsyncValue.error(recordsState.error!, StackTrace.current);
+      } else {
+        return AsyncValue.data(recordsState.records);
+      }
     });
 
 /// State notifier for managing weekly records
@@ -155,33 +140,12 @@ class WeeklyRecordsNotifier extends StateNotifier<WeeklyRecordsState> {
     try {
       final repository = WeeklyRecordRepository(database);
 
-      List<models.WeeklyRecord> records;
-
-      if (params.timeRange == ChartTimeRange.all) {
-        // Get all records
-        if (params.adminId != null) {
-          records = await repository.getAllRecordsByAdmin(
-            params.churchId,
-            params.adminId!,
-          );
-        } else {
-          records = await repository.getAllRecords(params.churchId);
-        }
-      } else {
-        // Get recent records for specified weeks
-        if (params.adminId != null) {
-          records = await repository.getRecentRecordsByAdmin(
-            params.churchId,
-            params.adminId!,
-            params.timeRange.weeks,
-          );
-        } else {
-          records = await repository.getRecentRecords(
-            params.churchId,
-            params.timeRange.weeks,
-          );
-        }
-      }
+      final records = params.timeRange == ChartTimeRange.all
+          ? await repository.getAllRecords(params.churchId)
+          : await repository.getRecentRecords(
+              params.churchId,
+              params.timeRange.weeks,
+            );
 
       state = state.copyWith(records: records, isLoading: false);
     } catch (e) {

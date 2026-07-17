@@ -47,6 +47,12 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (mounted) _loadData();
     });
 
+    // Reload when the user changes the time-range selector so the KPIs and
+    // Recent Weeks list track the selected window.
+    ref.listenManual(chartTimeRangeProvider, (_, __) {
+      if (mounted) _loadData();
+    });
+
     // Listen to backgroundUpdateCheckProvider for the lifetime
     // of the dashboard — not just once at init — so that a result produced by
     // the connectivity-restore trigger in main.dart also surfaces the banner.
@@ -174,8 +180,17 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       // Time the database query
       perfMonitor.startTiming('dashboard_db_query');
 
-      // Get recent records (last 12 weeks) — always show all church records
-      final records = await repository.getRecentRecords(widget.churchId, 12);
+      // Honor the user-selected time range (default: All Time), the same
+      // window the chart screens use — a hardcoded 12-week cutoff here used
+      // to silently hide every record older than 3 months from the KPIs
+      // while the Imported Data list and PDF reports showed them all.
+      final timeRange = ref.read(chartTimeRangeProvider);
+      final records = timeRange == ChartTimeRange.all
+          ? await repository.getRecordsByChurch(widget.churchId)
+          : await repository.getRecentRecords(
+              widget.churchId,
+              timeRange.weeks,
+            );
 
       perfMonitor.stopTiming('dashboard_db_query');
 
@@ -290,6 +305,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                   arguments: widget.churchId,
                 ),
               ),
+            // Visible, user-adjustable window for the KPIs and Recent Weeks
+            // list (default All Time). Kept outside the loading branch so
+            // the user can always widen a window that returned no records.
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 400),
+                  child: const TimeRangeSelector(compact: true),
+                ),
+              ),
+            ),
             Expanded(
               child: _isLoading
                   ? const Center(child: CircularProgressIndicator())
@@ -933,10 +961,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ],
         ),
         const SizedBox(height: 8),
+        // Display cap only: KPI metrics above use every record in the
+        // selected window; this list stays a "Recent Weeks" preview (records
+        // arrive most-recent first) with View All for the full set.
         ListView.builder(
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
-          itemCount: _recentRecords.length,
+          itemCount: _recentRecords.length > 12 ? 12 : _recentRecords.length,
           itemBuilder: (context, index) {
             final record = _recentRecords[index];
             return _buildWeekCard(record);
